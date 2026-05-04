@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, Tile, Meters, Season } from '../state/types';
+import type { GameState, Tile, Meters } from '../state/types';
 import {
   checkTippingPoints,
   applySeasonalEffects,

@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { GameState, CommunityLeader } from '../state/types';
+import type { GameState } from '../state/types';
 import { createNewGame } from '../state/create-game';
 import { gameReducer } from '../state/reducer';
 import { resolveTurn, prepareTurn } from '../systems/resolve';
@@ -40,7 +40,6 @@ import { PROJECT_CATALOG } from '../data/content/project-catalog';
 const RNG_SUPPRESS = () => 0.99;
 
 /** Force random events by always rolling low. */
-const RNG_FORCE = () => 0.01;
 
 /**
  * Build a full game state with all 9 council members, all 8 leaders,
@@ -182,7 +181,7 @@ describe('Scenario 2: Council voting fails without enough support', () => {
 
     // Count yes votes
     const yesVotes = vote.votes.filter(v => v.vote === 'yes');
-    const noVotes = vote.votes.filter(v => v.vote === 'no');
+    vote.votes.filter(v => v.vote === 'no');
 
     // With default dispositions, conservatives (Pat Lundgren -30, Frank Bukowski -50)
     // and skeptics (Bobby Slade -10) will vote no or abstain.
@@ -671,7 +670,7 @@ describe('Scenario 7: Policy drain and Will management', () => {
       policyId: 'urban_agriculture_zoning',
     });
 
-    const willAfterEnact = state.meters.politicalWill; // 72
+    state.meters.politicalWill;
 
     // End turn to trigger drain
     state = endTurnDeterministic(state);

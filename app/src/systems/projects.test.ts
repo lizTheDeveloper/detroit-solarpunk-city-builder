@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { canStartProject, startProject, advanceProjects, decayGentrification } from './projects';
-import type { GameState, Tile, ActiveProject, ProjectMode } from '../state/types';
+import type { GameState, Tile, ActiveProject } from '../state/types';
 
 // Helper to create a minimal valid GameState for testing
 function makeState(overrides: Partial<GameState> = {}): GameState {
@@ -25,13 +25,22 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       tile_b: makeTile('tile_b', { adjacentTileIds: ['tile_a'] }),
     },
     leaders: {},
+    councilMembers: {},
+    antagonists: {},
     activeProposals: [],
     pendingProposals: [],
+    activePolicies: [],
+    publicOpinion: { foodSovereignty: 50, waterCommons: 50, landReform: 50, ecologicalRestoration: 50, cooperativeEconomics: 50 },
+    narrativeState: { actionsRemaining: 3, actionsPerTurn: 3, consecutiveTurns: {}, counterNarrativeCooldowns: {} },
+    coalitions: [],
+    eventQueue: [],
+    eventCooldowns: {},
+    councilVoteHistory: [],
     turnSummary: null,
     turnHistory: [],
     maxConcurrentProjects: 4,
     ...overrides,
-  };
+  } as GameState;
 }
 
 function makeTile(id: string, overrides: Partial<Tile> = {}): Tile {
@@ -375,7 +384,7 @@ describe('advanceProjects', () => {
       },
     });
 
-    const { state: next, deltas } = advanceProjects(state);
+    const { state: next, deltas: _deltas } = advanceProjects(state);
     expect(next.tiles['tile_a'].ecologicalHealth).toBe(17); // 10 + 7
   });
 
@@ -400,7 +409,7 @@ describe('advanceProjects', () => {
       },
     });
 
-    const { state: next, deltas } = advanceProjects(state);
+    const { state: _next, deltas } = advanceProjects(state);
     const trustDelta = deltas.find((d) => d.meter === 'communityTrust');
     expect(trustDelta).toBeDefined();
     expect(trustDelta!.amount).toBeCloseTo(0.9, 10);
@@ -427,7 +436,7 @@ describe('advanceProjects', () => {
       },
     });
 
-    const { state: next, deltas } = advanceProjects(state);
+    const { state: _next, deltas } = advanceProjects(state);
     const trustDelta = deltas.find((d) => d.meter === 'communityTrust');
     expect(trustDelta).toBeDefined();
     expect(trustDelta!.amount).toBeCloseTo(2.4, 10);
@@ -745,7 +754,7 @@ describe('advanceProjects', () => {
       },
     });
 
-    const { state: next, deltas } = advanceProjects(state);
+    const { state: _next, deltas } = advanceProjects(state);
     const budgetDelta = deltas.find((d) => d.meter === 'budget');
     expect(budgetDelta).toBeDefined();
     expect(budgetDelta!.amount).toBeCloseTo(0.2, 10);

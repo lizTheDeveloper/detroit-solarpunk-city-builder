@@ -28,22 +28,6 @@ function testProject(overrides: Partial<ProjectDefinition> = {}): ProjectDefinit
   };
 }
 
-// Helper: create state with a project registry injected
-// We'll store project definitions in a lookup that the reducer can use
-function stateWithProjects(
-  projects: ProjectDefinition[],
-  stateOverrides: Partial<GameState> = {},
-): GameState {
-  const base = createNewGame();
-  return {
-    ...base,
-    ...stateOverrides,
-    // We inject projectDefinitions for the reducer to look up
-    tiles: stateOverrides.tiles ?? base.tiles,
-    meters: stateOverrides.meters ?? base.meters,
-    leaders: stateOverrides.leaders ?? base.leaders,
-  } as GameState & { projectDefinitions: Record<string, ProjectDefinition> };
-}
 
 function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
   return {

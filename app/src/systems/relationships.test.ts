@@ -18,7 +18,7 @@ import type {
   CommunityLeader,
   CouncilMember,
   Tile,
-  Coalition,
+
   Antagonist,
 } from '../state/types';
 import { createNewGame } from '../state/create-game';

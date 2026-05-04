@@ -770,7 +770,7 @@ export function escalateAntagonists(
 
 function createAntagonistEvent(
   id: string,
-  ant: Antagonist,
+  _ant: Antagonist,
   state: GameState,
 ): GameEvent | null {
   const tileIds = Object.keys(state.tiles);

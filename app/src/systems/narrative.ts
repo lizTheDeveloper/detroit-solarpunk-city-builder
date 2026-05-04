@@ -53,7 +53,7 @@ export function applyNarrativeAction(
   state: GameState,
   actionType: NarrativeActionType,
   topic: string,
-  target: string,
+  _target: string,
 ): { state: GameState; deltas: MeterDelta[] } {
   if (state.narrativeState.actionsRemaining <= 0) {
     throw new Error('No narrative actions remaining this turn');

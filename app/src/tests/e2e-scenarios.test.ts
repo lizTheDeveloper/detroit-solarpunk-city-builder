@@ -24,15 +24,10 @@
 import { describe, it, expect } from 'vitest';
 import type {
   GameState,
-  GameAction,
   Meters,
   ProjectDefinition,
   Proposal,
-  Tile,
-  CommunityLeader,
   Season,
-  VisualStage,
-  ActiveProject,
 } from '../state/types';
 import {
   applyMeterFeedback,
@@ -1289,8 +1284,7 @@ describe('Supplementary: Pure Math from Simulation Engine', () => {
 
     it('land trust on tile: gentrification gain = 0', () => {
       // Land trust zeroes out all gentrification
-      const baseGentrif = 8;
-      const withLandTrust = 0; // has_land_trust => base_gentrif = 0
+      const withLandTrust = 0;
       expect(withLandTrust).toBe(0);
     });
   });

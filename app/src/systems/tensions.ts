@@ -149,7 +149,7 @@ export function getTensionSummary(state: GameState): TensionSummary {
 }
 
 export function getSpeedJusticeAdvice(
-  tension: number,
+  _tension: number,
   speedScore: number,
   justiceScore: number,
 ): string {

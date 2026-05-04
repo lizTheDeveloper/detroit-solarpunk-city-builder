@@ -5,13 +5,10 @@ import { gameReducer } from '../state/reducer';
 import type {
   GameState,
   Tile,
-  ActiveProject,
   CommunityLeader,
   CouncilMember,
   Antagonist,
   Proposal,
-  Meters,
-  MeterDelta,
 } from '../state/types';
 
 // ---------------------------------------------------------------------------

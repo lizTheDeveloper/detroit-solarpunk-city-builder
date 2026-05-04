@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, PolicyDefinition, ActivePolicy, Meters, PublicOpinion } from '../state/types';
+import type { GameState, PolicyDefinition, ActivePolicy } from '../state/types';
 import { createNewGame } from '../state/create-game';
 import { POLICY_CATALOG } from '../data/content/policy-catalog';
 import {

@@ -6,7 +6,7 @@ import type {
   CouncilMemberVote,
   VoteFactor,
   DispositionLevel,
-  CommunityLeader,
+
 } from '../state/types';
 
 // ---------------------------------------------------------------------------

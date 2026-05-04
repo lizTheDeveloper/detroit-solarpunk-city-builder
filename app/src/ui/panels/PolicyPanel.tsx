@@ -1,7 +1,7 @@
 import { useGame } from '@/state/store';
 import { POLICY_CATALOG } from '@/data/content/policy-catalog';
 import { canEnactPolicy, calculateEffectiveThreshold, getPolicyTopicMapping } from '@/systems/policies';
-import type { PolicyDefinition, PublicOpinion } from '@/state/types';
+import type { PolicyDefinition } from '@/state/types';
 
 function PolicyCard({
   policy,

@@ -640,7 +640,7 @@ describe('conductCouncilVote', () => {
   it('high lobbying bonus flips a skeptic to YES', () => {
     // One skeptic member (disposition = -15) who would normally vote NO/abstain
     // With high lobbying bonus (+15) they should flip to YES
-    const member = makeCouncilMember({
+    makeCouncilMember({
       id: 'skeptic_1',
       disposition: -8,
       priorities: ['ecology'],
