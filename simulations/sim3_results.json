@@ -1,0 +1,61 @@
+{
+  "tipping_point_1_avg_turn": 40.0,
+  "tipping_point_2_avg_turn": 53.0,
+  "adaptation_viability": {
+    "none": {
+      "pct_unwinnable": 100.0,
+      "final_eco": 0.0,
+      "final_climate": 97.5
+    },
+    "slow": {
+      "pct_unwinnable": 98.2,
+      "final_eco": 0.5,
+      "final_climate": 97.5
+    },
+    "medium": {
+      "pct_unwinnable": 0.0,
+      "final_eco": 55.3,
+      "final_climate": 97.5
+    },
+    "fast": {
+      "pct_unwinnable": 0.0,
+      "final_eco": 100.0,
+      "final_climate": 97.5
+    },
+    "optimal": {
+      "pct_unwinnable": 0.0,
+      "final_eco": 100.0,
+      "final_climate": 97.5
+    }
+  },
+  "delayed_adaptation": {
+    "0": {
+      "final_eco": 55.2,
+      "pct_unwinnable": 0.0
+    },
+    "4": {
+      "final_eco": 48.6,
+      "pct_unwinnable": 0.0
+    },
+    "8": {
+      "final_eco": 41.6,
+      "pct_unwinnable": 0.0
+    },
+    "12": {
+      "final_eco": 34.9,
+      "pct_unwinnable": 0.0
+    },
+    "16": {
+      "final_eco": 28.3,
+      "pct_unwinnable": 0.0
+    },
+    "24": {
+      "final_eco": 15.3,
+      "pct_unwinnable": 0.5
+    },
+    "32": {
+      "final_eco": 2.8,
+      "pct_unwinnable": 77.2
+    }
+  }
+}

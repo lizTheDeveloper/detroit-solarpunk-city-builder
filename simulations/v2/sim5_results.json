@@ -1,0 +1,74 @@
+{
+  "no_regional": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 1.323,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 29.58,
+    "final_food_mean": 30.0,
+    "final_buffalo_mean": 34.168,
+    "final_budget_mean": 8.675022358693584,
+    "avg_transfers": 0.0,
+    "avg_regional_projects": 0.0
+  },
+  "light_regional": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 1.997,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 41.02,
+    "final_food_mean": 48.49,
+    "final_buffalo_mean": 40.11925,
+    "final_budget_mean": 2.9433340213589636,
+    "avg_transfers": 15.0,
+    "avg_regional_projects": 2.992
+  },
+  "moderate_regional": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 1.972,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 40.385,
+    "final_food_mean": 48.455,
+    "final_buffalo_mean": 40.209,
+    "final_budget_mean": 1.194863667135542,
+    "avg_transfers": 14.988,
+    "avg_regional_projects": 3.0
+  },
+  "heavy_regional": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 1.971,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 39.995,
+    "final_food_mean": 49.075,
+    "final_buffalo_mean": 40.02,
+    "final_budget_mean": 0.5651575682210108,
+    "avg_transfers": 13.597,
+    "avg_regional_projects": 2.915
+  },
+  "cahokia_choice": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 2.923,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 40.2,
+    "final_food_mean": 47.6,
+    "final_buffalo_mean": 69.98125,
+    "final_budget_mean": 0.9013378840712382,
+    "avg_transfers": 14.171,
+    "avg_regional_projects": 2.888
+  },
+  "cahokia_early": {
+    "coop_win_rate": 0.0,
+    "avg_goals_at_100": 1.0,
+    "avg_goals_at_50": 2.95,
+    "final_watershed_mean": 100.0,
+    "final_wildlife_mean": 40.435,
+    "final_food_mean": 48.425,
+    "final_buffalo_mean": 69.8325,
+    "final_budget_mean": 0.9045035282445372,
+    "avg_transfers": 14.176,
+    "avg_regional_projects": 2.901
+  }
+}

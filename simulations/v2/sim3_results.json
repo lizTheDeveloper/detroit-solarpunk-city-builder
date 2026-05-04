@@ -1,0 +1,173 @@
+{
+  "accept_10%": {
+    "final_avg_advocates": 0.0,
+    "final_avg_coalitions": 0.0,
+    "first_coalition_turn": null,
+    "reelection_win_rates": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "avg_reelection_scores": [
+      24.977,
+      9.479,
+      0.0485,
+      0.0525
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_20%": {
+    "final_avg_advocates": 0.013,
+    "final_avg_coalitions": 0.0,
+    "first_coalition_turn": null,
+    "reelection_win_rates": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "avg_reelection_scores": [
+      26.241,
+      10.9595,
+      0.218,
+      0.235
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_30%": {
+    "final_avg_advocates": 0.078,
+    "final_avg_coalitions": 0.0,
+    "first_coalition_turn": 11.666666666666666,
+    "reelection_win_rates": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "avg_reelection_scores": [
+      29.2755,
+      14.255,
+      1.445,
+      0.749
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_40%": {
+    "final_avg_advocates": 0.967,
+    "final_avg_coalitions": 0.068,
+    "first_coalition_turn": 25.699819168173597,
+    "reelection_win_rates": [
+      0.139,
+      0.047,
+      0.015,
+      0.002
+    ],
+    "avg_reelection_scores": [
+      41.0105,
+      28.0695,
+      15.9105,
+      7.767
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_50%": {
+    "final_avg_advocates": 6.859,
+    "final_avg_coalitions": 1.779,
+    "first_coalition_turn": 9.63863863863864,
+    "reelection_win_rates": [
+      0.881,
+      0.927,
+      0.957,
+      0.966
+    ],
+    "avg_reelection_scores": [
+      72.243,
+      85.6185,
+      92.7285,
+      97.171
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_60%": {
+    "final_avg_advocates": 8.0,
+    "final_avg_coalitions": 2.0,
+    "first_coalition_turn": 4.551,
+    "reelection_win_rates": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_reelection_scores": [
+      121.1285,
+      143.7875,
+      153.9705,
+      155.213
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_70%": {
+    "final_avg_advocates": 8.0,
+    "final_avg_coalitions": 2.0,
+    "first_coalition_turn": 3.382,
+    "reelection_win_rates": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_reelection_scores": [
+      144.477,
+      155.869,
+      155.8725,
+      155.8705
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_80%": {
+    "final_avg_advocates": 8.0,
+    "final_avg_coalitions": 2.0,
+    "first_coalition_turn": 3.031,
+    "reelection_win_rates": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_reelection_scores": [
+      155.5535,
+      156.0,
+      156.0,
+      156.0
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  },
+  "accept_90%": {
+    "final_avg_advocates": 8.0,
+    "final_avg_coalitions": 2.0,
+    "first_coalition_turn": 3.0,
+    "reelection_win_rates": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_reelection_scores": [
+      156.0,
+      156.0,
+      156.0,
+      156.0
+    ],
+    "final_hostile_leaders": 0.0,
+    "final_council_allies": 3.0
+  }
+}

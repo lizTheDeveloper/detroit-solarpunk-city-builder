@@ -1,0 +1,48 @@
+import type { Antagonist } from '../../state/types';
+
+export const ANTAGONIST_DEFINITIONS: Record<string, Antagonist> = {
+  sterling_cross: {
+    id: 'sterling_cross',
+    name: 'Sterling Cross',
+    role: 'Corporate Developer',
+    activationCondition: 'player_reclaims_vacant_land',
+    escalationLevel: 0,
+    escalationInterval: 4,
+    active: false,
+    lastEscalationTurn: 0,
+    tileTargets: [],
+  },
+  senator_voss: {
+    id: 'senator_voss',
+    name: 'Senator Voss',
+    role: 'State-Level Politician',
+    activationCondition: 'community_trust_exceeds_55',
+    escalationLevel: 0,
+    escalationInterval: 3,
+    active: false,
+    lastEscalationTurn: 0,
+    tileTargets: [],
+  },
+  marcus_webb: {
+    id: 'marcus_webb',
+    name: 'Marcus Webb',
+    role: 'Media Figure',
+    activationCondition: 'turn_1',
+    escalationLevel: 0,
+    escalationInterval: 0,
+    active: false,
+    lastEscalationTurn: 0,
+    tileTargets: [],
+  },
+  amanda_chen: {
+    id: 'amanda_chen',
+    name: 'Amanda Chen',
+    role: 'Green Capitalist',
+    activationCondition: 'stage_transition',
+    escalationLevel: 0,
+    escalationInterval: 4,
+    active: false,
+    lastEscalationTurn: 0,
+    tileTargets: [],
+  },
+};

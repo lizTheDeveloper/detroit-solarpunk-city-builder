@@ -1,0 +1,83 @@
+{
+  "aggressive": {
+    "survival_rate": 0.0,
+    "final_meters": {
+      "Community Trust": 83.9,
+      "Ecological Health": 59.7,
+      "Food Sovereignty": 51.6,
+      "Political Will": 6.2,
+      "Budget ($M)": 3.1,
+      "Climate Pressure": 48.6
+    },
+    "stage_distribution": {
+      "0": 22.0,
+      "1": 78.0,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "stage_transition_turns": {
+      "1": 14.0,
+      "2": null,
+      "3": null
+    },
+    "pct_reaching_stage": {
+      "1": 78.0,
+      "2": 0.0,
+      "3": 0.0
+    }
+  },
+  "balanced": {
+    "survival_rate": 1.4,
+    "final_meters": {
+      "Community Trust": 89.6,
+      "Ecological Health": 65.2,
+      "Food Sovereignty": 64.7,
+      "Political Will": 7.9,
+      "Budget ($M)": 4.5,
+      "Climate Pressure": 61.2
+    },
+    "stage_distribution": {
+      "0": 0.1,
+      "1": 99.9,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "stage_transition_turns": {
+      "1": 12.1,
+      "2": null,
+      "3": null
+    },
+    "pct_reaching_stage": {
+      "1": 99.9,
+      "2": 0.0,
+      "3": 0.0
+    }
+  },
+  "conservative": {
+    "survival_rate": 8.8,
+    "final_meters": {
+      "Community Trust": 62.6,
+      "Ecological Health": 32.5,
+      "Food Sovereignty": 37.2,
+      "Political Will": 17.0,
+      "Budget ($M)": 15.4,
+      "Climate Pressure": 78.8
+    },
+    "stage_distribution": {
+      "0": 13.4,
+      "1": 86.6,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "stage_transition_turns": {
+      "1": 25.1,
+      "2": null,
+      "3": null
+    },
+    "pct_reaching_stage": {
+      "1": 86.6,
+      "2": 0.0,
+      "3": 0.0
+    }
+  }
+}

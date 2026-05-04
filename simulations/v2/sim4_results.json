@@ -1,0 +1,68 @@
+{
+  "community_led": {
+    "avg_displacement": 0.0,
+    "median_displacement": 0.0,
+    "max_displacement": 0.0,
+    "zero_displacement_pct": 1.0,
+    "final_avg_gentrif": 0.013050000000000034,
+    "final_max_gentrif": 0.408,
+    "final_tiles_transformed": 10.042,
+    "avg_final_trust": 50.0,
+    "avg_land_trusts": 0.0
+  },
+  "player_initiated": {
+    "avg_displacement": 0.646,
+    "median_displacement": 0.0,
+    "max_displacement": 14.0,
+    "zero_displacement_pct": 0.741,
+    "final_avg_gentrif": 12.706387500000014,
+    "final_max_gentrif": 52.1635,
+    "final_tiles_transformed": 8.385,
+    "avg_final_trust": 46.277099999999955,
+    "avg_land_trusts": 0.0
+  },
+  "mixed": {
+    "avg_displacement": 0.0,
+    "median_displacement": 0.0,
+    "max_displacement": 0.0,
+    "zero_displacement_pct": 1.0,
+    "final_avg_gentrif": 1.3913687500000018,
+    "final_max_gentrif": 13.35775,
+    "final_tiles_transformed": 9.227,
+    "avg_final_trust": 49.990199999999994,
+    "avg_land_trusts": 0.0
+  },
+  "aggressive_growth": {
+    "avg_displacement": 0.75,
+    "median_displacement": 0.0,
+    "max_displacement": 16.0,
+    "zero_displacement_pct": 0.71,
+    "final_avg_gentrif": 12.852400000000014,
+    "final_max_gentrif": 52.623,
+    "final_tiles_transformed": 8.418,
+    "avg_final_trust": 46.03349999999995,
+    "avg_land_trusts": 0.0
+  },
+  "with_land_trusts": {
+    "avg_displacement": 0.0,
+    "median_displacement": 0.0,
+    "max_displacement": 0.0,
+    "zero_displacement_pct": 1.0,
+    "final_avg_gentrif": 0.0022425000000000006,
+    "final_max_gentrif": 0.08289999999999983,
+    "final_tiles_transformed": 6.924,
+    "avg_final_trust": 50.0,
+    "avg_land_trusts": 20.483
+  },
+  "policy_anti_gentrif": {
+    "avg_displacement": 0.0,
+    "median_displacement": 0.0,
+    "max_displacement": 0.0,
+    "zero_displacement_pct": 1.0,
+    "final_avg_gentrif": 0.25839874999999973,
+    "final_max_gentrif": 4.165975000000013,
+    "final_tiles_transformed": 10.074,
+    "avg_final_trust": 50.0,
+    "avg_land_trusts": 0.0
+  }
+}

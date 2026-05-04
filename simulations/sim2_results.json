@@ -1,0 +1,83 @@
+{
+  "aggressive": {
+    "avg_projects_completed": 83.0,
+    "avg_per_term": [
+      24.6,
+      21.5,
+      18.5,
+      18.4
+    ],
+    "avg_final_tiles": 68.3,
+    "tile_milestones": {
+      "5_by_turn16": 100.0,
+      "15_by_turn32": 100.0,
+      "25_by_turn48": 100.0
+    },
+    "stage_distribution": {
+      "0": 0.0,
+      "1": 100.0,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "final_meters": {
+      "eco": 100.0,
+      "food": 100.0,
+      "trust": 100.0,
+      "will": 23.7
+    }
+  },
+  "balanced": {
+    "avg_projects_completed": 111.5,
+    "avg_per_term": [
+      30.1,
+      32.0,
+      24.9,
+      24.6
+    ],
+    "avg_final_tiles": 109.8,
+    "tile_milestones": {
+      "5_by_turn16": 100.0,
+      "15_by_turn32": 100.0,
+      "25_by_turn48": 100.0
+    },
+    "stage_distribution": {
+      "0": 0.0,
+      "1": 100.0,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "final_meters": {
+      "eco": 100.0,
+      "food": 100.0,
+      "trust": 100.0,
+      "will": 25.6
+    }
+  },
+  "conservative": {
+    "avg_projects_completed": 117.0,
+    "avg_per_term": [
+      21.0,
+      32.0,
+      32.0,
+      32.0
+    ],
+    "avg_final_tiles": 31.1,
+    "tile_milestones": {
+      "5_by_turn16": 100.0,
+      "15_by_turn32": 100.0,
+      "25_by_turn48": 0.3
+    },
+    "stage_distribution": {
+      "0": 0.0,
+      "1": 2.2,
+      "2": 0.0,
+      "3": 97.8
+    },
+    "final_meters": {
+      "eco": 100.0,
+      "food": 100.0,
+      "trust": 100.0,
+      "will": 69.3
+    }
+  }
+}

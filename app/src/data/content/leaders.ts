@@ -1,0 +1,108 @@
+import type { CommunityLeader } from '../../state/types';
+
+export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
+  grace: {
+    id: 'grace',
+    name: 'Grace Okafor-Williams',
+    neighborhood: 'Brightmoor',
+    tileIds: ['brightmoor'],
+    backstory:
+      'An urban farmer in her 60s who has been growing food on vacant lots since 2008.',
+    priorities: ['food_forest', 'community_kitchen', 'soil_remediation'],
+    trust: 30,
+    advocacyPower: 4,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  kez: {
+    id: 'kez',
+    name: 'Kezia "Kez" Monroe',
+    neighborhood: 'Corktown',
+    tileIds: ['corktown'],
+    backstory:
+      'A 26-year-old housing justice organizer who grew up watching her neighborhood get gentrified.',
+    priorities: ['land_trust', 'community_kitchen', 'maker_space'],
+    trust: 10,
+    advocacyPower: 3,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  darius: {
+    id: 'darius',
+    name: 'Darius Kemp',
+    neighborhood: 'Eastern Market',
+    tileIds: ['eastern_market'],
+    backstory:
+      'A 30-something maker, muralist, and fabrication teacher who runs a youth art and robotics program.',
+    priorities: ['maker_space', 'greenway', 'native_planting'],
+    trust: 20,
+    advocacyPower: 3,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  lucia: {
+    id: 'lucia',
+    name: 'Lucia Espinoza',
+    neighborhood: 'Southwest Detroit/Delray',
+    tileIds: ['southwest_detroit', 'delray'],
+    backstory:
+      'A water systems engineer turned community advocate who left her corporate job after discovering her own neighborhood had lead-contaminated pipes. Lucia now runs a grassroots water testing program and pushes for infrastructure investment in Southwest Detroit.',
+    priorities: ['rain_garden', 'wetland_restoration', 'soil_remediation'],
+    trust: 15,
+    advocacyPower: 4,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  elder_whitehorse: {
+    id: 'elder_whitehorse',
+    name: 'Elder Whitehorse',
+    neighborhood: 'Indian Village/West Village',
+    tileIds: ['indian_village', 'west_village'],
+    backstory:
+      'A respected elder and retired history professor who has lived in Indian Village for over fifty years. He chairs the neighborhood heritage committee and mentors young residents in oral history and traditional ecological knowledge.',
+    priorities: ['community_kitchen', 'greenway', 'native_planting'],
+    trust: 25,
+    advocacyPower: 3,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  hassan: {
+    id: 'hassan',
+    name: 'Hassan Farah',
+    neighborhood: 'Hamtramck/Banglatown',
+    tileIds: ['hamtramck', 'banglatown'],
+    backstory:
+      'A Somali-American restaurateur and small business mentor who arrived in Detroit as a teenager. Hassan runs a community kitchen that doubles as a multilingual gathering space and helps new immigrants navigate the process of starting their own businesses.',
+    priorities: ['maker_space', 'community_kitchen', 'solar_grid'],
+    trust: 5,
+    advocacyPower: 4,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  tamika: {
+    id: 'tamika',
+    name: 'Tamika Jefferson',
+    neighborhood: 'North End/Highland Park',
+    tileIds: ['north_end', 'highland_park'],
+    backstory:
+      'A community health worker and former nurse who has spent years documenting the health impacts of lead exposure and industrial pollution in the North End. Tamika runs free health screenings and advocates tirelessly for mental health resources in underserved neighborhoods.',
+    priorities: ['soil_remediation', 'community_kitchen', 'rain_garden'],
+    trust: 20,
+    advocacyPower: 3,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+  big_mike: {
+    id: 'big_mike',
+    name: 'Big Mike Novak',
+    neighborhood: 'Warrendale/Rouge Park',
+    tileIds: ['warrendale', 'rouge_park'],
+    backstory:
+      'A retired steelworker and union organizer who channels his energy into green infrastructure projects. Big Mike rallies his neighbors around rain gardens, permeable pavement, and community solar installations, proving that blue-collar know-how can drive the green transition.',
+    priorities: ['rain_garden', 'solar_grid', 'greenway'],
+    trust: 15,
+    advocacyPower: 3,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
+};

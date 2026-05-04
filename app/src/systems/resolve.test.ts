@@ -1,0 +1,952 @@
+import { describe, it, expect } from 'vitest';
+import { resolveTurn, prepareTurn } from './resolve';
+import { createNewGame } from '../state/create-game';
+import { gameReducer } from '../state/reducer';
+import type {
+  GameState,
+  Tile,
+  ActiveProject,
+  CommunityLeader,
+  CouncilMember,
+  Antagonist,
+  Proposal,
+  Meters,
+  MeterDelta,
+} from '../state/types';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeTile(id: string, overrides: Partial<Tile> = {}): Tile {
+  return {
+    id,
+    name: id,
+    terrain: 'vacant',
+    vacancyRate: 50,
+    ecologicalHealth: 10,
+    contamination: 10,
+    gentrificationPressure: 0,
+    existingUses: ['vacant_lot'],
+    neighborhoodTraits: [],
+    activeProjects: [],
+    completedProjects: [],
+    communityPowerTokens: 0,
+    communityOwned: false,
+    adjacentTileIds: [],
+    visualStage: 'dystopia',
+    ...overrides,
+  };
+}
+
+function makeState(overrides: Partial<GameState> = {}): GameState {
+  return {
+    version: 2,
+    turn: 1,
+    season: 'spring',
+    year: 1,
+    phase: 'resolve',
+    stage: 'awakening',
+    path: null,
+    meters: {
+      communityTrust: 50,
+      ecologicalHealth: 15,
+      foodSovereignty: 10,
+      politicalWill: 60,
+      budget: 4.2,
+      climatePressure: 30,
+    },
+    tiles: {
+      brightmoor: makeTile('brightmoor'),
+      corktown: makeTile('corktown', { adjacentTileIds: ['eastern_market'] }),
+      eastern_market: makeTile('eastern_market', { adjacentTileIds: ['corktown'] }),
+    },
+    leaders: {},
+    councilMembers: {},
+    antagonists: {},
+    activeProposals: [],
+    pendingProposals: [],
+    activePolicies: [],
+    publicOpinion: {
+      foodSovereignty: 15,
+      waterCommons: 10,
+      landReform: 8,
+      ecologicalRestoration: 20,
+      cooperativeEconomics: 12,
+    },
+    narrativeState: {
+      actionsRemaining: 2,
+      actionsPerTurn: 2,
+      consecutiveTurns: {},
+      counterNarrativeCooldowns: {},
+    },
+    coalitions: [],
+    eventQueue: [],
+    eventCooldowns: {},
+    councilVoteHistory: [],
+    turnSummary: null,
+    turnHistory: [],
+    maxConcurrentProjects: 4,
+    ...overrides,
+  };
+}
+
+/** RNG that always returns 1.0 — no counter-narratives will fire (all probabilities < 1) */
+const noFireRng = () => 1;
+
+function makeLeader(overrides: Partial<CommunityLeader> = {}): CommunityLeader {
+  return {
+    id: 'grace',
+    name: 'Grace',
+    neighborhood: 'Brightmoor',
+    tileIds: ['brightmoor'],
+    backstory: 'An urban farmer.',
+    priorities: ['food_forest', 'community_kitchen'],
+    trust: 30,
+    advocacyPower: 4,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+    ...overrides,
+  };
+}
+
+// ============================================================
+// resolveTurn tests
+// ============================================================
+
+describe('resolveTurn', () => {
+  // ----------------------------------------------------------
+  // Climate tick
+  // ----------------------------------------------------------
+
+  describe('climate tick', () => {
+    it('increases climate pressure by 0.92 in year 1', () => {
+      const state = makeState({ year: 1 });
+      const result = resolveTurn(state, noFireRng);
+      // climatePressure started at 30, should increase by 0.92
+      expect(result.meters.climatePressure).toBeCloseTo(30 + 0.92, 4);
+    });
+
+    it('increases climate pressure by 0.92 * 1.03 in year 2', () => {
+      const state = makeState({ year: 2 });
+      const result = resolveTurn(state, noFireRng);
+      const expectedIncrease = 0.92 * (1 + (2 - 1) * 0.03);
+      expect(result.meters.climatePressure).toBeCloseTo(30 + expectedIncrease, 4);
+    });
+
+    it('increases climate pressure by 0.92 * 1.06 in year 3', () => {
+      const state = makeState({ year: 3 });
+      const result = resolveTurn(state, noFireRng);
+      const expectedIncrease = 0.92 * (1 + (3 - 1) * 0.03);
+      expect(result.meters.climatePressure).toBeCloseTo(30 + expectedIncrease, 4);
+    });
+
+    it('clamps climate pressure at 100', () => {
+      const state = makeState({
+        meters: {
+          communityTrust: 50,
+          ecologicalHealth: 15,
+          foodSovereignty: 10,
+          politicalWill: 60,
+          budget: 4.2,
+          climatePressure: 99.5,
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.meters.climatePressure).toBe(100);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Project progress
+  // ----------------------------------------------------------
+
+  describe('project progress', () => {
+    it('advances an active project by 1', () => {
+      const state = makeState({
+        tiles: {
+          brightmoor: makeTile('brightmoor', {
+            activeProjects: [
+              {
+                definitionId: 'rain_garden',
+                tileId: 'brightmoor',
+                mode: 'player-initiated',
+                progress: 1,
+                duration: 3,
+                cost: 0.4,
+              },
+            ],
+          }),
+          corktown: makeTile('corktown'),
+          eastern_market: makeTile('eastern_market'),
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.tiles['brightmoor'].activeProjects[0].progress).toBe(2);
+    });
+
+    it('completes a project and applies tile eco effect', () => {
+      // food_forest: tileEco = 10, duration = 3
+      const state = makeState({
+        tiles: {
+          brightmoor: makeTile('brightmoor', {
+            ecologicalHealth: 10,
+            activeProjects: [
+              {
+                definitionId: 'food_forest',
+                tileId: 'brightmoor',
+                mode: 'player-initiated',
+                progress: 2,
+                duration: 3,
+                cost: 0.75,
+              },
+            ],
+          }),
+          corktown: makeTile('corktown'),
+          eastern_market: makeTile('eastern_market'),
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      // Project completes: eco 10 + 10 = 20
+      expect(result.tiles['brightmoor'].ecologicalHealth).toBe(20);
+      expect(result.tiles['brightmoor'].activeProjects).toHaveLength(0);
+      expect(result.tiles['brightmoor'].completedProjects).toContain('food_forest');
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Meter feedback
+  // ----------------------------------------------------------
+
+  describe('meter feedback', () => {
+    it('applies Will regeneration', () => {
+      const state = makeState();
+      // trust=50: willRegen = 1.0 + max(0, (50-40)*0.1) = 2.0
+      const result = resolveTurn(state, noFireRng);
+      // politicalWill started at 60, gains 2.0
+      expect(result.meters.politicalWill).toBeCloseTo(62.0, 1);
+    });
+
+    it('applies trust passive decay', () => {
+      const state = makeState({
+        meters: {
+          communityTrust: 50,
+          ecologicalHealth: 15,
+          foodSovereignty: 10,
+          politicalWill: 60,
+          budget: 4.2,
+          climatePressure: 30,
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      // trust decay -0.3, no food bonus (food=10 < 20)
+      expect(result.meters.communityTrust).toBeCloseTo(49.7, 1);
+    });
+
+    it('applies food sovereignty to trust bonus when food > 20', () => {
+      const state = makeState({
+        meters: {
+          communityTrust: 50,
+          ecologicalHealth: 15,
+          foodSovereignty: 40,
+          politicalWill: 60,
+          budget: 4.2,
+          climatePressure: 30,
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      // food bonus = (40-20)*0.05 = 1.0, decay = -0.3, net = +0.7
+      expect(result.meters.communityTrust).toBeCloseTo(50.7, 1);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Budget replenishment
+  // ----------------------------------------------------------
+
+  describe('budget replenishment', () => {
+    it('does NOT replenish on turn 1 (first spring)', () => {
+      const state = makeState({
+        turn: 1,
+        season: 'spring',
+        year: 1,
+      });
+      const result = resolveTurn(state, noFireRng);
+      // Budget should not include replenishment — only other effects (none in this case)
+      expect(result.meters.budget).toBeCloseTo(4.2, 4);
+    });
+
+    it('does NOT replenish on non-spring turns', () => {
+      const state = makeState({
+        turn: 2,
+        season: 'summer',
+        year: 1,
+      });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.meters.budget).toBeCloseTo(4.2, 4);
+    });
+
+    it('replenishes budget on spring of year 2+ (turn 5)', () => {
+      // Turn 5 = spring, year 2
+      // After climate and meter feedback, eco~15, trust~49.7
+      // replenishment = 1.5 * (0.5 + eco*0.005 + trust*0.003)
+      // Use starting meters for predictability
+      const state = makeState({
+        turn: 5,
+        season: 'spring',
+        year: 2,
+      });
+      const result = resolveTurn(state, noFireRng);
+      // After meter feedback: trust = 50 - 0.3 = 49.7 (food=10 < 20, no bonus)
+      // eco = 15 (unchanged)
+      // replenishment = 1.5 * (0.5 + 15*0.005 + 49.7*0.003) = 1.5 * (0.5 + 0.075 + 0.1491) = 1.5 * 0.7241 = 1.08615
+      // Budget = 4.2 + 1.08615
+      const expectedReplenishment = 1.5 * (0.5 + 15 * 0.005 + 49.7 * 0.003);
+      expect(result.meters.budget).toBeCloseTo(4.2 + expectedReplenishment, 2);
+    });
+
+    it('adds annual revenue from completed solar_grid (+$0.2M)', () => {
+      const state = makeState({
+        turn: 5,
+        season: 'spring',
+        year: 2,
+        tiles: {
+          brightmoor: makeTile('brightmoor', {
+            completedProjects: ['solar_grid'],
+          }),
+          corktown: makeTile('corktown'),
+          eastern_market: makeTile('eastern_market'),
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      // Base replenishment + 0.2 for solar_grid
+      const baseReplenishment = 1.5 * (0.5 + 15 * 0.005 + 49.7 * 0.003);
+      expect(result.meters.budget).toBeCloseTo(4.2 + baseReplenishment + 0.2, 2);
+    });
+
+    it('adds annual revenue from completed maker_space (+$0.1M)', () => {
+      const state = makeState({
+        turn: 5,
+        season: 'spring',
+        year: 2,
+        tiles: {
+          brightmoor: makeTile('brightmoor', {
+            completedProjects: ['maker_space'],
+          }),
+          corktown: makeTile('corktown'),
+          eastern_market: makeTile('eastern_market'),
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      const baseReplenishment = 1.5 * (0.5 + 15 * 0.005 + 49.7 * 0.003);
+      expect(result.meters.budget).toBeCloseTo(4.2 + baseReplenishment + 0.1, 2);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Gentrification decay
+  // ----------------------------------------------------------
+
+  describe('gentrification decay', () => {
+    it('decays gentrification by 1% per turn on all tiles', () => {
+      const state = makeState({
+        tiles: {
+          brightmoor: makeTile('brightmoor', { gentrificationPressure: 20 }),
+          corktown: makeTile('corktown', { gentrificationPressure: 10 }),
+          eastern_market: makeTile('eastern_market', { gentrificationPressure: 5 }),
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.tiles['brightmoor'].gentrificationPressure).toBe(19);
+      expect(result.tiles['corktown'].gentrificationPressure).toBe(9);
+      expect(result.tiles['eastern_market'].gentrificationPressure).toBe(4);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // maxConcurrentProjects recalculation
+  // ----------------------------------------------------------
+
+  describe('maxConcurrentProjects', () => {
+    it('recalculates from final trust', () => {
+      // trust 75 => floor(2 + 75/25) = 5
+      const state = makeState({
+        meters: {
+          communityTrust: 75,
+          ecologicalHealth: 15,
+          foodSovereignty: 10,
+          politicalWill: 60,
+          budget: 4.2,
+          climatePressure: 30,
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      // trust after feedback: 75 - 0.3 = 74.7 => floor(2 + 74.7/25) = floor(4.988) = 4
+      expect(result.maxConcurrentProjects).toBe(4);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Meter clamping
+  // ----------------------------------------------------------
+
+  describe('meter clamping', () => {
+    it('clamps all meters after resolve', () => {
+      const state = makeState({
+        meters: {
+          communityTrust: 101,
+          ecologicalHealth: -5,
+          foodSovereignty: 200,
+          politicalWill: -10,
+          budget: -1,
+          climatePressure: 150,
+        },
+      });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.meters.communityTrust).toBeLessThanOrEqual(100);
+      expect(result.meters.ecologicalHealth).toBeGreaterThanOrEqual(0);
+      expect(result.meters.foodSovereignty).toBeLessThanOrEqual(100);
+      expect(result.meters.politicalWill).toBeGreaterThanOrEqual(0);
+      expect(result.meters.budget).toBeGreaterThanOrEqual(0);
+      expect(result.meters.climatePressure).toBeLessThanOrEqual(100);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Season advancement
+  // ----------------------------------------------------------
+
+  describe('season advancement', () => {
+    it('advances from spring to summer', () => {
+      const state = makeState({ season: 'spring' });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.season).toBe('summer');
+    });
+
+    it('advances from summer to fall', () => {
+      const state = makeState({ season: 'summer' });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.season).toBe('fall');
+    });
+
+    it('advances from fall to winter', () => {
+      const state = makeState({ season: 'fall' });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.season).toBe('winter');
+    });
+
+    it('wraps from winter to spring and increments year', () => {
+      const state = makeState({ season: 'winter', year: 1 });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.season).toBe('spring');
+      expect(result.year).toBe(2);
+    });
+
+    it('year stays the same for non-winter seasons', () => {
+      const state = makeState({ season: 'spring', year: 1 });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.year).toBe(1);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Turn increment
+  // ----------------------------------------------------------
+
+  describe('turn increment', () => {
+    it('increments turn by 1', () => {
+      const state = makeState({ turn: 3 });
+      const result = resolveTurn(state, noFireRng);
+      expect(result.turn).toBe(4);
+    });
+  });
+
+  // ----------------------------------------------------------
+  // TurnSummary
+  // ----------------------------------------------------------
+
+  describe('turnSummary', () => {
+    it('populates turnSummary with deltas from all steps', () => {
+      const state = makeState();
+      const result = resolveTurn(state, noFireRng);
+      expect(result.turnSummary).not.toBeNull();
+      expect(result.turnSummary!.turn).toBe(1);
+      expect(result.turnSummary!.season).toBe('spring');
+      expect(result.turnSummary!.year).toBe(1);
+      expect(result.turnSummary!.deltas.length).toBeGreaterThan(0);
+    });
+
+    it('includes climate pressure delta in turnSummary', () => {
+      const state = makeState();
+      const result = resolveTurn(state, noFireRng);
+      const climateDelta = result.turnSummary!.deltas.find(
+        (d) => d.meter === 'climatePressure',
+      );
+      expect(climateDelta).toBeDefined();
+      expect(climateDelta!.amount).toBeCloseTo(0.92, 4);
+    });
+
+    it('includes meter feedback deltas in turnSummary', () => {
+      const state = makeState();
+      const result = resolveTurn(state, noFireRng);
+      const willDelta = result.turnSummary!.deltas.find(
+        (d) => d.meter === 'politicalWill' && d.source === 'will_regen',
+      );
+      expect(willDelta).toBeDefined();
+    });
+  });
+
+  // ----------------------------------------------------------
+  // Full integration test
+  // ----------------------------------------------------------
+
+  describe('full integration: 4 turns (full year)', () => {
+    it('resolves 4 turns from createNewGame and all meters move as expected', () => {
+      let state = createNewGame();
+
+      // Resolve 4 turns: spring -> summer -> fall -> winter -> (would be spring year 2)
+      for (let i = 0; i < 4; i++) {
+        state = resolveTurn(state, noFireRng);
+      }
+
+      // After 4 turns:
+      // Season should be spring of year 2 (winter->spring increments year)
+      expect(state.season).toBe('spring');
+      expect(state.year).toBe(2);
+      expect(state.turn).toBe(5);
+
+      // Climate pressure increased: 4 ticks at ~0.92 each
+      // Turn 1,2,3,4 all year 1 so each +0.92
+      expect(state.meters.climatePressure).toBeGreaterThan(30);
+      expect(state.meters.climatePressure).toBeCloseTo(30 + 4 * 0.92, 1);
+
+      // Trust: passive decay (-0.3/turn) + leader trust bonus (varies with 8 leaders)
+      // Net positive because leader bonus exceeds passive decay
+      // After 4 turns trust should be >50 (up from 50)
+      expect(state.meters.communityTrust).toBeGreaterThan(50);
+      expect(state.meters.communityTrust).toBeCloseTo(55, 0);
+
+      // Political Will increased: trust starts above 40, regen > 1.0/turn
+      expect(state.meters.politicalWill).toBeGreaterThan(60);
+
+      // Budget unchanged (no replenishment on turn 1 spring, none mid-year)
+      expect(state.meters.budget).toBeCloseTo(2.8, 1);
+    });
+  });
+});
+
+// ============================================================
+// prepareTurn tests
+// ============================================================
+
+describe('prepareTurn', () => {
+  it('generates proposals from eligible leaders', () => {
+    const state = makeState({
+      turn: 2,
+      leaders: {
+        grace: makeLeader({
+          tileIds: ['brightmoor'],
+          priorities: ['food_forest', 'community_kitchen'],
+          trust: 30,
+          proposalCooldown: 0,
+        }),
+      },
+      tiles: {
+        brightmoor: makeTile('brightmoor'),
+        corktown: makeTile('corktown'),
+        eastern_market: makeTile('eastern_market'),
+      },
+    });
+    const result = prepareTurn(state, noFireRng);
+    expect(result.activeProposals.length).toBeGreaterThan(0);
+    expect(result.activeProposals[0].leaderId).toBe('grace');
+  });
+
+  it('moves pendingProposals to activeProposals', () => {
+    const pending: Proposal = {
+      id: 'grace_1',
+      leaderId: 'grace',
+      projectDefinitionId: 'food_forest',
+      tileId: 'brightmoor',
+      reason: 'Deferred last turn.',
+      turnProposed: 1,
+    };
+    const state = makeState({
+      turn: 2,
+      pendingProposals: [pending],
+      leaders: {
+        grace: makeLeader({ trust: -5 }), // ineligible, won't generate new
+      },
+    });
+    const result = prepareTurn(state, noFireRng);
+    expect(result.activeProposals).toContainEqual(pending);
+  });
+
+  it('clears pendingProposals after moving', () => {
+    const pending: Proposal = {
+      id: 'grace_1',
+      leaderId: 'grace',
+      projectDefinitionId: 'food_forest',
+      tileId: 'brightmoor',
+      reason: 'Deferred last turn.',
+      turnProposed: 1,
+    };
+    const state = makeState({
+      turn: 2,
+      pendingProposals: [pending],
+      leaders: {
+        grace: makeLeader({ trust: -5 }),
+      },
+    });
+    const result = prepareTurn(state, noFireRng);
+    expect(result.pendingProposals).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// Reducer integration tests
+// ============================================================
+
+describe('reducer integration', () => {
+  it('END_TURN now runs full resolve pipeline (season advances)', () => {
+    const state = createNewGame();
+    const result = gameReducer(state, { type: 'END_TURN' });
+    expect(result.season).toBe('summer');
+    expect(result.turn).toBe(2);
+  });
+
+  it('END_TURN applies climate tick', () => {
+    const state = createNewGame();
+    const result = gameReducer(state, { type: 'END_TURN' });
+    // Climate pressure should increase
+    expect(result.meters.climatePressure).toBeGreaterThan(30);
+  });
+
+  it('END_TURN applies meter feedback', () => {
+    const state = createNewGame();
+    const result = gameReducer(state, { type: 'END_TURN' });
+    // Will should increase (trust 50 => regen 2.0)
+    expect(result.meters.politicalWill).toBeGreaterThan(60);
+    // Trust changes from: leader bonus (~1.65), decay (-0.3), and possible counter-narrative (-3.0 trust).
+    // With Math.random, a counter-narrative may fire, so trust can go down.
+    // Just verify trust moved (feedback was applied).
+    expect(result.meters.communityTrust).not.toBe(50);
+  });
+
+  it('END_TURN recalculates maxConcurrentProjects', () => {
+    const state = createNewGame();
+    const modifiedState: GameState = {
+      ...state,
+      meters: { ...state.meters, communityTrust: 75 },
+    };
+    const result = gameReducer(modifiedState, { type: 'END_TURN' });
+    // trust 75 - 0.3 decay + leader bonus ~1.65 = ~76.35
+    // floor(2 + 76.4/25) = floor(5.056) = 5
+    expect(result.maxConcurrentProjects).toBe(5);
+  });
+
+  it('END_TURN wraps winter to spring and increments year', () => {
+    const state: GameState = { ...createNewGame(), season: 'winter', year: 1 };
+    const result = gameReducer(state, { type: 'END_TURN' });
+    expect(result.season).toBe('spring');
+    expect(result.year).toBe(2);
+  });
+
+  it('PREPARE_TURN generates proposals', () => {
+    const base = createNewGame();
+    // Give grace priorities and a tile
+    const state: GameState = {
+      ...base,
+      leaders: {
+        ...base.leaders,
+        grace: {
+          ...base.leaders['grace'],
+          tileIds: ['brightmoor'],
+          priorities: ['food_forest', 'community_kitchen'],
+        },
+      },
+    };
+    const result = gameReducer(state, { type: 'PREPARE_TURN' });
+    expect(result.activeProposals.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================
+// Phase 2 pipeline tests
+// ============================================================
+
+function makeCouncilMember(overrides: Partial<CouncilMember> = {}): CouncilMember {
+  return {
+    id: 'martinez',
+    name: 'Martinez',
+    district: 'District 1',
+    districtNumber: 1,
+    leaning: 'progressive',
+    priorities: [],
+    disposition: 0,
+    backstory: '',
+    tileIds: [],
+    ...overrides,
+  };
+}
+
+function makeAntagonist(overrides: Partial<Antagonist> = {}): Antagonist {
+  return {
+    id: 'marcus_webb',
+    name: 'Marcus Webb',
+    role: 'Media personality',
+    activationCondition: 'turn >= 1',
+    escalationLevel: 0,
+    escalationInterval: 4,
+    active: false,
+    lastEscalationTurn: 0,
+    tileTargets: [],
+    ...overrides,
+  };
+}
+
+describe('Phase 2 resolve pipeline', () => {
+  // ----------------------------------------------------------
+  // 1. Policy drain reduces Will when policies are active
+  // ----------------------------------------------------------
+
+  it('policy drain reduces Will when policies are active', () => {
+    const state = makeState({
+      activePolicies: [
+        { definitionId: 'urban_agriculture_zoning', enactedTurn: 1 },
+      ],
+      meters: {
+        communityTrust: 50,
+        ecologicalHealth: 15,
+        foodSovereignty: 10,
+        politicalWill: 60,
+        budget: 4.2,
+        climatePressure: 30,
+      },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // urban_agriculture_zoning drain = 0.003 * 100 = 0.3
+    // Will after drain: 60 - 0.3 = 59.7
+    // Then meter feedback adds regen, so Will > 59.7 but < 62 (without drain it was 62)
+    const drainDelta = result.turnSummary!.deltas.find(
+      (d) => d.source.startsWith('policy_drain:'),
+    );
+    expect(drainDelta).toBeDefined();
+    expect(drainDelta!.amount).toBeLessThan(0);
+  });
+
+  // ----------------------------------------------------------
+  // 2. Policy drain is skipped when no policies active
+  // ----------------------------------------------------------
+
+  it('policy drain is skipped when no policies active', () => {
+    const state = makeState({
+      activePolicies: [],
+    });
+    const result = resolveTurn(state, noFireRng);
+    const drainDelta = result.turnSummary!.deltas.find(
+      (d) => d.source.startsWith('policy_drain:'),
+    );
+    expect(drainDelta).toBeUndefined();
+  });
+
+  // ----------------------------------------------------------
+  // 3. Opinion drift applies during resolve
+  // ----------------------------------------------------------
+
+  it('opinion drift applies during resolve', () => {
+    const state = makeState({
+      publicOpinion: {
+        foodSovereignty: 25,
+        waterCommons: 20,
+        landReform: 15,
+        ecologicalRestoration: 30,
+        cooperativeEconomics: 20,
+      },
+      narrativeState: {
+        actionsRemaining: 0,
+        actionsPerTurn: 2,
+        consecutiveTurns: {},
+        counterNarrativeCooldowns: {},
+      },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // All topics should drift down by 2.0 (no actions taken)
+    // foodSovereignty: 25 - 2.0 = 23.0
+    expect(result.publicOpinion.foodSovereignty).toBeCloseTo(23.0, 4);
+    // ecologicalRestoration: 30 - 2.0 = 28.0
+    expect(result.publicOpinion.ecologicalRestoration).toBeCloseTo(28.0, 4);
+  });
+
+  // ----------------------------------------------------------
+  // 4. Counter-narrative may fire during resolve (deterministic rng)
+  // ----------------------------------------------------------
+
+  it('counter-narrative fires with low rng roll', () => {
+    // corporate_media has probability 0.05 and isEligible: () => true
+    // rng returning 0.01 < 0.05, so it will fire
+    const alwaysFireRng = () => 0.01;
+    const state = makeState();
+    const result = resolveTurn(state, alwaysFireRng);
+    // corporate_media willDrain = -3.5
+    const counterDelta = result.turnSummary!.deltas.find(
+      (d) => d.source.startsWith('counter_'),
+    );
+    expect(counterDelta).toBeDefined();
+    expect(counterDelta!.source).toBe('counter_corporate_media');
+    expect(counterDelta!.amount).toBe(-3.5);
+  });
+
+  // ----------------------------------------------------------
+  // 5. Leader trust decays during resolve
+  // ----------------------------------------------------------
+
+  it('leader trust decays during resolve', () => {
+    const state = makeState({
+      leaders: {
+        grace: makeLeader({ id: 'grace', trust: 50 }),
+      },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // trust < 60 so decay rate is 1.0, trust drifts toward 0
+    // 50 - 1 = 49
+    expect(result.leaders['grace'].trust).toBe(49);
+  });
+
+  // ----------------------------------------------------------
+  // 6. Council Will bonus applied during resolve
+  // ----------------------------------------------------------
+
+  it('council Will bonus applied during resolve', () => {
+    const state = makeState({
+      councilMembers: {
+        martinez: makeCouncilMember({ id: 'martinez', disposition: 50 }),
+        jones: makeCouncilMember({ id: 'jones', disposition: 40 }),
+      },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // Both disposition >= 30, so bonus = +1 + +1 = +2
+    const councilDelta = result.turnSummary!.deltas.find(
+      (d) => d.source === 'council_will_bonus',
+    );
+    expect(councilDelta).toBeDefined();
+    expect(councilDelta!.amount).toBe(2);
+  });
+
+  // ----------------------------------------------------------
+  // 7. Event cooldowns decremented during resolve
+  // ----------------------------------------------------------
+
+  it('event cooldowns decremented during resolve', () => {
+    const state = makeState({
+      eventCooldowns: { heat_wave: 3, flooding: 1 },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // heat_wave: 3 -> 2, flooding: 1 -> 0 (removed)
+    expect(result.eventCooldowns['heat_wave']).toBe(2);
+    expect(result.eventCooldowns['flooding']).toBeUndefined();
+  });
+
+  // ----------------------------------------------------------
+  // 8. Antagonist activation checked during resolve
+  // ----------------------------------------------------------
+
+  it('antagonist activation checked during resolve', () => {
+    const state = makeState({
+      antagonists: {
+        marcus_webb: makeAntagonist({
+          id: 'marcus_webb',
+          active: false,
+          escalationInterval: 100, // large so escalation won't fire
+          lastEscalationTurn: 0,
+        }),
+      },
+    });
+    const result = resolveTurn(state, noFireRng);
+    // marcus_webb activates when turn >= 1, state.turn = 1
+    expect(result.antagonists['marcus_webb'].active).toBe(true);
+  });
+
+  // ----------------------------------------------------------
+  // 9. Budget replenishment includes policy bonuses
+  // ----------------------------------------------------------
+
+  it('budget replenishment includes policy bonuses', () => {
+    const state = makeState({
+      turn: 5,
+      season: 'spring',
+      year: 2,
+      activePolicies: [
+        { definitionId: 'cooperative_tax_incentives', enactedTurn: 3 },
+      ],
+    });
+    const result = resolveTurn(state, noFireRng);
+    // Base replenishment + 0.15 from cooperative_tax_incentives
+    const policyBonusDelta = result.turnSummary!.deltas.find(
+      (d) => d.source === 'policy_budget_bonus',
+    );
+    expect(policyBonusDelta).toBeDefined();
+    expect(policyBonusDelta!.amount).toBeCloseTo(0.15, 4);
+
+    // Budget should be higher than without the policy bonus
+    const baseReplenishment = 1.5 * (0.5 + 15 * 0.005 + 49.7 * 0.003);
+    // cooperative_tax_incentives drain = 0.005 * 100 = 0.5 Will
+    // But budget should include the 0.15 bonus
+    expect(result.meters.budget).toBeGreaterThan(4.2 + baseReplenishment);
+  });
+});
+
+// ============================================================
+// Phase 2 prepareTurn tests
+// ============================================================
+
+describe('Phase 2 prepareTurn', () => {
+  // ----------------------------------------------------------
+  // 10. prepareTurn resets narrative actions
+  // ----------------------------------------------------------
+
+  it('resets narrative actions', () => {
+    const state = makeState({
+      narrativeState: {
+        actionsRemaining: 0,
+        actionsPerTurn: 2,
+        consecutiveTurns: { foodSovereignty: 2 },
+        counterNarrativeCooldowns: {},
+      },
+    });
+    const result = prepareTurn(state, noFireRng);
+    // trust=50 => actionsPerTurn = floor(1 + 50/30) = floor(2.66) = 2
+    expect(result.narrativeState.actionsRemaining).toBe(2);
+    expect(result.narrativeState.actionsPerTurn).toBe(2);
+    // consecutiveTurns with count > 0 are preserved
+    expect(result.narrativeState.consecutiveTurns['foodSovereignty']).toBe(2);
+  });
+
+  // ----------------------------------------------------------
+  // 11. prepareTurn generates events
+  // ----------------------------------------------------------
+
+  it('generates events and adds them to eventQueue', () => {
+    // Use a rng that always fires events (low roll)
+    const alwaysFireRng = () => 0.001;
+    const state = makeState({
+      season: 'summer',
+      meters: {
+        communityTrust: 50,
+        ecologicalHealth: 15,
+        foodSovereignty: 10,
+        politicalWill: 60,
+        budget: 0.5, // low budget enables water_shutoff crisis
+        climatePressure: 30,
+      },
+    });
+    const result = prepareTurn(state, alwaysFireRng);
+    // With very low rng, at least some events should fire
+    expect(result.eventQueue.length).toBeGreaterThan(0);
+    // Events should have proper structure
+    const firstEvent = result.eventQueue[0];
+    expect(firstEvent.id).toBeTruthy();
+    expect(firstEvent.type).toBeTruthy();
+    expect(firstEvent.choices.length).toBeGreaterThan(0);
+  });
+});

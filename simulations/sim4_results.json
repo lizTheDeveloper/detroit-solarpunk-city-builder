@@ -1,0 +1,74 @@
+{
+  "policy_heavy": {
+    "avg_policies_enacted": 4.1,
+    "avg_final_will": 14.5,
+    "avg_final_trust": 100.0,
+    "will_economy": {
+      "from_trust": 119.3,
+      "from_narrative": 128.0,
+      "spent_on_policies": 46.3,
+      "drained_by_counters": 170.0,
+      "ongoing_drain_per_turn": 1.6
+    },
+    "risk_metrics": {
+      "turns_below_20_pct": 34.2,
+      "turns_below_40_pct": 63.1,
+      "recall_triggered_pct": 91.6
+    },
+    "counter_narrative_hits": 34.4
+  },
+  "balanced": {
+    "avg_policies_enacted": 12.0,
+    "avg_final_will": 99.2,
+    "avg_final_trust": 100.0,
+    "will_economy": {
+      "from_trust": 123.4,
+      "from_narrative": 888.2,
+      "spent_on_policies": 191.0,
+      "drained_by_counters": 185.3,
+      "ongoing_drain_per_turn": 8.5
+    },
+    "risk_metrics": {
+      "turns_below_20_pct": 0.0,
+      "turns_below_40_pct": 0.1,
+      "recall_triggered_pct": 0.0
+    },
+    "counter_narrative_hits": 37.4
+  },
+  "narrative_first": {
+    "avg_policies_enacted": 12.0,
+    "avg_final_will": 98.5,
+    "avg_final_trust": 100.0,
+    "will_economy": {
+      "from_trust": 122.3,
+      "from_narrative": 881.4,
+      "spent_on_policies": 191.0,
+      "drained_by_counters": 175.1,
+      "ongoing_drain_per_turn": 8.5
+    },
+    "risk_metrics": {
+      "turns_below_20_pct": 0.0,
+      "turns_below_40_pct": 0.0,
+      "recall_triggered_pct": 0.0
+    },
+    "counter_narrative_hits": 35.5
+  },
+  "reactive": {
+    "avg_policies_enacted": 0.2,
+    "avg_final_will": 46.7,
+    "avg_final_trust": 76.7,
+    "will_economy": {
+      "from_trust": 66.2,
+      "from_narrative": 81.7,
+      "spent_on_policies": 1.5,
+      "drained_by_counters": 159.5,
+      "ongoing_drain_per_turn": 0.0
+    },
+    "risk_metrics": {
+      "turns_below_20_pct": 0.1,
+      "turns_below_40_pct": 4.6,
+      "recall_triggered_pct": 0.5
+    },
+    "counter_narrative_hits": 32.2
+  }
+}
