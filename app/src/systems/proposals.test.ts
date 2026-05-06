@@ -48,6 +48,9 @@ function makeTile(overrides: Partial<Tile> = {}): Tile {
     adjacentTileIds: [],
     visualStage: 'dystopia',
     ...overrides,
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 

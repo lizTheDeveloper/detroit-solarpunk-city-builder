@@ -5,16 +5,7 @@ import { PROJECT_CATALOG } from '../data/content/project-catalog';
 import { arcTemplateMap, allArcTemplates } from '../data/arcs';
 import { checkTransition, applyTransition, incrementInactionTimer } from '../systems/arc-progression';
 import { assessTaboo } from '../systems/overton-window';
-import type { GameState } from '../state/types';
 import type { ActiveArc } from '../state/crisis-types';
-
-function advanceNTurns(state: GameState, n: number): GameState {
-  let current = state;
-  for (let i = 0; i < n; i++) {
-    current = gameReducer(current, { type: 'END_TURN' }, PROJECT_CATALOG);
-  }
-  return current;
-}
 
 describe('Crisis Arc Lifecycle', () => {
   it('new game has 5 arcs all dormant', () => {

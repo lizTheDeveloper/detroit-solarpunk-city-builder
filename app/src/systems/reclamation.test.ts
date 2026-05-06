@@ -26,7 +26,7 @@ function makeTile(overrides: Partial<Tile> = {}): Tile {
   };
 }
 
-function makeState(overrides: Partial<GameState> = {}): GameState {
+function makeState(_overrides: Partial<GameState> = {}): GameState {
   return {
     version: 2,
     turn: 1,

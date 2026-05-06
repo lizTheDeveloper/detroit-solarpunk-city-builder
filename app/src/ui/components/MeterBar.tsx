@@ -61,6 +61,11 @@ const OPINION_LABELS: Record<keyof PublicOpinion, string> = {
   landReform: 'Land',
   ecologicalRestoration: 'Eco',
   cooperativeEconomics: 'Coop',
+  nuclearEnergy: 'Nuclear',
+  nutrientRecycling: 'Nutrient',
+  landExpropriation: 'Expropriate',
+  deGrowth: 'De-Growth',
+  decarceration: 'Decarcer',
 };
 
 export default function MeterBar() {

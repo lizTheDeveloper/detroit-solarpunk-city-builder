@@ -1,4 +1,4 @@
-import type { GameState, Season, MeterDelta, TurnSummary } from '../state/types';
+import type { GameState, MeterDelta, TurnSummary } from '../state/types';
 import { applyMeterFeedback, clampMeters, calculateMaxProjects } from './meters';
 import { advanceProjects, decayGentrification } from './projects';
 import { generateProposals } from './proposals';
@@ -31,11 +31,10 @@ import { progressRegionalCities, progressContinentalGoals, checkWinCondition, ch
 import { applyReclamationEffects, checkReclamationLoss } from './reclamation';
 import { applyMeshNetworkEffects } from './mesh-network';
 import { getSeason, isSeasonTransition } from './calendar';
-import { processConsequences, getForeshadowHints } from './delayed-consequences';
+import { processConsequences } from './delayed-consequences';
 import { checkTransition, incrementInactionTimer, resetInactionTimer, applyTransition, checkPreventionConditions } from './arc-progression';
-import { hasCondition } from './dependency-web';
 import { arcTemplateMap } from '../data/arcs';
-import { PROJECT_CONDITION_MAP, POLICY_CONDITION_MAP } from '../data/project-conditions';
+import { PROJECT_CONDITION_MAP } from '../data/project-conditions';
 
 // ---------------------------------------------------------------------------
 // Month/Season helpers
@@ -91,7 +90,6 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 
     // Generate climate event only on season transitions (every 3 months)
     const prevMonth = current.month;
-    const wouldBeNext = prevMonth === 12 ? 1 : prevMonth + 1;
     const seasonTransition = isSeasonTransition(prevMonth === 1 ? 12 : prevMonth - 1, prevMonth)
       || state.turn === 1; // Always allow on first turn
     if (seasonTransition) {

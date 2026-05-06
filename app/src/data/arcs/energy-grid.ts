@@ -144,6 +144,7 @@ export const energyGridArc: ArcTemplate = {
               hintTurnsBeforeTrigger: 2,
             },
           ],
+          antagonistAlignment: null,
           taboo: {
             opinionTopic: 'nuclearEnergy',
             unlockThreshold: 40,

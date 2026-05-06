@@ -362,6 +362,9 @@ describe('checkAntagonistActivation', () => {
           communityOwned: false,
           adjacentTileIds: [],
           visualStage: 'dystopia',
+          consumedByproducts: [],
+          vacantLots: 5,
+          reclaimedLots: 0,
         },
       },
     });

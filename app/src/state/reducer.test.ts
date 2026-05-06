@@ -8,10 +8,12 @@ function testProject(overrides: Partial<ProjectDefinition> = {}): ProjectDefinit
   return {
     id: 'solar_array',
     name: 'Solar Array',
+    description: 'A community solar array providing clean energy',
     category: 'ecology',
     growthCategory: 'growth',
     baseCost: 2.0,
     baseDuration: 3,
+    maintenanceCost: 0,
     effects: {
       tileEco: 5,
       foodSov: 0,
@@ -24,6 +26,8 @@ function testProject(overrides: Partial<ProjectDefinition> = {}): ProjectDefinit
     maxContamination: null,
     stageRequired: 'awakening',
     terrainRequired: null,
+    produces: [],
+    consumes: [],
     ...overrides,
   };
 }

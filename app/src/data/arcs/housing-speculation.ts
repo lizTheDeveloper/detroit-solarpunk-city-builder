@@ -153,6 +153,7 @@ export const housingSpeculationArc: ArcTemplate = {
               hintTurnsBeforeTrigger: 4,
             },
           ],
+          antagonistAlignment: null,
           taboo: {
             opinionTopic: 'landExpropriation',
             unlockThreshold: 45,

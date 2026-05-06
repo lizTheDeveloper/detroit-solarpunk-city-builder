@@ -23,7 +23,7 @@ export function assessTaboo(
   taboo: TabooConfig,
   publicOpinion: PublicOpinion
 ): TabooAssessment {
-  const currentOpinion = (publicOpinion as Record<string, number>)[taboo.opinionTopic] ?? 0;
+  const currentOpinion = (publicOpinion as unknown as Record<string, number>)[taboo.opinionTopic] ?? 0;
   const threshold = taboo.unlockThreshold;
   const nearUnlock = currentOpinion >= threshold - 10 && currentOpinion < threshold;
 
@@ -54,6 +54,6 @@ export function getTabooTrustPenalty(taboo: TabooConfig, publicOpinion: PublicOp
  * Check if research papers should be surfaced (within 10 points of threshold).
  */
 export function shouldShowResearchHint(taboo: TabooConfig, publicOpinion: PublicOpinion): boolean {
-  const currentOpinion = (publicOpinion as Record<string, number>)[taboo.opinionTopic] ?? 0;
+  const currentOpinion = (publicOpinion as unknown as Record<string, number>)[taboo.opinionTopic] ?? 0;
   return currentOpinion >= taboo.unlockThreshold - 10 && currentOpinion < taboo.unlockThreshold;
 }

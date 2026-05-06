@@ -189,6 +189,11 @@ describe('applyOpinionDrift', () => {
       landReform: 12,
       ecologicalRestoration: 25,
       cooperativeEconomics: 18,
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     };
     const narrativeState: NarrativeState = {
       actionsRemaining: 0,
@@ -211,6 +216,11 @@ describe('applyOpinionDrift', () => {
       landReform: 8,           // at floor
       ecologicalRestoration: 20, // at floor
       cooperativeEconomics: 12,  // at floor
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     };
     const narrativeState: NarrativeState = {
       actionsRemaining: 0,
@@ -233,6 +243,11 @@ describe('applyOpinionDrift', () => {
       landReform: 12,
       ecologicalRestoration: 25,
       cooperativeEconomics: 18,
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     };
     const narrativeState: NarrativeState = {
       actionsRemaining: 0,

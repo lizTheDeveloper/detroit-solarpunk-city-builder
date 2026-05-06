@@ -48,6 +48,11 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       landReform: 50,
       ecologicalRestoration: 50,
       cooperativeEconomics: 50,
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     },
     narrativeState: {
       actionsRemaining: 2,
@@ -70,7 +75,7 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
     lossCondition: null,
     sandbox: false,
     ...overrides,
-  };
+  } as GameState;
 }
 
 function makeTile(overrides: Partial<Tile> = {}): Tile {
@@ -91,6 +96,9 @@ function makeTile(overrides: Partial<Tile> = {}): Tile {
     adjacentTileIds: [],
     visualStage: 'dystopia',
     ...overrides,
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 

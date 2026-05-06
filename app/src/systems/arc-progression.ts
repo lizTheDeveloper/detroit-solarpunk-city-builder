@@ -11,7 +11,7 @@ import type { ActiveArc, ArcConfig, ArcStage, PipelineArcState } from '../state/
 /**
  * The ordered progression of arc stages.
  */
-const STAGE_ORDER: ArcStage[] = [
+export const STAGE_ORDER: ArcStage[] = [
   'dormant',
   'foreshadow',
   'escalation',
@@ -20,14 +20,6 @@ const STAGE_ORDER: ArcStage[] = [
   'resolved',
 ];
 
-/**
- * Get the next stage in the arc lifecycle, or null if already resolved.
- */
-function nextStage(current: ArcStage): ArcStage | null {
-  const idx = STAGE_ORDER.indexOf(current);
-  if (idx === -1 || idx >= STAGE_ORDER.length - 1) return null;
-  return STAGE_ORDER[idx + 1];
-}
 
 // ---------------------------------------------------------------------------
 // Transition logic

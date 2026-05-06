@@ -152,6 +152,7 @@ export const infrastructureDebtArc: ArcTemplate = {
               hintTurnsBeforeTrigger: 2,
             },
           ],
+          antagonistAlignment: null,
           taboo: {
             opinionTopic: 'deGrowth',
             unlockThreshold: 60,

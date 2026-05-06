@@ -3,7 +3,7 @@ import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { formatCost, formatBudget } from '@/ui/format';
 import type { Proposal, ProposalResponse } from '@/state/types';
 
-function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConversation?: (characterId: string, interactionType: string) => void }) {
+function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConversation?: (characterId: string, interactionType: string, proposalId?: string) => void }) {
   const { state, dispatch } = useGame();
   const leader = state.leaders[proposal.leaderId];
   const def = PROJECT_CATALOG[proposal.projectDefinitionId];
@@ -11,10 +11,17 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
 
   if (!leader || !def || !tile) return null;
 
-  const acceptCost = def.baseCost * 0.85;
-  const modifyCost = def.baseCost;
-  const canAffordAccept = state.meters.budget >= acceptCost;
-  const canAffordModify = state.meters.budget >= modifyCost;
+  const neg = proposal.negotiation;
+  const acceptCostMult = neg ? neg.costMultiplier : 0.85;
+  const leaderContrib = neg ? neg.leaderContribution : 0;
+  const durationMod = neg ? neg.durationModifier : 0;
+
+  const grossAcceptCost = def.baseCost * acceptCostMult;
+  const netAcceptCost = Math.max(0, grossAcceptCost - leaderContrib);
+  const finalDuration = Math.max(1, def.baseDuration + durationMod);
+
+  const canAffordAccept = state.meters.budget >= netAcceptCost;
+  const hasNegotiation = neg != null;
 
   function handleResponse(response: ProposalResponse) {
     dispatch({ type: 'RESPOND_PROPOSAL', proposalId: proposal.id, response });
@@ -27,8 +34,14 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
     }
   }
 
+  function handleDiscuss() {
+    if (onConversation) {
+      onConversation(proposal.leaderId, 'direct_engagement', proposal.id);
+    }
+  }
+
   return (
-    <div className="proposal-card">
+    <div className={`proposal-card ${hasNegotiation ? 'proposal-card--negotiated' : ''}`}>
       <div className="proposal-header">
         <span className="proposal-leader-name">{leader.name}</span>
         <span className="proposal-neighborhood">{leader.neighborhood}</span>
@@ -40,11 +53,31 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
         <div className="proposal-project-name">{def.name}</div>
         <div className="proposal-project-details">
           <span className="proposal-cost-highlight">
-            {formatCost(acceptCost)}
+            {hasNegotiation && leaderContrib > 0 ? (
+              <>
+                <s style={{ opacity: 0.5 }}>{formatCost(def.baseCost * 0.85)}</s>{' '}
+                {formatCost(netAcceptCost)}
+              </>
+            ) : (
+              formatCost(netAcceptCost)
+            )}
           </span>
-          <span>{def.baseDuration} turns</span>
+          <span>
+            {hasNegotiation && durationMod !== 0 ? (
+              <>
+                <s style={{ opacity: 0.5 }}>{def.baseDuration}</s> {finalDuration} turns
+              </>
+            ) : (
+              `${finalDuration} turns`
+            )}
+          </span>
           <span>{tile.name}</span>
         </div>
+        {hasNegotiation && leaderContrib > 0 && (
+          <div className="proposal-negotiation-terms">
+            {leader.name} contributing {formatCost(leaderContrib)} from community funds
+          </div>
+        )}
         <div className="proposal-project-effects">
           {def.effects.tileEco !== 0 && <span className="effect-tag">Eco +{def.effects.tileEco}</span>}
           {def.effects.foodSov !== 0 && <span className="effect-tag">Food +{def.effects.foodSov}</span>}
@@ -54,22 +87,21 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
       </div>
       <div className="proposal-responses">
         <button
+          className="btn btn-sm btn-discuss"
+          onClick={handleDiscuss}
+          type="button"
+          title="Discuss terms with this leader before deciding"
+        >
+          Discuss
+        </button>
+        <button
           className="btn btn-sm btn-accept"
           onClick={() => handleResponse('accept')}
           type="button"
           disabled={!canAffordAccept}
-          title={canAffordAccept ? `Fund this project (-${formatCost(acceptCost)}, trust +10)` : `Need ${formatCost(acceptCost)}`}
+          title={canAffordAccept ? `Fund this project (-${formatCost(netAcceptCost)}, trust +${hasNegotiation && leaderContrib > 0 ? 8 : 5})` : `Need ${formatCost(netAcceptCost)}`}
         >
-          Fund ({formatCost(acceptCost)})
-        </button>
-        <button
-          className="btn btn-sm btn-modify"
-          onClick={() => handleResponse('modify')}
-          type="button"
-          disabled={!canAffordModify}
-          title={canAffordModify ? `Fund with changes (-${formatCost(modifyCost)}, trust +3)` : `Need ${formatCost(modifyCost)}`}
-        >
-          Modify ({formatCost(modifyCost)})
+          Fund ({formatCost(netAcceptCost)})
         </button>
         <button
           className="btn btn-sm btn-defer"
@@ -92,7 +124,7 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
   );
 }
 
-export default function ProposalPanel({ onConversation }: { onConversation?: (characterId: string, interactionType: string) => void }) {
+export default function ProposalPanel({ onConversation }: { onConversation?: (characterId: string, interactionType: string, proposalId?: string) => void }) {
   const { state } = useGame();
 
   if (state.activeProposals.length === 0) return null;
@@ -106,7 +138,7 @@ export default function ProposalPanel({ onConversation }: { onConversation?: (ch
         </span>
       </div>
       <p className="panel-subtitle">
-        Leaders want you to fund their projects. Accepting costs budget, not actions.
+        Leaders want you to fund their projects. Discuss terms before deciding.
       </p>
       {state.activeProposals.map((proposal) => (
         <ProposalCard key={proposal.id} proposal={proposal} onConversation={onConversation} />

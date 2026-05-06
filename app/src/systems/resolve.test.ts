@@ -32,8 +32,10 @@ function makeTile(id: string, overrides: Partial<Tile> = {}): Tile {
     communityOwned: false,
     adjacentTileIds: [],
     visualStage: 'dystopia',
-    consumedByproducts: [],
     ...overrides,
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 
@@ -72,6 +74,11 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       landReform: 8,
       ecologicalRestoration: 20,
       cooperativeEconomics: 12,
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     },
     narrativeState: {
       actionsRemaining: 2,
@@ -93,8 +100,12 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     winCondition: null,
     lossCondition: null,
     sandbox: false,
+    dependencyWeb: { conditions: [], capacities: {} },
+    activeArcs: [],
+    delayedConsequenceQueue: [],
+    resolvedArcs: [],
     ...overrides,
-  };
+  } as GameState;
 }
 
 /** RNG that always returns 1.0 — no counter-narratives will fire (all probabilities < 1) */
@@ -772,6 +783,11 @@ describe('Phase 2 resolve pipeline', () => {
         landReform: 15,
         ecologicalRestoration: 30,
         cooperativeEconomics: 20,
+        nutrientRecycling: 0,
+        nuclearEnergy: 0,
+        landExpropriation: 0,
+        decarceration: 0,
+        deGrowth: 0,
       },
       narrativeState: {
         actionsRemaining: 0,

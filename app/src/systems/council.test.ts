@@ -37,6 +37,9 @@ function makeTile(overrides: Partial<Tile> = {}): Tile {
     adjacentTileIds: [],
     visualStage: 'dystopia',
     ...overrides,
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 
@@ -123,6 +126,11 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       landReform: 8,
       ecologicalRestoration: 20,
       cooperativeEconomics: 12,
+      nutrientRecycling: 0,
+      nuclearEnergy: 0,
+      landExpropriation: 0,
+      decarceration: 0,
+      deGrowth: 0,
     },
     narrativeState: {
       actionsRemaining: 2,
@@ -145,7 +153,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     lossCondition: null,
     sandbox: false,
     ...overrides,
-  };
+  } as GameState;
 }
 
 function makeNineMembers(overrides?: Partial<CouncilMember>[]): Record<string, CouncilMember> {

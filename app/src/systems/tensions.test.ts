@@ -38,6 +38,9 @@ function makeTile(overrides: Partial<Tile> & { id: string }): Tile {
     communityOwned: overrides.communityOwned ?? false,
     adjacentTileIds: overrides.adjacentTileIds ?? [],
     visualStage: overrides.visualStage ?? 'dystopia',
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 

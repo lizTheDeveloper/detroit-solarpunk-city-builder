@@ -135,7 +135,7 @@ describe('mesh-network', () => {
     it('increases maxActionsPerTurn at 6+ tiles', () => {
       const state = makeState(6);
       const { state: newState } = applyMeshNetworkEffects(state);
-      expect(newState.narrativeState.maxActionsPerTurn).toBe(3);
+      expect(newState.narrativeState.actionsPerTurn).toBe(3);
     });
   });
 });

@@ -66,7 +66,7 @@ export function applyMeshNetworkEffects(state: GameState): { state: GameState; d
     });
   }
 
-  if (status.extraActions > 0 && state.narrativeState.maxActionsPerTurn < 3) {
+  if (status.extraActions > 0 && state.narrativeState.actionsPerTurn < 3) {
     return {
       state: {
         ...state,
@@ -76,7 +76,7 @@ export function applyMeshNetworkEffects(state: GameState): { state: GameState; d
         },
         narrativeState: {
           ...state.narrativeState,
-          maxActionsPerTurn: state.narrativeState.maxActionsPerTurn + status.extraActions,
+          actionsPerTurn: state.narrativeState.actionsPerTurn + status.extraActions,
         },
       },
       deltas,

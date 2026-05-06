@@ -9,6 +9,11 @@ const TOPIC_LABELS: Record<keyof PublicOpinion, string> = {
   landReform: 'Land Reform',
   ecologicalRestoration: 'Ecological Restoration',
   cooperativeEconomics: 'Cooperative Economics',
+  nuclearEnergy: 'Nuclear Energy',
+  nutrientRecycling: 'Nutrient Recycling',
+  landExpropriation: 'Land Expropriation',
+  deGrowth: 'De-Growth',
+  decarceration: 'Decarceration',
 };
 
 const TOPICS = Object.keys(TOPIC_LABELS) as (keyof PublicOpinion)[];

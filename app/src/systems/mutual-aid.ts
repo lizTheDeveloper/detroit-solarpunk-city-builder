@@ -56,7 +56,6 @@ export function applyMutualAid(
 
   // Each helper absorbs a share of 30% of the damage
   const totalAbsorption = damageAmount * 0.30;
-  const perHelper = totalAbsorption / helpers.length;
   const deltas: MeterDelta[] = [];
 
   deltas.push({

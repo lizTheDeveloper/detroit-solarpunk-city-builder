@@ -57,10 +57,12 @@ function makeProjectDef(overrides: Partial<ProjectDefinition> = {}): ProjectDefi
   return {
     id: 'food_forest',
     name: 'Food Forest',
+    description: 'A multi-layered food-producing ecosystem',
     category: 'ecology',
     growthCategory: 'de-growth',
     baseCost: 0.10,
     baseDuration: 3,
+    maintenanceCost: 0,
     effects: {
       tileEco: 12,
       foodSov: 8,
@@ -73,6 +75,8 @@ function makeProjectDef(overrides: Partial<ProjectDefinition> = {}): ProjectDefi
     maxContamination: 50,
     stageRequired: 'awakening',
     terrainRequired: null,
+    produces: [],
+    consumes: [],
     ...overrides,
   };
 }

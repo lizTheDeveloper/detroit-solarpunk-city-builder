@@ -194,9 +194,9 @@ describe('calculateElectionScore', () => {
   it('gives -3 per tile with gentrificationPressure > 50', () => {
     const state = makeTestState({
       tiles: {
-        t1: { id: 't1', name: 'T1', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 70, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia' },
-        t2: { id: 't2', name: 'T2', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 80, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia' },
-        t3: { id: 't3', name: 'T3', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 30, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia' },
+        t1: { id: 't1', name: 'T1', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 70, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia', consumedByproducts: [], vacantLots: 5, reclaimedLots: 0 },
+        t2: { id: 't2', name: 'T2', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 80, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia', consumedByproducts: [], vacantLots: 5, reclaimedLots: 0 },
+        t3: { id: 't3', name: 'T3', terrain: 'urban-dense', vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: 30, existingUses: [], neighborhoodTraits: [], activeProjects: [], completedProjects: [], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [], visualStage: 'dystopia', consumedByproducts: [], vacantLots: 5, reclaimedLots: 0 },
       },
     });
     const result = calculateElectionScore(state);
@@ -381,7 +381,7 @@ describe('predictElectionOutcome', () => {
 
   it('flags gentrification concerns when 3+ tiles above 60%', () => {
     const makeTile = (id: string, gp: number) => ({
-      id, name: id, terrain: 'urban-dense' as const, vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: gp, existingUses: [] as any[], neighborhoodTraits: [] as string[], activeProjects: [] as any[], completedProjects: [] as string[], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [] as string[], visualStage: 'dystopia' as const,
+      id, name: id, terrain: 'urban-dense' as const, vacancyRate: 0, ecologicalHealth: 10, contamination: 0, gentrificationPressure: gp, existingUses: [] as any[], neighborhoodTraits: [] as string[], activeProjects: [] as any[], completedProjects: [] as string[], communityPowerTokens: 0, communityOwned: false, adjacentTileIds: [] as string[], visualStage: 'dystopia' as const, consumedByproducts: [] as string[], vacantLots: 5, reclaimedLots: 0,
     });
     const state = makeTestState({
       tiles: {

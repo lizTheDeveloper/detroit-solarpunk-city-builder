@@ -3,7 +3,6 @@ import { createNewGame } from '../state/create-game';
 import { gameReducer } from '../state/reducer';
 import { PROJECT_CATALOG } from '../data/content/project-catalog';
 import { PROJECT_CONDITION_MAP, POLICY_CONDITION_MAP } from '../data/project-conditions';
-import type { GameState } from '../state/types';
 
 describe('Dependency Web Integration', () => {
   it('game starts with empty dependency web', () => {
@@ -55,7 +54,7 @@ describe('Dependency Web Integration', () => {
     }
 
     // Check that at least some prevention conditions are in the creatable set
-    for (const arc of state.activeArcs) {
+    for (const _arc of state.activeArcs) {
       // Each arc's prevention conditions should have at least one path to creation
       // (not all need to be achievable through projects — some come from crisis fork choices)
     }

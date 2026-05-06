@@ -172,6 +172,7 @@ export const phosphorusFoodArc: ArcTemplate = {
               hintTurnsBeforeTrigger: 2,
             },
           ],
+          antagonistAlignment: null,
           taboo: {
             opinionTopic: 'nutrientRecycling',
             unlockThreshold: 50,

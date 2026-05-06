@@ -5,7 +5,7 @@ import {
   getForeshadowHints,
 } from './delayed-consequences';
 import { createDependencyWeb, addCondition } from './dependency-web';
-import type { DelayedConsequence, DependencyWeb } from '../state/crisis-types';
+import type { DelayedConsequence } from '../state/crisis-types';
 
 function makeConsequence(overrides: Partial<DelayedConsequence> = {}): DelayedConsequence {
   return {

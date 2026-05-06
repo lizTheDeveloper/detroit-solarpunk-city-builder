@@ -60,8 +60,10 @@ function makeTile(id: string, overrides: Partial<Tile> = {}): Tile {
     communityOwned: false,
     adjacentTileIds: [],
     visualStage: 'dystopia',
-    consumedByproducts: [],
     ...overrides,
+    consumedByproducts: overrides.consumedByproducts ?? [],
+    vacantLots: overrides.vacantLots ?? 5,
+    reclaimedLots: overrides.reclaimedLots ?? 0,
   };
 }
 
@@ -904,7 +906,7 @@ describe('direct-action mode', () => {
         tile_b: makeTile('tile_b', { adjacentTileIds: ['tile_a'] }),
       },
     });
-    const { state: next, deltas } = advanceProjects(state);
+    const { state: _next, deltas } = advanceProjects(state);
     // rain_garden trust effect = 1, multiplier 2.0 + bonus 6 = 8
     const trustDelta = deltas.find(d => d.meter === 'communityTrust');
     expect(trustDelta?.amount).toBe(8);
