@@ -20,6 +20,8 @@ export interface ProcessedHeadline extends RawHeadline {
   locality: 'detroit' | 'michigan' | 'national' | 'global' | null;
   confidence: number;
   frames?: { establishment: string | null; community: string | null; market: string | null };
+  neighborhoodTag?: string;    // which neighborhood this headline relates to
+  pedagogicalHook?: string;    // what this teaches about how the city works
 }
 
 export interface ArcState {
