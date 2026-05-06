@@ -1,0 +1,245 @@
+import type { CityPackage } from './types';
+import type { FeatureCollection, Polygon } from 'geojson';
+
+// Placeholder empty FeatureCollections — real GeoJSON loaded at runtime by the map panel
+const emptyFC: FeatureCollection<Polygon> = { type: 'FeatureCollection', features: [] };
+
+export const detroitPackage: CityPackage = {
+  meta: {
+    cityName: 'Detroit',
+    state: 'MI',
+    center: [-83.0458, 42.3314],
+    zoomBounds: { min: 10, max: 18 },
+    generatedAt: '2026-05-06',
+    version: 1,
+  },
+  geography: {
+    neighborhoodBoundaries: emptyFC,
+    blockPolygons: emptyFC,
+  },
+  dataLayers: {
+    census: {
+      data: null,
+      source: 'US Census ACS 5-year',
+      sourceUrl: 'https://api.census.gov/data/2023/acs/acs5',
+      license: 'Public Domain',
+      fetchedAt: '',
+      ttl: '365d',
+      available: true,
+    },
+    epa: {
+      data: null,
+      source: 'EPA Envirofacts + ECHO',
+      sourceUrl: 'https://echo.epa.gov/',
+      license: 'Public Domain',
+      fetchedAt: '',
+      ttl: '30d',
+      available: true,
+    },
+    flood: {
+      data: null,
+      source: 'FEMA NFHL',
+      sourceUrl: 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer',
+      license: 'Public Domain',
+      fetchedAt: '',
+      ttl: '365d',
+      available: true,
+    },
+    air_quality: {
+      data: null,
+      source: 'AirNow',
+      sourceUrl: 'https://www.airnowapi.org/',
+      license: 'Public Domain',
+      fetchedAt: '',
+      ttl: '1h',
+      available: true,
+    },
+    land_bank: {
+      data: null,
+      source: 'Detroit Land Bank Authority',
+      sourceUrl: 'https://data.detroitmi.gov/',
+      license: 'Open Data',
+      fetchedAt: '',
+      ttl: '30d',
+      available: true,
+    },
+    soil_contamination: {
+      data: null,
+      source: '',
+      sourceUrl: '',
+      license: '',
+      fetchedAt: '',
+      ttl: '',
+      available: false,
+      gapReason:
+        'Detroit does not publish block-level soil contamination data. EPA monitors specific brownfield sites but vast areas remain untested.',
+      advocacyTarget: {
+        name: 'Michigan EGLE',
+        title: 'Director',
+        agency: 'Michigan Environment, Great Lakes, and Energy',
+        contact: 'EGLE-Assist@michigan.gov',
+      },
+    },
+  },
+  newsSources: [
+    {
+      id: 'bridge_detroit',
+      name: 'Bridge Detroit',
+      url: 'https://www.bridgedetroit.com',
+      feedUrl: 'https://www.bridgedetroit.com/feed/',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['civic', 'policy', 'community'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+    {
+      id: 'planet_detroit',
+      name: 'Planet Detroit',
+      url: 'https://planetdetroit.org',
+      feedUrl: 'https://planetdetroit.org/feed/',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['environment', 'climate', 'energy'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+    {
+      id: 'outlier_media',
+      name: 'Outlier Media',
+      url: 'https://outliermedia.org',
+      feedUrl: 'https://outliermedia.org/feed/',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['housing', 'utilities', 'accountability'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+    {
+      id: 'metro_times',
+      name: 'Metro Times',
+      url: 'https://www.metrotimes.com',
+      feedUrl: 'https://www.metrotimes.com/detroit/Rss.xml',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['culture', 'politics', 'community'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+    {
+      id: 'model_d',
+      name: 'Model D',
+      url: 'https://modeldmedia.com',
+      feedUrl: 'https://feeds.feedburner.com/ModelDMedia',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['development', 'community', 'innovation'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+    {
+      id: 'daily_detroit',
+      name: 'Daily Detroit',
+      url: 'https://www.dailydetroit.com',
+      feedUrl: 'https://feeds.feedburner.com/DailyDetroit',
+      feedType: 'rss',
+      locality: 'city',
+      topics: ['hyperlocal', 'community', 'events'],
+      validated: true,
+      lastChecked: '2026-05-06',
+    },
+  ],
+  characters: [],
+  powerStructure: {
+    mayor: {
+      name: 'Mike Duggan',
+      contact: 'https://detroitmi.gov/government/mayors-office',
+      since: '2014',
+    },
+    council: [
+      {
+        name: 'District 1',
+        neighborhoods: ['brightmoor'],
+        pedagogicalNote: 'Represents the most vacant neighborhoods',
+      },
+      {
+        name: 'District 5',
+        neighborhoods: ['corktown', 'southwest-detroit'],
+        pedagogicalNote:
+          'Bridging gentrification pressure in Corktown with industrial pollution in Southwest',
+      },
+      {
+        name: 'District 7',
+        neighborhoods: ['hamtramck'],
+        pedagogicalNote: 'Hamtramck is an independent city within Detroit metro',
+      },
+    ],
+    agencies: [
+      {
+        name: 'Detroit Water and Sewerage Department',
+        responsibility: 'Water rates, infrastructure, stormwater',
+        relevantArcs: ['water-pfas', 'infrastructure-debt'],
+        pedagogicalNote:
+          'Controls water shut-offs. DWSD merged into GLWA for regional water.',
+      },
+      {
+        name: 'Detroit Land Bank Authority',
+        responsibility: 'Manages 100K+ vacant parcels',
+        relevantArcs: ['housing-speculation'],
+        pedagogicalNote:
+          'Largest landowner in Detroit. Side Lot Program sells vacant lots to neighbors for $100.',
+      },
+      {
+        name: 'BSEED',
+        responsibility: 'Building permits, code enforcement',
+        relevantArcs: ['housing-speculation', 'infrastructure-debt'],
+        pedagogicalNote:
+          'Buildings, Safety Engineering, and Environmental Department.',
+      },
+    ],
+    utilityCompanies: [
+      {
+        name: 'DTE Energy',
+        type: 'electric',
+        ownership: 'private',
+        pedagogicalNote:
+          'Private monopoly — Soulardarity founded to challenge DTE streetlight policies in Highland Park.',
+      },
+    ],
+  },
+  crisisArcs: [],
+  calibration: {
+    cityBudget: { real: 1460000000, game: 1.5, source: 'Detroit FY2024 General Fund' },
+    medianIncome: { value: 36140, source: 'ACS 2019-2023' },
+    vacancyRate: { value: 0.30, source: 'Census 2020' },
+    treeCanopy: { current: 26, target: 40, source: 'American Forests UTC Assessment' },
+    foodAccess: { percentLacking: 36, source: 'USDA Food Access Research Atlas' },
+    population: { value: 639111, source: 'Census 2020' },
+  },
+  sourceRegistry: [
+    {
+      key: 'census',
+      name: 'US Census Bureau ACS',
+      url: 'https://api.census.gov/',
+      fetchDate: '',
+      license: 'Public Domain',
+      notes: 'Block group level, 5-year estimates',
+    },
+    {
+      key: 'epa',
+      name: 'EPA Envirofacts',
+      url: 'https://data.epa.gov/',
+      fetchDate: '',
+      license: 'Public Domain',
+      notes: 'Brownfield and Superfund sites',
+    },
+    {
+      key: 'osm',
+      name: 'OpenStreetMap',
+      url: 'https://www.openstreetmap.org/',
+      fetchDate: '',
+      license: 'ODbL',
+      notes: 'Street network, buildings, POIs',
+    },
+  ],
+};
