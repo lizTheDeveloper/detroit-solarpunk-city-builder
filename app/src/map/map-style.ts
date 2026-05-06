@@ -1,15 +1,15 @@
-import type { StyleSpecification } from 'maplibre-gl';
+import type { StyleSpecification, SourceSpecification } from 'maplibre-gl';
 
-export function createDarkTerminalStyle(tileSourceUrl: string): StyleSpecification {
+export function createDarkTerminalStyle(tileSource: string | string[]): StyleSpecification {
+  const source: SourceSpecification = Array.isArray(tileSource)
+    ? { type: 'vector' as const, tiles: tileSource }
+    : { type: 'vector' as const, url: tileSource };
   return {
     version: 8,
     name: 'detroit-terminal',
     glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
     sources: {
-      openmaptiles: {
-        type: 'vector',
-        url: tileSourceUrl,
-      },
+      openmaptiles: source,
     },
     layers: [
       {
