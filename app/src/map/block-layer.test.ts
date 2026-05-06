@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { getBlockFillColor, getBlockPopupContent } from './block-layer';
-import type { BlockData } from './block-layer';
 
 describe('getBlockFillColor', () => {
   it('returns green for healthy blocks', () => {

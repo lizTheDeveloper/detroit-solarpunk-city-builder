@@ -48,12 +48,6 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       decarceration: 10,
       deGrowth: 10,
     },
-    narrativeState: {
-      actionsRemaining: 2,
-      actionsPerTurn: 2,
-      consecutiveTurns: {},
-      counterNarrativeCooldowns: {},
-    },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},
@@ -74,6 +68,15 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
     resolvedArcs: [],
     tutorialState: { active: false, completedSteps: [], dismissedTooltips: [] },
     advisorState: { dismissedConditions: [], cooldowns: {} },
+    calendarState: {
+      totalSlots: 60, fixedSlots: 38, discretionarySlots: 22, slotsSpent: 0,
+      overscheduleAmount: 0, overscheduleLimit: 5, burnoutBuffer: 15, burnoutBufferMax: 20,
+      burnoutState: 'sustainable', interactionsThisMonth: {}, lastInteractionMonth: {},
+      monthNumber: 1, delegationTier: 0, crisisSlotTax: 0, neighborhoodTimeAllocation: {},
+    },
+    strategicContacts: [],
+    mentors: [],
+    mapState: { selectedBlockId: null, viewState: { longitude: -83.0458, latitude: 42.3314, zoom: 12 } },
     ...overrides,
   };
 }
