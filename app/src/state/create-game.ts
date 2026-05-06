@@ -1,4 +1,5 @@
-import type { GameState, Tile, CommunityLeader, PublicOpinion, NarrativeState, TutorialState, AdvisorState } from './types';
+import type { GameState, Tile, CommunityLeader, PublicOpinion, TutorialState, AdvisorState } from './types';
+import { createInitialCalendarState } from './migration';
 import type { ActiveArc, SerializedDependencyWeb } from './crisis-types';
 import { COUNCIL_MEMBERS } from '../data/content/council-members';
 import { LEADER_DEFINITIONS } from '../data/content/leaders';
@@ -52,7 +53,7 @@ export function createNewGame(): GameState {
     month: startMonth,
     season: getSeason(startMonth),
     year: 1,
-    phase: 'events',
+    phase: 'player-actions',
     stage: 'awakening',
     path: null,
     // Starting meters calibrated to Detroit 2024 baseline.
@@ -200,12 +201,6 @@ export function createNewGame(): GameState {
       decarceration: 6,
       deGrowth: 3,
     } as PublicOpinion,
-    narrativeState: {
-      actionsRemaining: 2,
-      actionsPerTurn: 2,
-      consecutiveTurns: {},
-      counterNarrativeCooldowns: {},
-    } as NarrativeState,
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},
@@ -243,5 +238,12 @@ export function createNewGame(): GameState {
       dismissedConditions: [],
       cooldowns: {},
     } as AdvisorState,
+    // Calendar Slot System
+    ...createInitialCalendarState(1),
+    // Map integration
+    mapState: {
+      selectedBlockId: null,
+      viewState: { longitude: -83.0458, latitude: 42.3314, zoom: 11.5 },
+    },
   };
 }

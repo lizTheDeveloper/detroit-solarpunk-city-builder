@@ -8,7 +8,7 @@ export type ByproductId =
   | 'compost' | 'clean_soil' | 'lumber' | 'biomass'
   | 'fabrication_capacity' | 'recycled_materials'
   | 'stormwater_capacity' | 'community_knowledge'
-  | 'clean_energy' | 'native_seed_stock';
+  | 'clean_energy' | 'native_seed_stock' | 'secure_land';
 
 export type ByproductLifetime = 'ongoing' | 'one-shot';
 export type ByproductBonusType = 'costReduction' | 'durationReduction' | 'effectBoost';
@@ -62,15 +62,6 @@ export type PoliticalLeaning = 'progressive' | 'moderate' | 'moderate-conservati
 export type TurnPhase = 'events' | 'player-actions' | 'resolve';
 
 export type EventCategory = 'climate' | 'political' | 'community' | 'crisis' | 'antagonist';
-
-export type NarrativeActionType =
-  | 'community_meeting'
-  | 'media_campaign'
-  | 'education_program'
-  | 'cultural_event'
-  | 'demonstration'
-  | 'direct_engagement'
-  | 'lobbying';
 
 export type RelationshipLevel =
   | 'partner' | 'champion' | 'advocate' | 'neutral'
@@ -144,6 +135,7 @@ export interface ActiveProject {
   progress: number;
   duration: number;
   cost: number;
+  blockId?: string;
 }
 
 export interface CommunityLeader {
@@ -221,11 +213,61 @@ export interface PublicOpinion {
   deGrowth: number;
 }
 
-export interface NarrativeState {
-  actionsRemaining: number;
-  actionsPerTurn: number;
-  consecutiveTurns: Record<string, number>;
-  counterNarrativeCooldowns: Record<string, number>;
+// Calendar Slot System types
+export type BurnoutState = 'sustainable' | 'overextended' | 'burnout' | 'collapse';
+
+export type CalendarActionType =
+  | 'community_meeting'      // 2 slots
+  | 'proposal_review'        // 1 slot
+  | 'deep_conversation'      // 2 slots
+  | 'public_event'           // 3 slots
+  | 'quick_check_in'         // 1 slot
+  | 'rest_day'               // 1 slot
+  | 'delegation_hire'        // 3 slots
+  | 'strategic_cultivation'  // 2 slots
+  | 'mentor_meeting';        // 1 slot
+
+export interface CalendarState {
+  totalSlots: number;           // 60
+  fixedSlots: number;           // 38 base (reduced by delegation)
+  discretionarySlots: number;   // derived: total - fixed - crisisTax
+  slotsSpent: number;
+  overscheduleAmount: number;
+  overscheduleLimit: number;    // 5
+  burnoutBuffer: number;        // 0-20, starts at 15
+  burnoutBufferMax: number;     // 20
+  burnoutState: BurnoutState;
+  interactionsThisMonth: Record<string, number>; // npcId → count
+  lastInteractionMonth: Record<string, number>;  // npcId → last month number
+  monthNumber: number;
+  delegationTier: number;       // 0-4
+  crisisSlotTax: number;        // sum of active arc taxes
+  neighborhoodTimeAllocation: Record<string, number[]>; // tileId → slots per month (48 entries)
+}
+
+export type StrategicContactStage = 'undiscovered' | 'discovery' | 'introduction' | 'cooldown' | 'follow_up' | 'established' | 'deepening' | 'closed';
+
+export interface StrategicContact {
+  id: string;
+  name: string;
+  stage: StrategicContactStage;
+  cooldownRemaining: number;
+  patienceTimer: number;
+  monthsEstablished: number;
+  yieldMultiplier: number;
+  introducerId: string | null;
+}
+
+export interface MentorCharacter {
+  id: string;
+  name: string;
+  philosophy: string;
+  cooldownMonths: number;
+  lastMetMonth: number;
+  yieldType: keyof Meters | 'overton';
+  yieldAmount: number;
+  bufferGain: number;
+  unlocked: boolean;
 }
 
 export interface GameEvent {
@@ -305,6 +347,12 @@ export interface CounterNarrative {
   trigger: string | null;
 }
 
+export interface ProposalNegotiation {
+  costMultiplier: number;
+  leaderContribution: number;
+  durationModifier: number;
+}
+
 export interface Proposal {
   id: string;
   leaderId: string;
@@ -312,6 +360,7 @@ export interface Proposal {
   tileId: string;
   reason: string;
   turnProposed: number;
+  negotiation?: ProposalNegotiation;
 }
 
 export interface MeterDelta {
@@ -350,7 +399,6 @@ export interface GameState {
   pendingProposals: Proposal[];
   activePolicies: ActivePolicy[];
   publicOpinion: PublicOpinion;
-  narrativeState: NarrativeState;
   coalitions: Coalition[];
   eventQueue: GameEvent[];
   eventCooldowns: Record<string, number>;
@@ -374,22 +422,38 @@ export interface GameState {
   tutorialState: TutorialState;
   // Advisor prompts state
   advisorState: AdvisorState;
+  // Calendar Slot System
+  calendarState: CalendarState;
+  strategicContacts: StrategicContact[];
+  mentors: MentorCharacter[];
+  // Map integration
+  mapState: {
+    selectedBlockId: string | null;
+    viewState: { longitude: number; latitude: number; zoom: number };
+  };
 }
 
 export type GameAction =
-  | { type: 'START_PROJECT'; tileId: string; projectId: string; mode: ProjectMode }
+  | { type: 'START_PROJECT'; tileId: string; projectId: string; mode: ProjectMode; blockId?: string }
   | { type: 'RESPOND_PROPOSAL'; proposalId: string; response: ProposalResponse }
   | { type: 'ENACT_POLICY'; policyId: string }
-  | { type: 'NARRATIVE_ACTION'; actionType: NarrativeActionType; target: string; topic: string }
   | { type: 'RESPOND_EVENT'; eventId: string; choiceId: string }
   | { type: 'LOBBY_COUNCIL'; memberId: string; policyId: string; argumentAlignment: 'high' | 'medium' | 'low' }
   | { type: 'FORM_COALITION'; name: string; memberIds: string[]; topic: string }
   | { type: 'CAMPAIGN_ACTION'; actionType: 'rally' | 'promise' | 'coalition_building' }
   | { type: 'RECLAIM_LOT'; tileId: string }
   | { type: 'CONVERSATION_OUTCOME'; characterId: string; trustDelta: number }
+  | { type: 'NEGOTIATE_PROPOSAL'; proposalId: string; negotiation: ProposalNegotiation }
   | { type: 'END_TURN' }
   | { type: 'PREPARE_TURN' }
-  | { type: 'ADVANCE_PHASE' };
+  | { type: 'ADVANCE_PHASE' }
+  | { type: 'CALENDAR_ACTION'; actionType: CalendarActionType; targetId?: string; tileId?: string }
+  | { type: 'CALENDAR_REST_DAY' }
+  | { type: 'DELEGATION_HIRE'; tier: number }
+  | { type: 'STRATEGIC_CONTACT_ADVANCE'; contactId: string }
+  | { type: 'MENTOR_MEETING'; mentorId: string }
+  | { type: 'MAP_SELECT_BLOCK'; blockId: string; neighborhoodId: string }
+  | { type: 'MAP_SET_VIEW'; viewState: { longitude: number; latitude: number; zoom: number } };
 
 // Beyond the Map types
 export type CityRelationship = 'neutral' | 'cooperative' | 'allied';
