@@ -3,6 +3,7 @@ import { join } from 'path';
 import type { FeedSource, RawHeadline } from './types.ts';
 import { parseBlueskyTrending } from './parsers/bluesky-trending.ts';
 import { parseMemeorandum } from './parsers/memeorandum.ts';
+import { parseGenericRss } from './parsers/rss-generic.ts';
 import { createLogger } from './utils.ts';
 
 const log = createLogger('fetcher');
@@ -85,6 +86,11 @@ async function fetchSource(source: FeedSource, seenIds: Set<string>): Promise<Ra
     case 'memeorandum': {
       const text = await response.text();
       headlines = parseMemeorandum(text, fetchedAt);
+      break;
+    }
+    case 'rss-generic': {
+      const text = await response.text();
+      headlines = parseGenericRss(text, source.id, fetchedAt);
       break;
     }
     default:

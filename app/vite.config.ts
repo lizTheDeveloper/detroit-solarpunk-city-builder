@@ -16,8 +16,28 @@ function chatProxyPlugin(): Plugin {
   }
 }
 
+function pipelineProxyPlugin(): Plugin {
+  return {
+    name: 'pipeline-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/headlines', async (req, res) => {
+        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
+        handlePipelineRoute(req, res)
+      })
+      server.middlewares.use('/api/arc-state', async (req, res) => {
+        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
+        handlePipelineRoute(req, res)
+      })
+      server.middlewares.use('/api/health/pipeline', async (req, res) => {
+        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
+        handlePipelineRoute(req, res)
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), chatProxyPlugin()],
+  plugins: [react(), chatProxyPlugin(), pipelineProxyPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -27,6 +47,6 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test-setup.ts',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'server/**/*.test.ts'],
   },
 })

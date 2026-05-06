@@ -11,6 +11,54 @@
       "type": "rss",
       "url": "http://www.memeorandum.com/feed.xml",
       "parser": "memeorandum"
+    },
+    {
+      "id": "bridge_detroit",
+      "type": "rss",
+      "url": "https://www.bridgedetroit.com/feed/",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "planet_detroit",
+      "type": "rss",
+      "url": "https://planetdetroit.org/feed/",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "outlier_media",
+      "type": "rss",
+      "url": "https://outliermedia.org/feed/",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "metro_times",
+      "type": "rss",
+      "url": "https://www.metrotimes.com/detroit/Rss.xml",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "model_d",
+      "type": "rss",
+      "url": "https://feeds.feedburner.com/ModelDMedia",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "daily_detroit",
+      "type": "rss",
+      "url": "https://feeds.feedburner.com/DailyDetroit",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "chalkbeat_detroit",
+      "type": "rss",
+      "url": "https://www.chalkbeat.org/arc/outboundfeeds/rss/?outputType=xml",
+      "parser": "rss-generic"
+    },
+    {
+      "id": "google_news_detroit",
+      "type": "rss",
+      "url": "https://news.google.com/rss/headlines/section/geo/Detroit?hl=en-US&gl=US&ceid=US:en",
+      "parser": "rss-generic"
     }
   ]
 }
