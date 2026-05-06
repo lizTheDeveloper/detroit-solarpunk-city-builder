@@ -23,15 +23,18 @@ import ProposalPanel from '@/ui/panels/ProposalPanel';
 import CouncilPanel from '@/ui/panels/CouncilPanel';
 import CharacterPanel from '@/ui/panels/CharacterPanel';
 import PolicyPanel from '@/ui/panels/PolicyPanel';
-import NarrativePanel from '@/ui/panels/NarrativePanel';
 import EventPanel from '@/ui/panels/EventPanel';
 import TensionPanel from '@/ui/panels/TensionPanel';
 import SaveLoadPanel from '@/ui/panels/SaveLoadPanel';
 import ConversationPanel from '@/ui/panels/ConversationPanel';
 import CoalitionPanel from '@/ui/panels/CoalitionPanel';
 import LLMSettingsPanel from '@/ui/panels/LLMSettingsPanel';
+import HeadlinesPanel from '@/ui/panels/HeadlinesPanel';
+import { CalendarBar } from '@/ui/components/CalendarBar';
+import { CalendarGrid } from '@/ui/components/CalendarGrid';
+import MapPanel from '@/map/MapPanel';
 
-type ContentTab = 'tiles' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'narrative' | 'events' | 'tensions' | 'saves' | 'settings';
+type ContentTab = 'map' | 'tiles' | 'calendar' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
 
 type RightPanel =
   | { kind: 'none' }
@@ -59,9 +62,9 @@ export default function App() {
   const [state, setState] = useState<GameState>(initGame);
   const [rightPanel, setRightPanel] = useState<RightPanel>({ kind: 'none' });
   const [showTurnSummary, setShowTurnSummary] = useState(false);
-  const [activeTab, setActiveTab] = useState<ContentTab>('tiles');
+  const [activeTab, setActiveTab] = useState<ContentTab>('map');
   const undoStackRef = useRef(createUndoStack());
-  const [conversation, setConversation] = useState<{ characterId: string; interactionType: string; message: string } | null>(null);
+  const [conversation, setConversation] = useState<{ characterId: string; interactionType: string; message: string; proposalId?: string } | null>(null);
 
   useEffect(() => {
     initializeArcsFromPipeline(state).then((updated) => {
@@ -138,6 +141,10 @@ export default function App() {
     setShowTurnSummary(false);
   }, []);
 
+  const handleRestDay = useCallback(() => {
+    dispatch({ type: 'CALENDAR_REST_DAY' });
+  }, [dispatch]);
+
   const selectedTileId =
     rightPanel.kind === 'tile-detail' || rightPanel.kind === 'project-select'
       ? rightPanel.tileId
@@ -145,14 +152,18 @@ export default function App() {
 
   const eventCount = state.eventQueue.length;
 
+  const cal = state.calendarState;
+  const slotsRemaining = cal.discretionarySlots - cal.slotsSpent;
+
   const TABS: { id: ContentTab; label: string; badge?: number }[] = [
+    { id: 'map', label: 'Map' },
     { id: 'tiles', label: 'Tiles' },
+    { id: 'calendar', label: `Calendar (${slotsRemaining}/${cal.discretionarySlots})` },
     { id: 'dashboard', label: 'Briefing' },
     { id: 'council', label: 'Council' },
     { id: 'characters', label: 'Leaders' },
     { id: 'coalitions', label: 'Coalitions' },
     { id: 'policies', label: 'Policies' },
-    { id: 'narrative', label: 'Actions' },
     { id: 'events', label: 'Events', badge: eventCount > 0 ? eventCount : undefined },
     { id: 'tensions', label: 'Tensions' },
     { id: 'saves', label: 'Save/Load' },
@@ -169,6 +180,7 @@ export default function App() {
               selectedTileId={selectedTileId}
               onSelectTile={handleSelectTile}
             />
+            <HeadlinesPanel />
             <EndTurnButton onEndTurn={handleEndTurn} onResolve={handleResolveAfterEvents} />
             <button
               className="btn btn-sm btn-undo"
@@ -196,22 +208,34 @@ export default function App() {
               ))}
             </div>
 
+            {activeTab === 'map' && (
+              <div className="map-container">
+                <MapPanel
+                  onSelectTile={handleSelectTile}
+                  selectedTileId={selectedTileId}
+                  tileHealthMap={Object.fromEntries(
+                    Object.values(state.tiles).map(t => [t.id, t.ecologicalHealth])
+                  )}
+                />
+              </div>
+            )}
+
             {/* Events panel shown prominently when events exist */}
             {eventCount > 0 && activeTab === 'events' && <EventPanel />}
 
-            {/* Events auto-show during events phase */}
-            {eventCount > 0 && activeTab !== 'events' && state.phase === 'events' && <EventPanel />}
+            {/* Events badge pulses but doesn't hijack the screen */}
 
             {activeTab === 'tiles' && (
               <>
-                {state.activeProposals.length > 0 && (
-                  <ProposalPanel onConversation={(charId, type) => setConversation({ characterId: charId, interactionType: type, message: '' })} />
+                {rightPanel.kind === 'none' && state.activeProposals.length > 0 && (
+                  <ProposalPanel onConversation={(charId, type, proposalId) => setConversation({ characterId: charId, interactionType: type, message: '', proposalId })} />
                 )}
 
                 {rightPanel.kind === 'tile-detail' && (
                   <TileDetailPanel
                     tileId={rightPanel.tileId}
                     onStartProjectClick={() => handleStartProjectClick(rightPanel.tileId)}
+                    onConversation={(charId, type, proposalId) => setConversation({ characterId: charId, interactionType: type, message: '', proposalId })}
                   />
                 )}
 
@@ -232,12 +256,39 @@ export default function App() {
               </>
             )}
 
+            {activeTab === 'calendar' && (
+              <div className="panel calendar-panel">
+                <CalendarBar
+                  discretionarySlots={cal.discretionarySlots}
+                  slotsSpent={cal.slotsSpent}
+                  overscheduleAmount={cal.overscheduleAmount}
+                  overscheduleLimit={cal.overscheduleLimit}
+                  crisisSlotTax={cal.crisisSlotTax}
+                  burnoutState={cal.burnoutState}
+                  burnoutBuffer={cal.burnoutBuffer}
+                  burnoutBufferMax={cal.burnoutBufferMax}
+                  onRestDay={handleRestDay}
+                />
+                <CalendarGrid
+                  totalSlots={cal.totalSlots}
+                  fixedSlots={cal.fixedSlots}
+                  slotsSpent={cal.slotsSpent}
+                  crisisSlotTax={cal.crisisSlotTax}
+                  overscheduleAmount={cal.overscheduleAmount}
+                  spentSlotDetails={[]}
+                  crisisNames={state.activeArcs.map((a) => a.arcId)}
+                  monthNumber={cal.monthNumber}
+                  expanded={true}
+                  onToggle={() => {}}
+                />
+              </div>
+            )}
+
             {activeTab === 'dashboard' && <Dashboard />}
             {activeTab === 'council' && <CouncilPanel />}
             {activeTab === 'characters' && <CharacterPanel onTalk={(charId) => setConversation({ characterId: charId, interactionType: 'direct_engagement', message: '' })} />}
             {activeTab === 'coalitions' && <CoalitionPanel />}
             {activeTab === 'policies' && <PolicyPanel />}
-            {activeTab === 'narrative' && <NarrativePanel />}
             {activeTab === 'tensions' && <TensionPanel />}
             {activeTab === 'saves' && <SaveLoadPanel onLoad={handleLoadSave} />}
             {activeTab === 'settings' && <LLMSettingsPanel />}
@@ -250,6 +301,7 @@ export default function App() {
             interactionType={conversation.interactionType}
             onDismiss={() => setConversation(null)}
             initialMessage={conversation.message}
+            proposalId={conversation.proposalId}
           />
         )}
         {showTurnSummary && <TurnSummary onDismiss={handleDismissSummary} />}
