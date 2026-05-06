@@ -483,9 +483,9 @@ describe('generateClimateEvent', () => {
   });
 
   it('tipping point 1 increases event probability by 0.10', () => {
-    // Without TP1: pressure=10, base=0.10, summer heat_wave max = 0.30
-    // With TP1: base=0.20, summer heat_wave max = 0.60
-    // Roll of 0.4 > 0.30 (no TP1) but < 0.60 (with TP1)
+    // Without TP1: pressure=10, base=0.10+10*0.008=0.18, summer heat_wave max = 0.18*3 = 0.54
+    // With TP1: base=0.28, summer heat_wave max = 0.28*3 = 0.84
+    // Roll of 0.7 > 0.54 (no TP1) but < 0.84 (with TP1)
     const stateWithTP1 = makeState({
       meters: makeMeters({ climatePressure: 10 }),
       eventCooldowns: { tipping_point_1: 9999 },
@@ -493,7 +493,7 @@ describe('generateClimateEvent', () => {
     let callCount = 0;
     const rng = () => {
       callCount++;
-      if (callCount === 1) return 0.4;
+      if (callCount === 1) return 0.7;
       return 0.0;
     };
     const result = generateClimateEvent(stateWithTP1, 'summer', rng);
@@ -504,7 +504,7 @@ describe('generateClimateEvent', () => {
       meters: makeMeters({ climatePressure: 10 }),
       eventCooldowns: {},
     });
-    const result2 = generateClimateEvent(stateWithoutTP1, 'summer', () => 0.4);
+    const result2 = generateClimateEvent(stateWithoutTP1, 'summer', () => 0.7);
     expect(result2).toBeNull();
   });
 
@@ -521,7 +521,7 @@ describe('generateClimateEvent', () => {
     const result = generateClimateEvent(state, 'summer', rng);
     expect(result).not.toBeNull();
     expect(result!.category).toBe('climate');
-    expect(result!.choices).toHaveLength(2);
+    expect(result!.choices).toHaveLength(3);
     expect(result!.turnGenerated).toBe(5);
   });
 });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGame } from '@/state/store';
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { canStartProject } from '@/systems/projects';
+import { formatCost as fmtBudget } from '@/ui/format';
 import type { ProjectMode, ProjectDefinition } from '@/state/types';
 
 interface ProjectSelectPanelProps {
@@ -11,7 +12,7 @@ interface ProjectSelectPanelProps {
 
 function formatCost(baseCost: number, mode: ProjectMode): string {
   const multiplier = mode === 'community-led' ? 1.3 : 1.0;
-  return `$${(baseCost * multiplier).toFixed(2)}M`;
+  return fmtBudget(baseCost * multiplier);
 }
 
 function formatDuration(baseDuration: number, mode: ProjectMode): string {
@@ -49,7 +50,7 @@ function ProjectRow({
         {def.effects.tileEco !== 0 && <span className="effect-tag">Eco +{def.effects.tileEco}</span>}
         {def.effects.foodSov !== 0 && <span className="effect-tag">Food +{def.effects.foodSov}</span>}
         {def.effects.trust !== 0 && <span className="effect-tag">Trust +{def.effects.trust}</span>}
-        {def.effects.annualRevenue > 0 && <span className="effect-tag">Rev +${def.effects.annualRevenue.toFixed(1)}M</span>}
+        {def.effects.annualRevenue > 0 && <span className="effect-tag">Rev +{fmtBudget(def.effects.annualRevenue)}/yr</span>}
         {def.effects.contaminationReduction > 0 && <span className="effect-tag">Contam -{def.effects.contaminationReduction}%</span>}
         {def.effects.other.map((o) => <span key={o} className="effect-tag">{o}</span>)}
       </div>

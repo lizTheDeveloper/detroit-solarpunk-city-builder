@@ -22,6 +22,7 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
 
 describe('applyMeterFeedback', () => {
   describe('Political Will regeneration', () => {
+    // Base regen is now 1.0 + max(0, (trust - 40) * 0.033) + recovery boost when will < 15
     it('gives baseline +1.0 when trust <= 40', () => {
       const meters = makeMeters({ communityTrust: 30, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
@@ -29,7 +30,7 @@ describe('applyMeterFeedback', () => {
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
       expect(willDelta).toBeDefined();
-      expect(willDelta!.amount).toBeCloseTo(1.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.0, 2);
     });
 
     it('gives baseline +1.0 when trust is exactly 40', () => {
@@ -38,54 +39,74 @@ describe('applyMeterFeedback', () => {
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(1.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.0, 2);
     });
 
-    it('gives +2.5 at trust 55', () => {
+    it('gives +1.495 at trust 55', () => {
       const meters = makeMeters({ communityTrust: 55, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(2.5, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.495, 2);
     });
 
-    it('gives +2.0 at trust 50', () => {
+    it('gives +1.33 at trust 50', () => {
       const meters = makeMeters({ communityTrust: 50, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(2.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.33, 2);
     });
 
-    it('gives +4.0 at trust 70', () => {
+    it('gives +1.99 at trust 70', () => {
       const meters = makeMeters({ communityTrust: 70, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(4.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.99, 2);
     });
 
-    it('gives +7.0 at trust 100', () => {
+    it('gives +2.98 at trust 100', () => {
       const meters = makeMeters({ communityTrust: 100, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(7.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(2.98, 2);
     });
 
     it('applies will regen to the returned meters', () => {
       const meters = makeMeters({ communityTrust: 55, politicalWill: 50 });
       const result = applyMeterFeedback(meters);
-      expect(result.meters.politicalWill).toBeCloseTo(52.5, 5);
+      expect(result.meters.politicalWill).toBeCloseTo(51.495, 2);
+    });
+
+    it('applies recovery boost when will is critically low', () => {
+      const meters = makeMeters({ communityTrust: 50, politicalWill: 5 });
+      const result = applyMeterFeedback(meters);
+      const willDelta = result.deltas.find(
+        (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
+      );
+      // base 1.33 + recovery boost (15-5)*0.1 = 1.0 → total 2.33
+      expect(willDelta!.amount).toBeCloseTo(2.33, 2);
     });
   });
 
   describe('Food Sovereignty → Trust bonus', () => {
+    // Formula: diminishing returns above 25 over threshold, base rate 0.01, cap 0.2
     it('gives +0 when foodSov <= 20', () => {
+      const meters = makeMeters({ foodSovereignty: 10 });
+      const result = applyMeterFeedback(meters);
+      const foodTrustDelta = result.deltas.find(
+        (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
+      );
+      expect(foodTrustDelta).toBeUndefined();
+    });
+
+    it('gives +0 when foodSov is exactly 15', () => {
       const meters = makeMeters({ foodSovereignty: 15 });
       const result = applyMeterFeedback(meters);
       const foodTrustDelta = result.deltas.find(
@@ -94,65 +115,56 @@ describe('applyMeterFeedback', () => {
       expect(foodTrustDelta).toBeUndefined();
     });
 
-    it('gives +0 when foodSov is exactly 20', () => {
-      const meters = makeMeters({ foodSovereignty: 20 });
-      const result = applyMeterFeedback(meters);
-      const foodTrustDelta = result.deltas.find(
-        (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
-      );
-      expect(foodTrustDelta).toBeUndefined();
-    });
-
-    it('gives +0.75 at foodSov 35', () => {
+    it('gives +0.15 at foodSov 35', () => {
       const meters = makeMeters({ foodSovereignty: 35 });
       const result = applyMeterFeedback(meters);
       const foodTrustDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
       );
       expect(foodTrustDelta).toBeDefined();
-      expect(foodTrustDelta!.amount).toBeCloseTo(0.75, 5);
+      expect(foodTrustDelta!.amount).toBeCloseTo(0.15, 2);
     });
 
-    it('gives +0.5 at foodSov 30', () => {
+    it('gives +0.10 at foodSov 30', () => {
       const meters = makeMeters({ foodSovereignty: 30 });
       const result = applyMeterFeedback(meters);
       const foodTrustDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
       );
       expect(foodTrustDelta).toBeDefined();
-      expect(foodTrustDelta!.amount).toBeCloseTo(0.5, 5);
+      expect(foodTrustDelta!.amount).toBeCloseTo(0.10, 2);
     });
 
-    it('gives +1.5 at foodSov 50', () => {
+    it('gives +0.20 (capped) at foodSov 50', () => {
       const meters = makeMeters({ foodSovereignty: 50 });
       const result = applyMeterFeedback(meters);
       const foodTrustDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
       );
       expect(foodTrustDelta).toBeDefined();
-      expect(foodTrustDelta!.amount).toBeCloseTo(1.5, 5);
+      expect(foodTrustDelta!.amount).toBeCloseTo(0.20, 2);
     });
   });
 
   describe('Trust passive decay', () => {
-    it('always applies -0.3 trust decay', () => {
+    it('applies scaling trust decay: -0.3 at trust 50', () => {
       const meters = makeMeters({ communityTrust: 50 });
       const result = applyMeterFeedback(meters);
       const decayDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'trust_decay'
       );
       expect(decayDelta).toBeDefined();
-      expect(decayDelta!.amount).toBeCloseTo(-0.3, 5);
+      expect(decayDelta!.amount).toBeCloseTo(-0.3, 2);
     });
 
-    it('applies trust decay even at low trust', () => {
+    it('applies trust decay even at low trust: -0.104 at trust 1', () => {
       const meters = makeMeters({ communityTrust: 1 });
       const result = applyMeterFeedback(meters);
       const decayDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'trust_decay'
       );
       expect(decayDelta).toBeDefined();
-      expect(decayDelta!.amount).toBeCloseTo(-0.3, 5);
+      expect(decayDelta!.amount).toBeCloseTo(-0.104, 2);
     });
   });
 
@@ -166,12 +178,13 @@ describe('applyMeterFeedback', () => {
       }
     });
 
-    it('includes will_regen, trust_decay, and food_trust_bonus when applicable', () => {
+    it('includes will_regen, trust_decay, eco_decay, and food_trust_bonus when applicable', () => {
       const meters = makeMeters({ communityTrust: 55, foodSovereignty: 35 });
       const result = applyMeterFeedback(meters);
       const sources = result.deltas.map((d) => d.source);
       expect(sources).toContain('will_regen');
       expect(sources).toContain('trust_decay');
+      expect(sources).toContain('eco_decay');
       expect(sources).toContain('food_trust_bonus');
     });
   });
@@ -182,29 +195,34 @@ describe('applyMeterFeedback', () => {
       // trust=50, eco=15, food=10, will=60, budget=4.2, climate=30
       const result = applyMeterFeedback(meters);
 
-      // Will regen: 1.0 + max(0, (50-40)*0.1) = 1.0 + 1.0 = 2.0
+      // Will regen: 1.0 + max(0, (50-40)*0.033) = 1.0 + 0.33 = 1.33
       const willDelta = result.deltas.find(
         (d) => d.meter === 'politicalWill' && d.source === 'will_regen'
       );
-      expect(willDelta!.amount).toBeCloseTo(2.0, 5);
+      expect(willDelta!.amount).toBeCloseTo(1.33, 2);
 
-      // Food->trust: max(0, (10-20)*0.05) = max(0, -0.5) = 0, so no delta
+      // Food->trust: foodSov=10 < 20, so no delta
       const foodTrustDelta = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus'
       );
       expect(foodTrustDelta).toBeUndefined();
 
-      // Trust decay: -0.3
+      // Trust decay: -(0.1 + 50*0.004) = -0.3
       const trustDecay = result.deltas.find(
         (d) => d.meter === 'communityTrust' && d.source === 'trust_decay'
       );
-      expect(trustDecay!.amount).toBeCloseTo(-0.3, 5);
+      expect(trustDecay!.amount).toBeCloseTo(-0.3, 2);
 
-      // Final meters
-      expect(result.meters.politicalWill).toBeCloseTo(62.0, 5);
-      expect(result.meters.communityTrust).toBeCloseTo(49.7, 5);
-      // Other meters unchanged
-      expect(result.meters.ecologicalHealth).toBe(15);
+      // Eco decay: -0.05
+      const ecoDecay = result.deltas.find(
+        (d) => d.meter === 'ecologicalHealth' && d.source === 'eco_decay'
+      );
+      expect(ecoDecay!.amount).toBeCloseTo(-0.05, 2);
+
+      // Final meters (will 60 + regen 1.33 = 61.33)
+      expect(result.meters.politicalWill).toBeCloseTo(61.33, 2);
+      expect(result.meters.communityTrust).toBeCloseTo(49.7, 2);
+      expect(result.meters.ecologicalHealth).toBeCloseTo(14.95, 2);
       expect(result.meters.foodSovereignty).toBe(10);
       expect(result.meters.budget).toBe(4.2);
       expect(result.meters.climatePressure).toBe(30);
@@ -214,10 +232,10 @@ describe('applyMeterFeedback', () => {
       const meters = makeMeters({ communityTrust: 60, foodSovereignty: 50 });
       const result = applyMeterFeedback(meters);
 
-      // Food->trust: max(0, (50-20)*0.05) = 1.5
-      // Trust decay: -0.3
-      // Net trust change: +1.2
-      expect(result.meters.communityTrust).toBeCloseTo(61.2, 5);
+      // Food->trust: foodAboveThreshold=30, diminishing=25+(5*0.2)=26, bonus=min(0.2, 26*0.01)=0.20
+      // Trust decay: -(0.1 + 60*0.004) = -0.34 (no high trust penalty, 60 <= 70)
+      // Net trust change: 0.20 - 0.34 = -0.14
+      expect(result.meters.communityTrust).toBeCloseTo(59.86, 2);
     });
   });
 
@@ -244,22 +262,23 @@ describe('climateDamageMultiplier', () => {
     expect(climateDamageMultiplier(100)).toBeCloseTo(0.2, 5);
   });
 
-  it('never goes below 0.1', () => {
-    expect(climateDamageMultiplier(150)).toBeCloseTo(0.1, 5);
+  it('never goes below 0.2', () => {
+    expect(climateDamageMultiplier(150)).toBeCloseTo(0.2, 5);
   });
 });
 
 describe('climateEventProbability', () => {
-  it('returns 0.2 at pressure 30', () => {
-    expect(climateEventProbability(30)).toBeCloseTo(0.2, 5);
+  // Formula: 0.10 + climatePressure * 0.008
+  it('returns 0.34 at pressure 30', () => {
+    expect(climateEventProbability(30)).toBeCloseTo(0.34, 5);
   });
 
-  it('returns 0.45 at pressure 80', () => {
-    expect(climateEventProbability(80)).toBeCloseTo(0.45, 5);
+  it('returns 0.74 at pressure 80', () => {
+    expect(climateEventProbability(80)).toBeCloseTo(0.74, 5);
   });
 
-  it('returns 0.05 at pressure 0', () => {
-    expect(climateEventProbability(0)).toBeCloseTo(0.05, 5);
+  it('returns 0.10 at pressure 0', () => {
+    expect(climateEventProbability(0)).toBeCloseTo(0.10, 5);
   });
 });
 

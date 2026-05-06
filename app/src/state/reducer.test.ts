@@ -58,6 +58,11 @@ describe('gameReducer', () => {
   describe('START_PROJECT', () => {
     it('deducts cost and adds ActiveProject to the tile (player-initiated, 100% cost)', () => {
       const state = createNewGame();
+      // Give enough budget to cover the $2M solar_array project
+      const richState: GameState = {
+        ...state,
+        meters: { ...state.meters, budget: 5.0 },
+      };
       const action: GameAction = {
         type: 'START_PROJECT',
         tileId: 'brightmoor',
@@ -65,9 +70,9 @@ describe('gameReducer', () => {
         mode: 'player-initiated',
       };
 
-      const result = gameReducer(state, action, projects);
+      const result = gameReducer(richState, action, projects);
 
-      expect(result.meters.budget).toBeCloseTo(2.8 - 2.0);
+      expect(result.meters.budget).toBeCloseTo(5.0 - 2.0);
       expect(result.tiles['brightmoor'].activeProjects).toHaveLength(1);
       expect(result.tiles['brightmoor'].activeProjects[0]).toEqual({
         definitionId: 'solar_array',
@@ -81,6 +86,11 @@ describe('gameReducer', () => {
 
     it('community-led mode uses 130% cost', () => {
       const state = createNewGame();
+      // Give enough budget to cover the $2M * 1.3 solar_array community-led project
+      const richState: GameState = {
+        ...state,
+        meters: { ...state.meters, budget: 5.0 },
+      };
       const action: GameAction = {
         type: 'START_PROJECT',
         tileId: 'brightmoor',
@@ -88,10 +98,10 @@ describe('gameReducer', () => {
         mode: 'community-led',
       };
 
-      const result = gameReducer(state, action, projects);
+      const result = gameReducer(richState, action, projects);
 
       const expectedCost = 2.0 * 1.3;
-      expect(result.meters.budget).toBeCloseTo(2.8 - expectedCost);
+      expect(result.meters.budget).toBeCloseTo(5.0 - expectedCost);
       expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(expectedCost);
       expect(result.tiles['brightmoor'].activeProjects[0].mode).toBe('community-led');
     });
@@ -243,7 +253,7 @@ describe('gameReducer', () => {
     }
 
     describe('accept', () => {
-      it('increases leader trust by +10', () => {
+      it('increases leader trust by +5', () => {
         const state = stateWithProposal();
         const action: GameAction = {
           type: 'RESPOND_PROPOSAL',
@@ -253,7 +263,7 @@ describe('gameReducer', () => {
 
         const result = gameReducer(state, action, projects);
 
-        expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust + 10);
+        expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust + 5);
       });
 
       it('starts project at 85% cost in community-led mode', () => {
@@ -288,7 +298,7 @@ describe('gameReducer', () => {
     });
 
     describe('modify', () => {
-      it('increases leader trust by +3', () => {
+      it('increases leader trust by +2', () => {
         const state = stateWithProposal();
         const action: GameAction = {
           type: 'RESPOND_PROPOSAL',
@@ -298,7 +308,7 @@ describe('gameReducer', () => {
 
         const result = gameReducer(state, action, projects);
 
-        expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust + 3);
+        expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust + 2);
       });
 
       it('starts project with reduced effects marker (50% trust gain on completion)', () => {
@@ -465,29 +475,33 @@ describe('gameReducer', () => {
   });
 
   describe('END_TURN', () => {
-    it('advances season from spring to summer', () => {
-      const state = createNewGame(); // spring
+    it('advances month from 6 (spring) to 7 (summer) — season transitions', () => {
+      const state: GameState = { ...createNewGame(), month: 6, season: 'spring' };
       const result = gameReducer(state, { type: 'END_TURN' }, projects);
+      expect(result.month).toBe(7);
       expect(result.season).toBe('summer');
     });
 
-    it('advances season from summer to fall', () => {
-      const state: GameState = { ...createNewGame(), season: 'summer' };
+    it('advances month from 9 (summer) to 10 (fall) — season transitions', () => {
+      const state: GameState = { ...createNewGame(), month: 9, season: 'summer' };
       const result = gameReducer(state, { type: 'END_TURN' }, projects);
+      expect(result.month).toBe(10);
       expect(result.season).toBe('fall');
     });
 
-    it('advances season from fall to winter', () => {
-      const state: GameState = { ...createNewGame(), season: 'fall' };
+    it('advances month from 12 (fall) to 1 (winter) and increments year', () => {
+      const state: GameState = { ...createNewGame(), month: 12, season: 'fall', year: 1 };
       const result = gameReducer(state, { type: 'END_TURN' }, projects);
+      expect(result.month).toBe(1);
       expect(result.season).toBe('winter');
+      expect(result.year).toBe(2);
     });
 
-    it('wraps winter to spring and increments year', () => {
-      const state: GameState = { ...createNewGame(), season: 'winter', year: 1 };
+    it('stays in same season when month advances within season (4→5 both spring)', () => {
+      const state: GameState = { ...createNewGame(), month: 4, season: 'spring' };
       const result = gameReducer(state, { type: 'END_TURN' }, projects);
+      expect(result.month).toBe(5);
       expect(result.season).toBe('spring');
-      expect(result.year).toBe(2);
     });
 
     it('increments turn', () => {
@@ -498,11 +512,13 @@ describe('gameReducer', () => {
 
     it('recalculates maxConcurrentProjects based on communityTrust after meter feedback', () => {
       const state = createNewGame();
-      // Change communityTrust to 76 => after meter feedback trust decays -0.5 => 75.5
-      // floor(2 + 75.5/25) = floor(5.02) = 5
+      // Change communityTrust to 76 => after meter feedback trust decays -(0.3+76*0.012)=-1.212
+      // + leader trust bonus ~1.65 => trust ~76.4 => floor(2 + 76.4/25) = floor(5.056) = 5
       const modifiedState: GameState = {
         ...state,
         meters: { ...state.meters, communityTrust: 76 },
+        activeArcs: [],
+        delayedConsequenceQueue: [],
       };
 
       const result = gameReducer(modifiedState, { type: 'END_TURN' }, projects);
@@ -568,9 +584,8 @@ describe('gameReducer', () => {
   describe('ENACT_POLICY', () => {
     it('enacts a valid policy with sufficient Will — policy enacted, Will reduced', () => {
       const state = createNewGame();
-      // urban_agriculture_zoning: baseThreshold=0.30, enactmentCost=0.08
-      // requiredWill = 0.30 + 0.08 = 0.38 → need 38% Will
-      // Default state has 60% Will — sufficient
+      // urban_agriculture_zoning: baseThreshold=0.20, enactmentCost=0.05
+      // requiredWill = 0.20 + 0.05 = 0.25 → need 25% Will
       const highWillState: GameState = {
         ...state,
         meters: { ...state.meters, politicalWill: 60 },
@@ -579,15 +594,15 @@ describe('gameReducer', () => {
       const action: GameAction = { type: 'ENACT_POLICY', policyId: 'urban_agriculture_zoning' };
       const result = gameReducer(highWillState, action);
 
-      // enactmentCost is 0.08 in decimal → 8 in 0-100 scale
-      expect(result.meters.politicalWill).toBeCloseTo(60 - 8);
+      // enactmentCost is 0.05 in decimal → 5 in 0-100 scale
+      expect(result.meters.politicalWill).toBeCloseTo(60 - 5);
       expect(result.activePolicies).toHaveLength(1);
       expect(result.activePolicies[0].definitionId).toBe('urban_agriculture_zoning');
     });
 
     it('returns state unchanged with insufficient Will', () => {
       const state = createNewGame();
-      // urban_agriculture_zoning needs ~38% Will (threshold 0.30 + cost 0.08)
+      // urban_agriculture_zoning needs ~25% Will (threshold 0.20 + cost 0.05)
       const lowWillState: GameState = {
         ...state,
         meters: { ...state.meters, politicalWill: 10 },

@@ -291,10 +291,10 @@ describe('applyProposalResponse', () => {
   }
 
   describe('accept', () => {
-    it('increases leader trust by 10', () => {
+    it('increases leader trust by 6', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'accept');
-      expect(result.leaders.grace.trust).toBe(40); // 30 + 10
+      expect(result.leaders.grace.trust).toBe(36); // 30 + 6
     });
 
     it('starts project at 85% base cost', () => {
@@ -303,8 +303,8 @@ describe('applyProposalResponse', () => {
       const tile = result.tiles.brightmoor;
       expect(tile.activeProjects).toHaveLength(1);
       const project = tile.activeProjects[0];
-      // baseCost is 0.75, 85% = 0.6375
-      expect(project.cost).toBeCloseTo(0.6375, 5);
+      // baseCost is 0.10, 85% = 0.085
+      expect(project.cost).toBeCloseTo(0.085, 5);
     });
 
     it('starts project in community-led mode', () => {
@@ -318,8 +318,8 @@ describe('applyProposalResponse', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'accept');
       const project = result.tiles.brightmoor.activeProjects[0];
-      // baseDuration is 3, ceil(3*1.5)=5, min is 3+1=4, so 5
-      expect(project.duration).toBe(5);
+      // baseDuration is 9, ceil(9*1.5)=14, min is 9+1=10, so 14
+      expect(project.duration).toBe(14);
     });
 
     it('removes the proposal from activeProposals', () => {
@@ -338,24 +338,24 @@ describe('applyProposalResponse', () => {
     it('deducts cost from budget', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'accept');
-      // budget was 10.0, cost is 0.6375
-      expect(result.meters.budget).toBeCloseTo(10.0 - 0.6375, 5);
+      // budget was 10.0, cost is 0.085
+      expect(result.meters.budget).toBeCloseTo(10.0 - 0.085, 5);
     });
   });
 
   describe('modify', () => {
-    it('increases leader trust by 3', () => {
+    it('increases leader trust by 2', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'modify');
-      expect(result.leaders.grace.trust).toBe(33); // 30 + 3
+      expect(result.leaders.grace.trust).toBe(32); // 30 + 2
     });
 
     it('starts project at 90% base cost', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'modify');
       const project = result.tiles.brightmoor.activeProjects[0];
-      // baseCost is 0.75, 90% = 0.675
-      expect(project.cost).toBeCloseTo(0.675, 5);
+      // baseCost is 0.10, 90% = 0.09
+      expect(project.cost).toBeCloseTo(0.09, 5);
     });
 
     it('removes proposal from activeProposals', () => {
@@ -374,8 +374,8 @@ describe('applyProposalResponse', () => {
     it('deducts cost from budget', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'modify');
-      // budget was 10.0, cost is 0.675
-      expect(result.meters.budget).toBeCloseTo(10.0 - 0.675, 5);
+      // budget was 10.0, cost is 0.09
+      expect(result.meters.budget).toBeCloseTo(10.0 - 0.09, 5);
     });
   });
 

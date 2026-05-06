@@ -19,23 +19,23 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('calculateEffectiveThreshold', () => {
-  const policy = POLICY_CATALOG['urban_agriculture_zoning']; // baseThreshold 0.30
+  const policy = POLICY_CATALOG['urban_agriculture_zoning']; // baseThreshold 0.20
 
   it('returns base threshold at 0% topic opinion', () => {
     const result = calculateEffectiveThreshold(policy, 0);
-    expect(result).toBeCloseTo(0.30, 6);
+    expect(result).toBeCloseTo(0.20, 6);
   });
 
   it('returns 85% of base at 50% topic opinion', () => {
-    // 0.30 * (1 - 50 * 0.003) = 0.30 * 0.85 = 0.255
+    // 0.20 * (1 - 50 * 0.003) = 0.20 * 0.85 = 0.17
     const result = calculateEffectiveThreshold(policy, 50);
-    expect(result).toBeCloseTo(0.30 * 0.85, 6);
+    expect(result).toBeCloseTo(0.20 * 0.85, 6);
   });
 
   it('returns 70% of base at 100% topic opinion', () => {
-    // 0.30 * (1 - 100 * 0.003) = 0.30 * 0.70 = 0.21
+    // 0.20 * (1 - 100 * 0.003) = 0.20 * 0.70 = 0.14
     const result = calculateEffectiveThreshold(policy, 100);
-    expect(result).toBeCloseTo(0.30 * 0.70, 6);
+    expect(result).toBeCloseTo(0.20 * 0.70, 6);
   });
 });
 
@@ -113,8 +113,8 @@ describe('enactPolicy', () => {
       publicOpinion: { ...createNewGame().publicOpinion, foodSovereignty: 0 },
     });
     const next = enactPolicy(state, 'urban_agriculture_zoning', POLICY_CATALOG);
-    // cost = 0.08, will stored as 0-100, so deduct 0.08*100 = 8
-    expect(next.meters.politicalWill).toBeCloseTo(80 - 8, 6);
+    // cost = 0.05, will stored as 0-100, so deduct 0.05*100 = 5
+    expect(next.meters.politicalWill).toBeCloseTo(80 - 5, 6);
   });
 
   it('adds policy to activePolicies', () => {
@@ -146,19 +146,19 @@ describe('applyPolicyDrain', () => {
       activePolicies: [{ definitionId: 'urban_agriculture_zoning', enactedTurn: 1 }],
     });
     const { state: next, deltas } = applyPolicyDrain(state, POLICY_CATALOG);
-    // drain = 0.003 * 100 = 0.3
-    expect(next.meters.politicalWill).toBeCloseTo(60 - 0.3, 6);
+    // drain = 0.002 * 100 = 0.2
+    expect(next.meters.politicalWill).toBeCloseTo(60 - 0.2, 6);
     expect(deltas).toHaveLength(1);
     expect(deltas[0].meter).toBe('politicalWill');
   });
 
   it('caps total drain at 4% per turn', () => {
-    // Create a state with all 6 policies active.
-    // Total uncapped drain: 0.003+0.004+0.005+0.005+0.003+0.005 = 0.025
+    // Create a state with all 6 original policies active.
+    // Total uncapped drain: 0.002+0.003+0.003+0.004+0.002+0.004 = 0.018
     // Cap = 0.04
-    // Since 0.025 < 0.04, all 6 don't exceed the cap.
+    // Since 0.018 < 0.04, all 6 don't exceed the cap.
     // We need to test the cap is enforced. Let's use a scenario with enough policies.
-    // Actually 0.025 < 0.04, so cap doesn't kick in with these 6.
+    // Actually 0.018 < 0.04, so cap doesn't kick in with these 6.
     // We'll test the cap by verifying calculateTotalPolicyDrain caps correctly.
     // For applyPolicyDrain, let's verify multiple policies drain correctly.
     const state = makeState({
@@ -173,8 +173,8 @@ describe('applyPolicyDrain', () => {
       ],
     });
     const { state: next } = applyPolicyDrain(state, POLICY_CATALOG);
-    // Total drain = 0.025, under cap so applied fully: 0.025 * 100 = 2.5
-    expect(next.meters.politicalWill).toBeCloseTo(60 - 2.5, 6);
+    // Total drain = 0.018, under cap so applied fully: 0.018 * 100 = 1.8
+    expect(next.meters.politicalWill).toBeCloseTo(60 - 1.8, 6);
   });
 
   it('drains multiple policies correctly', () => {
@@ -186,8 +186,8 @@ describe('applyPolicyDrain', () => {
       ],
     });
     const { state: next, deltas } = applyPolicyDrain(state, POLICY_CATALOG);
-    // drain = (0.003 + 0.005) * 100 = 0.8
-    expect(next.meters.politicalWill).toBeCloseTo(80 - 0.8, 6);
+    // drain = (0.002 + 0.004) * 100 = 0.6
+    expect(next.meters.politicalWill).toBeCloseTo(80 - 0.6, 6);
     expect(deltas).toHaveLength(2);
   });
 });
@@ -199,7 +199,7 @@ describe('calculateTotalPolicyDrain', () => {
       { definitionId: 'green_infrastructure_grants', enactedTurn: 1 },
     ];
     const result = calculateTotalPolicyDrain(activePolicies, POLICY_CATALOG);
-    expect(result).toBeCloseTo(0.003 + 0.004, 6);
+    expect(result).toBeCloseTo(0.002 + 0.003, 6);
   });
 
   it('caps total drain at 0.04', () => {

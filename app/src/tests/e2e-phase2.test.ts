@@ -505,15 +505,15 @@ describe('Scenario 5: Narrative compounding on a topic', () => {
       willValues.push(willGain);
     }
 
-    // media_campaign base willGain = 1.0
-    // Action 1: 1.0 * (1 + 0.00) = 1.0
-    // Action 2: 1.0 * (1 + 0.05) = 1.05
-    // Action 3: 1.0 * (1 + 0.10) = 1.10
-    // Action 4: 1.0 * (1 + 0.15) = 1.15
-    expect(willValues[0]).toBeCloseTo(1.0, 4);
-    expect(willValues[1]).toBeCloseTo(1.05, 4);
-    expect(willValues[2]).toBeCloseTo(1.10, 4);
-    expect(willValues[3]).toBeCloseTo(1.15, 4);
+    // media_campaign base willGain = 0.33 (monthly, was 1.0 quarterly)
+    // Action 1: 0.33 * (1 + 0.00) = 0.33
+    // Action 2: 0.33 * (1 + 0.05) = 0.3465
+    // Action 3: 0.33 * (1 + 0.10) = 0.363
+    // Action 4: 0.33 * (1 + 0.15) = 0.3795
+    expect(willValues[0]).toBeCloseTo(0.33, 4);
+    expect(willValues[1]).toBeCloseTo(0.3465, 4);
+    expect(willValues[2]).toBeCloseTo(0.363, 4);
+    expect(willValues[3]).toBeCloseTo(0.3795, 4);
 
     // Each action is progressively larger
     for (let i = 1; i < willValues.length; i++) {
@@ -555,7 +555,7 @@ describe('Scenario 5: Narrative compounding on a topic', () => {
 // ============================================================
 
 describe('Scenario 6: Opinion drift when topic neglected', () => {
-  it('opinion drifts down by 2.0 per turn when no narrative actions taken on topic', () => {
+  it('opinion drifts down by 0.67 per turn when no narrative actions taken on topic', () => {
     let state = createFullState();
 
     // Set foodSovereignty opinion to 30%
@@ -571,8 +571,8 @@ describe('Scenario 6: Opinion drift when topic neglected', () => {
     // Apply drift once
     const drifted = applyOpinionDrift(state.publicOpinion, state.narrativeState);
 
-    // foodSovereignty: 30 - 2.0 = 28.0
-    expect(drifted.foodSovereignty).toBeCloseTo(28.0, 4);
+    // foodSovereignty: 30 - 0.67 = 29.33
+    expect(drifted.foodSovereignty).toBeCloseTo(29.33, 1);
   });
 
   it('opinion drifts over multiple turns toward floor of 15%', () => {
@@ -593,8 +593,8 @@ describe('Scenario 6: Opinion drift when topic neglected', () => {
       state = prepareTurnDeterministic(state);
     }
 
-    // Each turn drifts by 2.0: after 5 turns, 30 - (5 * 2.0) = 20.0
-    // Since the drift is 2.0 per turn and floor is 15, it should be approaching floor
+    // Each turn drifts by 0.67: after 5 turns, 30 - (5 * 0.67) = 26.65
+    // Since the drift is 0.67 per turn (monthly) and floor is 15, it should still be declining
     expect(state.publicOpinion.foodSovereignty).toBeLessThan(30);
     expect(state.publicOpinion.foodSovereignty).toBeGreaterThanOrEqual(15);
   });
@@ -649,13 +649,13 @@ describe('Scenario 7: Policy drain and Will management', () => {
       meters: { ...createNewGame().meters, politicalWill: 80 },
     });
 
-    // urban_agriculture_zoning: enactmentCost 0.08 (= 8 Will points on 0-100 scale)
+    // urban_agriculture_zoning: enactmentCost 0.05 (= 5 Will points on 0-100 scale)
     state = gameReducer(state, {
       type: 'ENACT_POLICY',
       policyId: 'urban_agriculture_zoning',
     });
 
-    expect(state.meters.politicalWill).toBeCloseTo(80 - 8, 1);
+    expect(state.meters.politicalWill).toBeCloseTo(80 - 5, 1);
     expect(state.activePolicies).toHaveLength(1);
   });
 
@@ -675,12 +675,12 @@ describe('Scenario 7: Policy drain and Will management', () => {
     // End turn to trigger drain
     state = endTurnDeterministic(state);
 
-    // Will should be: willAfterEnact - 0.3 (drain) + willRegen
+    // Will should be: willAfterEnact - 0.2 (drain) + willRegen
     // The drain definitely happened; Will regen also happens
     // Just verify drain is present in the pipeline result
-    // Drain is 0.003 * 100 = 0.3 per turn for this policy
+    // Drain is 0.002 * 100 = 0.2 per turn for this policy
     const totalDrain = calculateTotalPolicyDrain(state.activePolicies, POLICY_CATALOG);
-    expect(totalDrain).toBeCloseTo(0.003, 6);
+    expect(totalDrain).toBeCloseTo(0.002, 6);
   });
 
   it('3 policies drain Will each turn, capped at 4%', () => {
@@ -689,10 +689,10 @@ describe('Scenario 7: Policy drain and Will management', () => {
     });
 
     // Enact 3 policies:
-    // urban_agriculture_zoning: 0.003
-    // green_infrastructure_grants: 0.004 (council, but reducer auto-approves)
-    // cooperative_tax_incentives: 0.005 (council, but reducer auto-approves)
-    // Total uncapped: 0.003 + 0.004 + 0.005 = 0.012
+    // urban_agriculture_zoning: 0.002
+    // green_infrastructure_grants: 0.003 (council, but reducer auto-approves)
+    // cooperative_tax_incentives: 0.003 (council, but reducer auto-approves)
+    // Total uncapped: 0.002 + 0.003 + 0.003 = 0.008
     state = gameReducer(state, { type: 'ENACT_POLICY', policyId: 'urban_agriculture_zoning' });
     state = gameReducer(state, { type: 'ENACT_POLICY', policyId: 'green_infrastructure_grants' });
     state = gameReducer(state, { type: 'ENACT_POLICY', policyId: 'cooperative_tax_incentives' });
@@ -701,7 +701,7 @@ describe('Scenario 7: Policy drain and Will management', () => {
 
     // Calculate total drain
     const totalDrain = calculateTotalPolicyDrain(state.activePolicies, POLICY_CATALOG);
-    expect(totalDrain).toBeCloseTo(0.012, 6);
+    expect(totalDrain).toBeCloseTo(0.008, 6);
     // Under the cap of 0.04
     expect(totalDrain).toBeLessThanOrEqual(0.04);
   });
@@ -722,9 +722,9 @@ describe('Scenario 7: Policy drain and Will management', () => {
     });
 
     const totalDrain = calculateTotalPolicyDrain(state.activePolicies, POLICY_CATALOG);
-    // Total uncapped: 0.003 + 0.004 + 0.005 + 0.005 + 0.003 + 0.005 = 0.025
-    // Under cap of 0.04, so stays at 0.025
-    expect(totalDrain).toBeCloseTo(0.025, 6);
+    // Total uncapped: 0.002 + 0.003 + 0.003 + 0.004 + 0.002 + 0.004 = 0.018
+    // Under cap of 0.04, so stays at 0.018
+    expect(totalDrain).toBeCloseTo(0.018, 6);
     expect(totalDrain).toBeLessThanOrEqual(0.04);
   });
 
@@ -1098,9 +1098,10 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     }
 
     // Should reach turn 17 (started at 1, advanced 16 times)
+    // With monthly turns (12/year), 16 turns from month 5 = month 9, year 2
     expect(state.turn).toBe(17);
-    expect(state.year).toBe(5);
-    expect(state.season).toBe('spring');
+    expect(state.year).toBe(2);
+    expect(state.season).toBe('summer');
   });
 
   it('meters stay within valid ranges throughout 16 turns', () => {
@@ -1336,10 +1337,11 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
       state = endTurnDeterministic(state);
     }
 
-    // Climate pressure increases by ~0.92/turn
-    // After 16 turns: 30 + ~14.72 = ~44.72
+    // Climate pressure increases by ~0.183/turn (monthly), accelerating each year
+    // After 16 turns (~1.3 years): 8*0.183 + 8*0.192 ≈ 3.0
+    // Starting at 30: ends at ~33.0
     expect(state.meters.climatePressure).toBeGreaterThan(pressureStart);
-    expect(state.meters.climatePressure).toBeGreaterThan(40);
-    expect(state.meters.climatePressure).toBeLessThan(60);
+    expect(state.meters.climatePressure).toBeGreaterThan(32);
+    expect(state.meters.climatePressure).toBeLessThan(40);
   });
 });

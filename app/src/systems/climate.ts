@@ -1,5 +1,6 @@
 import type { GameState, Tile, MeterDelta, GameEvent, Season } from '../state/types';
 import { climateEventProbability } from './meters';
+import { applyMutualAid } from './mutual-aid';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,11 +25,16 @@ export interface AdaptationSummary {
 // Seasonal multipliers for climate event types
 // ---------------------------------------------------------------------------
 
+// Seasonal multipliers calibrated to Great Lakes climate data.
+// Detroit flooding: spring snowmelt + summer storms are highest risk. 2014 flood was August.
+// Heat waves: 90F+ days projected to increase 5x by 2050; concentrated June-August.
+// Ice storms: 2-3 per decade, exclusively Nov-March. 2023 + 2025 were both "unprecedented."
+// Source: NWS Detroit heat data, Bridge Michigan flood analysis, GLE ice storm recovery reports.
 const SEASONAL_EVENT_MULTIPLIERS: Record<string, Record<Season, number>> = {
-  heat_wave: { spring: 0.5, summer: 3, fall: 0.5, winter: 0 },
-  flooding: { spring: 2, summer: 0.5, fall: 1.5, winter: 0.5 },
-  severe_storm: { spring: 1, summer: 1, fall: 1.5, winter: 1 },
-  ice_storm: { spring: 0, summer: 0, fall: 0.5, winter: 2 },
+  heat_wave: { spring: 0.3, summer: 3, fall: 0.3, winter: 0 },
+  flooding: { spring: 2.5, summer: 2, fall: 1, winter: 0.3 },
+  severe_storm: { spring: 1.5, summer: 1.5, fall: 1, winter: 0.5 },
+  ice_storm: { spring: 0.5, summer: 0, fall: 0.3, winter: 3 },
 };
 
 // ---------------------------------------------------------------------------
@@ -50,11 +56,13 @@ export function checkTippingPoints(state: GameState): {
     const tiles = { ...updatedState.tiles };
 
     for (const tileId of Object.keys(tiles)) {
+      const aid = applyMutualAid(updatedState, tileId, 5, 'ecologicalHealth');
+      const actualDamage = 5 - aid.damageAbsorbed;
       tiles[tileId] = {
         ...tiles[tileId],
-        ecologicalHealth: Math.max(0, tiles[tileId].ecologicalHealth - 5),
+        ecologicalHealth: Math.max(0, tiles[tileId].ecologicalHealth - actualDamage),
       };
-      tileEffects.push({ tileId, ecoDamage: -5 });
+      tileEffects.push({ tileId, ecoDamage: -actualDamage });
     }
 
     const result: TippingPointResult = {
@@ -87,11 +95,13 @@ export function checkTippingPoints(state: GameState): {
       .slice(0, 3);
 
     for (const { id } of tilesByEco) {
+      const aid = applyMutualAid(updatedState, id, 15, 'ecologicalHealth');
+      const actualDamage = 15 - aid.damageAbsorbed;
       tiles[id] = {
         ...tiles[id],
-        ecologicalHealth: Math.max(0, tiles[id].ecologicalHealth - 15),
+        ecologicalHealth: Math.max(0, tiles[id].ecologicalHealth - actualDamage),
       };
-      tileEffects.push({ tileId: id, ecoDamage: -15 });
+      tileEffects.push({ tileId: id, ecoDamage: -actualDamage });
     }
 
     const meterDeltas: MeterDelta[] = [
@@ -273,52 +283,99 @@ export function generateClimateEvent(
     }
   }
 
-  const eventTitles: Record<string, string> = {
-    heat_wave: 'Extreme Heat Wave',
-    flooding: 'Flash Flooding',
-    severe_storm: 'Severe Storm',
-    ice_storm: 'Ice Storm',
+  // Event data calibrated to real Detroit damage costs at 1000:1 scale.
+  // 2014 flood: $1.8B real = $1.8M game scale (catastrophic).
+  // 2021 flood: $100M+ = $0.10M game scale (moderate).
+  // Ice storm 2023: $1.5B grid impact = $1.5M game scale.
+  // Heat wave: harder to quantify but causes infrastructure damage + health costs.
+  // Source: FEMA payouts, DTE restoration costs, Wayne County road repair data.
+  const eventData: Record<string, { title: string; description: string; budgetDamage: number; ecoDamage: number; trustDamage: number }> = {
+    heat_wave: {
+      title: 'Extreme Heat Wave',
+      description: 'Five consecutive days above 90°F. Urban heat islands hit 100°F+ in underserved neighborhoods. Detroit\'s grid faces "extreme" vulnerability.',
+      budgetDamage: -0.08,
+      ecoDamage: -3,
+      trustDamage: -2,
+    },
+    flooding: {
+      title: 'Flash Flooding',
+      description: 'Combined sewers overflow after 4+ inches of rain. The system was designed for 2 inches — Detroit now exceeds this multiple times per year.',
+      budgetDamage: -0.15,
+      ecoDamage: -4,
+      trustDamage: -3,
+    },
+    severe_storm: {
+      title: 'Severe Storm',
+      description: 'High winds and heavy precipitation damage infrastructure. 60% increase in major grid failures over the last 5 years.',
+      budgetDamage: -0.10,
+      ecoDamage: -2,
+      trustDamage: -1,
+    },
+    ice_storm: {
+      title: 'Ice Storm',
+      description: 'Freezing rain coats power lines in 0.5-1.5 inches of ice. 3,100 poles snap. Outages last days to weeks — Michigan ranks worst nationally.',
+      budgetDamage: -0.20,
+      ecoDamage: -2,
+      trustDamage: -4,
+    },
   };
 
-  const eventDescriptions: Record<string, string> = {
-    heat_wave: 'Dangerous heat threatens vulnerable residents and infrastructure.',
-    flooding: 'Heavy rains cause flooding in low-lying areas.',
-    severe_storm: 'A powerful storm system threatens the city.',
-    ice_storm: 'Freezing rain coats the city in ice, disrupting services.',
-  };
+  const data = eventData[selectedType];
 
   const event: GameEvent = {
     id: `climate_${selectedType}_${state.turn}`,
     type: selectedType,
     category: 'climate',
-    title: eventTitles[selectedType],
-    description: eventDescriptions[selectedType],
+    title: data.title,
+    description: data.description,
     choices: [
       {
         id: 'emergency_response',
         label: 'Emergency Response',
-        description: 'Deploy emergency resources to mitigate damage.',
+        description: 'Deploy emergency resources to mitigate damage. Costs budget but protects residents.',
         effects: {
-          meterDeltas: [{ meter: 'budget', amount: -0.2, source: 'emergency_response' }],
+          meterDeltas: [
+            { meter: 'budget', amount: data.budgetDamage * 0.5, source: 'emergency_spending' },
+            { meter: 'communityTrust', amount: 2, source: 'emergency_response_trust' },
+          ],
           relationshipChanges: [],
           other: ['reduce_damage_50'],
         },
-        requirements: { minWill: null, minBudget: 0.2, minTrust: null },
+        requirements: { minWill: null, minBudget: Math.abs(data.budgetDamage * 0.5), minTrust: null },
       },
       {
         id: 'community_shelter',
-        label: 'Community Shelter',
-        description: 'Open community spaces as shelters.',
+        label: 'Community Mutual Aid',
+        description: 'Activate community networks and open shelters. Builds solidarity but doesn\'t prevent infrastructure damage.',
         effects: {
-          meterDeltas: [{ meter: 'communityTrust', amount: 2, source: 'community_shelter' }],
+          meterDeltas: [
+            { meter: 'budget', amount: data.budgetDamage, source: 'unmitigated_damage' },
+            { meter: 'communityTrust', amount: 3, source: 'mutual_aid_solidarity' },
+            { meter: 'ecologicalHealth', amount: data.ecoDamage * 0.5, source: 'partial_eco_damage' },
+          ],
           relationshipChanges: [],
           other: ['reduce_damage_25'],
         },
         requirements: { minWill: null, minBudget: null, minTrust: 30 },
       },
+      {
+        id: 'weather_the_storm',
+        label: 'Weather the Storm',
+        description: 'No resources to deploy. The city takes the full hit.',
+        effects: {
+          meterDeltas: [
+            { meter: 'budget', amount: data.budgetDamage, source: 'climate_damage' },
+            { meter: 'ecologicalHealth', amount: data.ecoDamage, source: 'climate_eco_damage' },
+            { meter: 'communityTrust', amount: data.trustDamage, source: 'unprotected_residents' },
+          ],
+          relationshipChanges: [],
+          other: ['full_damage'],
+        },
+        requirements: { minWill: null, minBudget: null, minTrust: null },
+      },
     ],
     turnGenerated: state.turn,
-    cooldownTurns: 3,
+    cooldownTurns: 2,
     targetTileId: null,
     targetCharacterId: null,
   };

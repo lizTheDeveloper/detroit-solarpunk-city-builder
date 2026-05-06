@@ -1,5 +1,6 @@
 import { useGame } from '@/state/store';
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
+import { formatBudgetDelta } from '@/ui/format';
 import type { Meters } from '@/state/types';
 
 const METER_LABELS: Record<keyof Meters, string> = {
@@ -44,7 +45,7 @@ export default function TurnSummary({ onDismiss }: TurnSummaryProps) {
               const arrow = total > 0 ? '▲' : total < 0 ? '▼' : '';
               const color = total > 0 ? 'var(--color-positive)' : total < 0 ? 'var(--color-negative)' : 'inherit';
               const format = meterKey === 'budget'
-                ? `${total > 0 ? '+' : ''}$${total.toFixed(2)}M`
+                ? formatBudgetDelta(total)
                 : `${total > 0 ? '+' : ''}${total.toFixed(1)}%`;
               return (
                 <div key={meter} className="summary-meter-row">
@@ -55,7 +56,7 @@ export default function TurnSummary({ onDismiss }: TurnSummaryProps) {
                   <div className="summary-meter-sources">
                     {entries.map((e, i) => (
                       <span key={i} className="summary-source">
-                        {e.source}: {e.amount > 0 ? '+' : ''}{meterKey === 'budget' ? `$${e.amount.toFixed(2)}M` : `${e.amount.toFixed(1)}%`}
+                        {e.source}: {meterKey === 'budget' ? formatBudgetDelta(e.amount) : `${e.amount > 0 ? '+' : ''}${e.amount.toFixed(1)}%`}
                       </span>
                     ))}
                   </div>
@@ -81,6 +82,28 @@ export default function TurnSummary({ onDismiss }: TurnSummaryProps) {
           </div>
         )}
 
+        {summary.firedConsequences.length > 0 && (
+          <div className="turn-summary-section">
+            <h3>Consequences Unfolding</h3>
+            {summary.firedConsequences.map((c, i) => (
+              <div key={i} className="summary-consequence">
+                {c.hint}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {summary.arcTransitions.length > 0 && (
+          <div className="turn-summary-section">
+            <h3>Crisis Developments</h3>
+            {summary.arcTransitions.map((t, i) => (
+              <div key={i} className="summary-arc-transition">
+                {t.arcId.replace(/-/g, ' ')}: {t.from} → {t.to}
+              </div>
+            ))}
+          </div>
+        )}
+
         {summary.tileTransformations.length > 0 && (
           <div className="turn-summary-section">
             <h3>Neighborhood Transformations</h3>
@@ -92,7 +115,7 @@ export default function TurnSummary({ onDismiss }: TurnSummaryProps) {
           </div>
         )}
 
-        {Object.keys(grouped).length === 0 && summary.completedProjects.length === 0 && (
+        {Object.keys(grouped).length === 0 && summary.completedProjects.length === 0 && summary.firedConsequences.length === 0 && (
           <p className="summary-empty">No major changes this turn.</p>
         )}
 

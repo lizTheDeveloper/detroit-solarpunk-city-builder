@@ -1,3 +1,31 @@
+import type { ActiveArc, DelayedConsequence, SerializedDependencyWeb } from './crisis-types';
+
+// Re-export crisis types for convenience
+export type { ActiveArc, DelayedConsequence, SerializedDependencyWeb, ArcStage, DependencyWeb, ConsequenceEffect, ArcConfig, PipelineArcState } from './crisis-types';
+
+// Byproduct Flow types
+export type ByproductId =
+  | 'compost' | 'clean_soil' | 'lumber' | 'biomass'
+  | 'fabrication_capacity' | 'recycled_materials'
+  | 'stormwater_capacity' | 'community_knowledge'
+  | 'clean_energy' | 'native_seed_stock';
+
+export type ByproductLifetime = 'ongoing' | 'one-shot';
+export type ByproductBonusType = 'costReduction' | 'durationReduction' | 'effectBoost';
+
+export interface ByproductOutput {
+  byproductId: ByproductId;
+  lifetime: ByproductLifetime;
+  amount: number;
+}
+
+export interface ByproductInput {
+  byproductId: ByproductId;
+  bonusType: ByproductBonusType;
+  bonusValue: number;
+  effectField?: keyof ProjectEffects;
+}
+
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 export type Stage = 'awakening' | 'transition' | 'restoration' | 'beyond';
@@ -21,7 +49,7 @@ export type ExistingUse =
 
 export type VisualStage = 'dystopia' | 'transition' | 'restoration' | 'beyond';
 
-export type ProjectMode = 'player-initiated' | 'community-led';
+export type ProjectMode = 'player-initiated' | 'community-led' | 'direct-action';
 
 export type ProjectCategory = 'ecology' | 'infrastructure' | 'community' | 'restoration';
 
@@ -77,19 +105,26 @@ export interface Tile {
   communityOwned: boolean;
   adjacentTileIds: string[];
   visualStage: VisualStage;
+  consumedByproducts: string[];
+  vacantLots: number;
+  reclaimedLots: number;
 }
 
 export interface ProjectDefinition {
   id: string;
   name: string;
+  description: string;
   category: ProjectCategory;
   growthCategory: GrowthCategory;
   baseCost: number;
   baseDuration: number;
+  maintenanceCost: number;
   effects: ProjectEffects;
   maxContamination: number | null;
   stageRequired: Stage;
   terrainRequired: TerrainType[] | null;
+  produces: ByproductOutput[];
+  consumes: ByproductInput[];
 }
 
 export interface ProjectEffects {
@@ -178,6 +213,12 @@ export interface PublicOpinion {
   landReform: number;
   ecologicalRestoration: number;
   cooperativeEconomics: number;
+  // Taboo-specific topics (gate radical solutions via Overton window)
+  nutrientRecycling: number;
+  nuclearEnergy: number;
+  landExpropriation: number;
+  decarceration: number;
+  deGrowth: number;
 }
 
 export interface NarrativeState {
@@ -287,11 +328,14 @@ export interface TurnSummary {
   completedProjects: string[];
   proposals: Proposal[];
   tileTransformations: Array<{ tileId: string; from: VisualStage; to: VisualStage }>;
+  firedConsequences: Array<{ arcId: string; hint: string }>;
+  arcTransitions: Array<{ arcId: string; from: string; to: string }>;
 }
 
 export interface GameState {
   version: 2;
   turn: number;
+  month: number; // 1-12
   season: Season;
   year: number;
   phase: TurnPhase;
@@ -314,6 +358,22 @@ export interface GameState {
   turnSummary: TurnSummary | null;
   turnHistory: TurnSummary[];
   maxConcurrentProjects: number;
+  regionalCities: Record<string, RegionalCity>;
+  activeTransfers: ResourceTransfer[];
+  regionalProjects: RegionalProject[];
+  continentalGoals: ContinentalGoal[];
+  winCondition: WinCondition;
+  lossCondition: LossCondition;
+  sandbox: boolean;
+  // Crisis Arc Engine state
+  dependencyWeb: SerializedDependencyWeb;
+  delayedConsequenceQueue: DelayedConsequence[];
+  activeArcs: ActiveArc[];
+  resolvedArcs: Array<{ arcId: string; resolvedTurn: number }>;
+  // Tutorial / NUX progression
+  tutorialState: TutorialState;
+  // Advisor prompts state
+  advisorState: AdvisorState;
 }
 
 export type GameAction =
@@ -325,6 +385,70 @@ export type GameAction =
   | { type: 'LOBBY_COUNCIL'; memberId: string; policyId: string; argumentAlignment: 'high' | 'medium' | 'low' }
   | { type: 'FORM_COALITION'; name: string; memberIds: string[]; topic: string }
   | { type: 'CAMPAIGN_ACTION'; actionType: 'rally' | 'promise' | 'coalition_building' }
+  | { type: 'RECLAIM_LOT'; tileId: string }
+  | { type: 'CONVERSATION_OUTCOME'; characterId: string; trustDelta: number }
   | { type: 'END_TURN' }
   | { type: 'PREPARE_TURN' }
   | { type: 'ADVANCE_PHASE' };
+
+// Beyond the Map types
+export type CityRelationship = 'neutral' | 'cooperative' | 'allied';
+
+export interface RegionalCity {
+  id: string;
+  name: string;
+  population: number;
+  stage: Stage;
+  meters: {
+    ecologicalHealth: number;
+    foodSovereignty: number;
+    communityTrust: number;
+  };
+  relationship: CityRelationship;
+  transfersReceived: number;
+  templatesReceived: string[];
+  regionalProjectsCompleted: number;
+  meterImprovementSinceUnlock: number;
+}
+
+export interface ResourceTransfer {
+  type: 'budget' | 'template' | 'expertise';
+  targetCityId: string;
+  amount?: number; // for budget
+  projectId?: string; // for template
+  turnsRemaining?: number; // for expertise
+}
+
+export interface RegionalProject {
+  id: string;
+  name: string;
+  requiredCities: number;
+  costPerCity: number;
+  duration: number;
+  continentalGoal: string;
+  goalProgress: number;
+  participatingCities: string[];
+  turnsRemaining: number;
+  active: boolean;
+}
+
+export interface ContinentalGoal {
+  id: string;
+  name: string;
+  progress: number; // 0-100
+  description: string;
+}
+
+export interface TutorialState {
+  active: boolean;
+  completedSteps: string[];
+  dismissedTooltips: string[];
+}
+
+export interface AdvisorState {
+  dismissedConditions: string[];
+  cooldowns: Record<string, number>; // conditionId → turn when cooldown expires
+}
+
+export type WinCondition = 'cooperative' | 'survival' | null;
+export type LossCondition = 'reelection' | 'budget_collapse' | 'climate_catastrophe' | null;

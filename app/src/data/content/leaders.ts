@@ -7,7 +7,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Brightmoor',
     tileIds: ['brightmoor'],
     backstory:
-      'An urban farmer in her 60s who has been growing food on vacant lots since 2008.',
+      'An urban farmer in her 60s who started growing food on vacant lots in 2008 when the last grocery store left her block. Inspired by Malik Yakini and the Black Community Food Sovereignty Network, Grace built Brightmoor\'s first food forest and runs weekly harvest shares — not charity, but self-determination. "Feeding ourselves to free ourselves."',
     priorities: ['food_forest', 'community_kitchen', 'soil_remediation'],
     trust: 30,
     advocacyPower: 4,
@@ -20,7 +20,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Corktown',
     tileIds: ['corktown'],
     backstory:
-      'A 26-year-old housing justice organizer who grew up watching her neighborhood get gentrified.',
+      'A 26-year-old housing justice organizer displaced from Corktown as a teenager when Michigan Central Station got bought up and rents tripled. Came back with a planning degree and a copy of the community land trust bylaws. Runs a mutual aid network out of a house she crowdfunded back from tax auction. "Every node in the network is a home they can\'t take."',
     priorities: ['land_trust', 'community_kitchen', 'maker_space'],
     trust: 10,
     advocacyPower: 3,
@@ -33,7 +33,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Eastern Market',
     tileIds: ['eastern_market'],
     backstory:
-      'A 30-something maker, muralist, and fabrication teacher who runs a youth art and robotics program.',
+      'A maker, muralist, and fabrication teacher who runs a youth art and robotics program from a converted warehouse behind the Eastern Market murals. Grew up tagging walls, learned to weld at a church-basement makerspace, now teaches kids to build solar-powered sculptures and CNC their own designs. The warehouse has a laser cutter, a mural wall, and no corporate sponsors.',
     priorities: ['maker_space', 'greenway', 'native_planting'],
     trust: 20,
     advocacyPower: 3,
@@ -46,7 +46,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Southwest Detroit/Delray',
     tileIds: ['southwest_detroit', 'delray'],
     backstory:
-      'A water systems engineer turned community advocate who left her corporate job after discovering her own neighborhood had lead-contaminated pipes. Lucia now runs a grassroots water testing program and pushes for infrastructure investment in Southwest Detroit.',
+      'A water systems engineer who quit her corporate job after finding lead in her own block\'s pipes — blocks from the Marathon refinery that gave half her childhood friends asthma. Runs a grassroots water testing program and rain garden network in Southwest Detroit. Keeps saying "agua es vida" until people understand it\'s not a slogan, it\'s infrastructure policy.',
     priorities: ['rain_garden', 'wetland_restoration', 'soil_remediation'],
     trust: 15,
     advocacyPower: 4,
@@ -59,7 +59,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Indian Village/West Village',
     tileIds: ['indian_village', 'west_village'],
     backstory:
-      'A respected elder and retired history professor who has lived in Indian Village for over fifty years. He chairs the neighborhood heritage committee and mentors young residents in oral history and traditional ecological knowledge.',
+      'An Anishinaabe elder and retired professor whose family has been in the Great Lakes region since before the word "Detroit" existed. Chairs the heritage committee, teaches traditional ecological knowledge to anyone who\'ll sit still long enough to listen. His grandmother planted the oaks on his block. He thinks in generations, not fiscal years.',
     priorities: ['community_kitchen', 'greenway', 'native_planting'],
     trust: 25,
     advocacyPower: 3,
@@ -72,7 +72,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Hamtramck/Banglatown',
     tileIds: ['hamtramck', 'banglatown'],
     backstory:
-      'A Somali-American restaurateur and small business mentor who arrived in Detroit as a teenager. Hassan runs a community kitchen that doubles as a multilingual gathering space and helps new immigrants navigate the process of starting their own businesses.',
+      'A Somali-American restaurateur who arrived in Detroit as a refugee at 15 and built his restaurant into the unofficial town hall of Hamtramck — Somali, Bangladeshi, Yemeni, Polish, everyone sits together. Mentors immigrant entrepreneurs through the cooperative economics network. "Every new business is a family that stays."',
     priorities: ['maker_space', 'community_kitchen', 'solar_grid'],
     trust: 5,
     advocacyPower: 4,
@@ -85,7 +85,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'North End/Highland Park',
     tileIds: ['north_end', 'highland_park'],
     backstory:
-      'A community health worker and former nurse who has spent years documenting the health impacts of lead exposure and industrial pollution in the North End. Tamika runs free health screenings and advocates tirelessly for mental health resources in underserved neighborhoods.',
+      'A community health worker and former nurse radicalized after DTE repossessed Highland Park\'s streetlights in 2011. Helped launch the solar streetlight campaign — lights the utility can never take back. Now documents lead exposure, runs free health screenings, and connects the dots between environmental racism, health outcomes, and energy democracy.',
     priorities: ['soil_remediation', 'community_kitchen', 'rain_garden'],
     trust: 20,
     advocacyPower: 3,
@@ -98,7 +98,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Warrendale/Rouge Park',
     tileIds: ['warrendale', 'rouge_park'],
     backstory:
-      'A retired steelworker and union organizer who channels his energy into green infrastructure projects. Big Mike rallies his neighbors around rain gardens, permeable pavement, and community solar installations, proving that blue-collar know-how can drive the green transition.',
+      'A retired steelworker and union organizer who saw the plants close and decided the same hands that built cars could build rain gardens. Rallies his block around community solar — "not hippie talk, that\'s a lower DTE bill for Miss Dorothy next door." Thirty years on the line taught him: you take care of the people next to you.',
     priorities: ['rain_garden', 'solar_grid', 'greenway'],
     trust: 15,
     advocacyPower: 3,

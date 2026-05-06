@@ -18,6 +18,7 @@ export function calculateActionsPerTurn(trust: number): number {
 /**
  * Base effect values for each narrative action type.
  * Values stored as decimals (0.01 = 1%).
+ * Scaled for monthly turns (÷3 from quarterly values).
  */
 export function getBaseActionValues(actionType: NarrativeActionType): {
   willGain: number;
@@ -26,13 +27,13 @@ export function getBaseActionValues(actionType: NarrativeActionType): {
   opinionGain: number;
 } {
   const table: Record<NarrativeActionType, { willGain: number; trustGain: number; policyThresholdReduction: number; opinionGain: number }> = {
-    community_meeting:  { willGain: 1.0,  trustGain: 1.5,   policyThresholdReduction: 0,    opinionGain: 0 },
-    media_campaign:     { willGain: 1.0,  trustGain: 0,     policyThresholdReduction: 0.03, opinionGain: 0 },
-    education_program:  { willGain: 0.5,  trustGain: 0,     policyThresholdReduction: 0,    opinionGain: 2.0 },
-    cultural_event:     { willGain: 1.0,  trustGain: 1.5,   policyThresholdReduction: 0,    opinionGain: 0 },
-    demonstration:      { willGain: 2.0,  trustGain: -1.5,  policyThresholdReduction: 0,    opinionGain: 0 },
-    direct_engagement:  { willGain: 0,    trustGain: 0,     policyThresholdReduction: 0,    opinionGain: 0 },
-    lobbying:           { willGain: 0,    trustGain: 0,     policyThresholdReduction: 0,    opinionGain: 0 },
+    community_meeting:  { willGain: 0.33,  trustGain: 0.5,    policyThresholdReduction: 0,    opinionGain: 0 },
+    media_campaign:     { willGain: 0.33,  trustGain: 0,      policyThresholdReduction: 0.01, opinionGain: 0 },
+    education_program:  { willGain: 0.17,  trustGain: 0,      policyThresholdReduction: 0,    opinionGain: 0.67 },
+    cultural_event:     { willGain: 0.33,  trustGain: 0.5,    policyThresholdReduction: 0,    opinionGain: 0 },
+    demonstration:      { willGain: 2.0,   trustGain: -0.5,   policyThresholdReduction: 0,    opinionGain: 0 },
+    direct_engagement:  { willGain: 0,     trustGain: 0,      policyThresholdReduction: 0,    opinionGain: 0 },
+    lobbying:           { willGain: 0.5,   trustGain: -0.33,  policyThresholdReduction: 0.02, opinionGain: 0 },
   };
   return table[actionType];
 }
@@ -63,7 +64,8 @@ export function applyNarrativeAction(
   const base = getBaseActionValues(actionType);
   const consecutive = state.narrativeState.consecutiveTurns[topic] ?? 0;
   const bonus = calculateCompoundingBonus(consecutive);
-  const multiplier = 1 + bonus;
+  const meshBonus = Object.values(state.tiles).filter(t => t.communityOwned).length >= 2 ? 0.20 : 0;
+  const multiplier = 1 + bonus + meshBonus;
 
   const effectiveWill = base.willGain * multiplier;
   const effectiveTrust = base.trustGain * multiplier;
@@ -116,31 +118,41 @@ const OPINION_FLOORS: PublicOpinion = {
   landReform: 8,
   ecologicalRestoration: 20,
   cooperativeEconomics: 12,
+  nutrientRecycling: 5,
+  nuclearEnergy: 15,
+  landExpropriation: 8,
+  decarceration: 6,
+  deGrowth: 3,
 };
 
-const DRIFT_RATE = 2.0;
+const DRIFT_RATE = 0.67;
+
+const ALL_OPINION_TOPICS: (keyof PublicOpinion)[] = [
+  'foodSovereignty',
+  'waterCommons',
+  'landReform',
+  'ecologicalRestoration',
+  'cooperativeEconomics',
+  'nutrientRecycling',
+  'nuclearEnergy',
+  'landExpropriation',
+  'decarceration',
+  'deGrowth',
+];
 
 /**
- * Apply opinion drift: each topic drifts -2% per turn if no narrative action was taken.
- * Cannot drift below starting values.
+ * Apply opinion drift: each topic drifts -0.67% per turn if no narrative action was taken.
+ * (Was -2% quarterly; ÷3 for monthly.) Cannot drift below starting values.
  */
 export function applyOpinionDrift(
   opinion: PublicOpinion,
   narrativeState: NarrativeState,
 ): PublicOpinion {
   const result: PublicOpinion = { ...opinion };
-  const topics: (keyof PublicOpinion)[] = [
-    'foodSovereignty',
-    'waterCommons',
-    'landReform',
-    'ecologicalRestoration',
-    'cooperativeEconomics',
-  ];
 
-  for (const topic of topics) {
+  for (const topic of ALL_OPINION_TOPICS) {
     const consecutive = narrativeState.consecutiveTurns[topic] ?? 0;
     if (consecutive > 0) {
-      // Action was taken on this topic, no drift
       continue;
     }
     const floor = OPINION_FLOORS[topic];
@@ -257,10 +269,15 @@ export function applyCounterNarrative(
     publicOpinion: { ...state.publicOpinion },
   };
 
-  // Always apply will drain
-  if (counter.willDrain !== 0) {
-    deltas.push({ meter: 'politicalWill', amount: counter.willDrain, source: `counter_${counter.type}` });
-    newState.meters.politicalWill += counter.willDrain;
+  // Mesh network resistance: community-owned tiles reduce counter-narrative impact
+  const meshStrength = Object.values(state.tiles).filter(t => t.communityOwned).length;
+  const resistance = meshStrength >= 4 ? 0.70 : 1.0;
+
+  // Always apply will drain (reduced by mesh resistance)
+  const effectiveWillDrain = counter.willDrain * resistance;
+  if (effectiveWillDrain !== 0) {
+    deltas.push({ meter: 'politicalWill', amount: effectiveWillDrain, source: `counter_${counter.type}` });
+    newState.meters.politicalWill += effectiveWillDrain;
   }
 
   // Apply type-specific other effects
@@ -277,17 +294,16 @@ export function applyCounterNarrative(
           highest = t;
         }
       }
-      newState.publicOpinion[highest] -= 2.0;
+      newState.publicOpinion[highest] -= 2.0 * resistance;
       break;
     }
     case 'developer_lobbying': {
-      // -$0.1M budget
-      deltas.push({ meter: 'budget', amount: -0.1, source: 'counter_developer_lobbying' });
-      newState.meters.budget -= 0.1;
+      const budgetDrain = -0.1 * resistance;
+      deltas.push({ meter: 'budget', amount: budgetDrain, source: 'counter_developer_lobbying' });
+      newState.meters.budget += budgetDrain;
       break;
     }
     case 'state_legislature': {
-      // -3% target topic opinion (we pick the highest for now)
       const topics: (keyof PublicOpinion)[] = [
         'foodSovereignty', 'waterCommons', 'landReform',
         'ecologicalRestoration', 'cooperativeEconomics',
@@ -298,13 +314,13 @@ export function applyCounterNarrative(
           highest = t;
         }
       }
-      newState.publicOpinion[highest] -= 3.0;
+      newState.publicOpinion[highest] -= 3.0 * resistance;
       break;
     }
     case 'federal_intervention': {
-      // -2% Trust
-      deltas.push({ meter: 'communityTrust', amount: -2.0, source: 'counter_federal_intervention' });
-      newState.meters.communityTrust -= 2.0;
+      const trustDrain = -2.0 * resistance;
+      deltas.push({ meter: 'communityTrust', amount: trustDrain, source: 'counter_federal_intervention' });
+      newState.meters.communityTrust += trustDrain;
       break;
     }
     case 'astroturf_campaign': {

@@ -103,7 +103,7 @@ export default function NarrativePanel() {
             >
               {label}
               <span className="narrative-topic-value">
-                {(state.publicOpinion[key] * 100).toFixed(0)}%
+                {state.publicOpinion[key].toFixed(0)}%
               </span>
             </button>
           ))}

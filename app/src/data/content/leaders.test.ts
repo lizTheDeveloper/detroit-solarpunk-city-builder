@@ -65,9 +65,8 @@ describe('LEADER_DEFINITIONS', () => {
     });
 
     it('has correct backstory', () => {
-      expect(LEADER_DEFINITIONS.grace.backstory).toBe(
-        'An urban farmer in her 60s who has been growing food on vacant lots since 2008.'
-      );
+      expect(LEADER_DEFINITIONS.grace.backstory).toContain('urban farmer');
+      expect(LEADER_DEFINITIONS.grace.backstory).toContain('2008');
     });
 
     it('has correct priorities', () => {
@@ -105,9 +104,8 @@ describe('LEADER_DEFINITIONS', () => {
     });
 
     it('has correct backstory', () => {
-      expect(LEADER_DEFINITIONS.kez.backstory).toBe(
-        'A 26-year-old housing justice organizer who grew up watching her neighborhood get gentrified.'
-      );
+      expect(LEADER_DEFINITIONS.kez.backstory).toContain('housing justice');
+      expect(LEADER_DEFINITIONS.kez.backstory).toContain('Corktown');
     });
 
     it('has correct priorities', () => {
@@ -145,9 +143,8 @@ describe('LEADER_DEFINITIONS', () => {
     });
 
     it('has correct backstory', () => {
-      expect(LEADER_DEFINITIONS.darius.backstory).toBe(
-        'A 30-something maker, muralist, and fabrication teacher who runs a youth art and robotics program.'
-      );
+      expect(LEADER_DEFINITIONS.darius.backstory).toContain('maker');
+      expect(LEADER_DEFINITIONS.darius.backstory).toContain('muralist');
     });
 
     it('has correct priorities', () => {

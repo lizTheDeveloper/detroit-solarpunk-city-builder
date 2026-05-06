@@ -1,0 +1,27 @@
+node_modules/
+dist/
+.env
+.env.*
+
+# Logs
+*.log
+
+# Screenshots and debug images
+*.png
+app/screenshots/
+app/final_state.png
+app/initial_state.png
+
+# Playwright MCP
+.playwright-mcp/
+app/.playwright-mcp/
+
+# Claude
+.claude/scheduled_tasks.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.tsbuildinfo

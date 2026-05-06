@@ -5,6 +5,7 @@ import type {
   PublicOpinion,
   MeterDelta,
 } from '../state/types';
+import { POLICY_CONDITION_MAP } from '../data/project-conditions';
 
 const DRAIN_CAP = 0.04;
 
@@ -94,7 +95,7 @@ export function enactPolicy(
     enactedTurn: state.turn,
   };
 
-  return {
+  let newState: GameState = {
     ...state,
     meters: {
       ...state.meters,
@@ -104,6 +105,16 @@ export function enactPolicy(
     },
     activePolicies: [...state.activePolicies, newPolicy],
   };
+
+  // Add dependency web conditions for this policy
+  const newConds = POLICY_CONDITION_MAP[policyId];
+  if (newConds && newState.dependencyWeb) {
+    const conditions = new Set(newState.dependencyWeb.conditions ?? []);
+    for (const c of newConds) conditions.add(c);
+    newState = { ...newState, dependencyWeb: { ...newState.dependencyWeb, conditions: Array.from(conditions) } };
+  }
+
+  return newState;
 }
 
 /**

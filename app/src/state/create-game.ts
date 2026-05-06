@@ -1,7 +1,10 @@
-import type { GameState, Tile, CommunityLeader, PublicOpinion, NarrativeState } from './types';
+import type { GameState, Tile, CommunityLeader, PublicOpinion, NarrativeState, TutorialState, AdvisorState } from './types';
+import type { ActiveArc, SerializedDependencyWeb } from './crisis-types';
 import { COUNCIL_MEMBERS } from '../data/content/council-members';
 import { LEADER_DEFINITIONS } from '../data/content/leaders';
 import { ANTAGONIST_DEFINITIONS } from '../data/content/antagonists';
+import { allArcTemplates } from '../data/arcs';
+import { getSeason } from '../systems/calendar';
 
 function makeTile(overrides: Partial<Tile> & Pick<Tile, 'id' | 'name' | 'terrain'>): Tile {
   return {
@@ -17,6 +20,9 @@ function makeTile(overrides: Partial<Tile> & Pick<Tile, 'id' | 'name' | 'terrain
     communityOwned: false,
     adjacentTileIds: [],
     visualStage: 'dystopia',
+    consumedByproducts: [],
+    vacantLots: 5,
+    reclaimedLots: 0,
     ...overrides,
   };
 }
@@ -38,21 +44,31 @@ function makeLeader(
 
 export function createNewGame(): GameState {
   const communityTrust = 50;
+  const startMonth = new Date().getMonth() + 1; // 1-12
 
   return {
     version: 2,
     turn: 1,
-    season: 'spring',
+    month: startMonth,
+    season: getSeason(startMonth),
     year: 1,
     phase: 'events',
     stage: 'awakening',
     path: null,
+    // Starting meters calibrated to Detroit 2024 baseline.
+    // Trust 50%: Duggan approval was 84% but that's after 12 years; new mayor starts lower.
+    // Eco 20%: Tree canopy 26% (target 40%), 2200+ gardens but <5% food needs met.
+    // Food 12%: 36% lack adequate food access (USDA), 550K lbs grown but city needs millions.
+    // Will 25%: Fresh administration, some goodwill but no active coalitions yet.
+    // Budget $1.5M: First-year discretionary budget (general fund portion for sustainability).
+    // Climate 30%: Already experiencing floods every 1-2 years, 13 days 90F+/year.
+    // Source: Detroit FY2024 budget, Keep Growing Detroit, American Lung Association, GLISA.
     meters: {
       communityTrust,
-      ecologicalHealth: 15,
-      foodSovereignty: 10,
-      politicalWill: 60,
-      budget: 2.8,
+      ecologicalHealth: 20,
+      foodSovereignty: 12,
+      politicalWill: 25,
+      budget: 1.5,
       climatePressure: 30,
     },
     tiles: {
@@ -67,6 +83,7 @@ export function createNewGame(): GameState {
         existingUses: ['vacant_lot'],
         neighborhoodTraits: ['high_vacancy', 'strong_community_networks'],
         adjacentTileIds: [],
+        vacantLots: 8,
       }),
       corktown: makeTile({
         id: 'corktown',
@@ -79,6 +96,7 @@ export function createNewGame(): GameState {
         existingUses: ['small_businesses', 'occupied_housing'],
         neighborhoodTraits: ['ford_development', 'rapid_change', 'transit_adjacent'],
         adjacentTileIds: ['eastern_market'],
+        vacantLots: 3,
       }),
       eastern_market: makeTile({
         id: 'eastern_market',
@@ -139,6 +157,7 @@ export function createNewGame(): GameState {
         existingUses: ['vacant_lot', 'church', 'community_garden'],
         neighborhoodTraits: ['high_vacancy', 'health_desert', 'strong_churches'],
         adjacentTileIds: ['hamtramck'],
+        vacantLots: 7,
       }),
       warrendale: makeTile({
         id: 'warrendale',
@@ -175,6 +194,11 @@ export function createNewGame(): GameState {
       landReform: 8,
       ecologicalRestoration: 20,
       cooperativeEconomics: 12,
+      nutrientRecycling: 5,
+      nuclearEnergy: 15,
+      landExpropriation: 8,
+      decarceration: 6,
+      deGrowth: 3,
     } as PublicOpinion,
     narrativeState: {
       actionsRemaining: 2,
@@ -189,5 +213,35 @@ export function createNewGame(): GameState {
     turnSummary: null,
     turnHistory: [],
     maxConcurrentProjects: Math.floor(2 + communityTrust / 25),
+    regionalCities: {},
+    activeTransfers: [],
+    regionalProjects: [],
+    continentalGoals: [],
+    winCondition: null,
+    lossCondition: null,
+    sandbox: false,
+    // Crisis Arc Engine — all arcs start dormant, pipeline will advance them
+    dependencyWeb: { conditions: [], capacities: {} } as SerializedDependencyWeb,
+    delayedConsequenceQueue: [],
+    activeArcs: allArcTemplates.map((template): ActiveArc => ({
+      arcId: template.id,
+      currentStage: 'dormant',
+      stageEnteredTurn: 1,
+      inactionTimer: 0,
+      lastEventTurn: 0,
+      initializedFromSnapshot: false,
+    })),
+    resolvedArcs: [],
+    // Tutorial / NUX — guides new players through first ~10 turns
+    tutorialState: {
+      active: true,
+      completedSteps: [],
+      dismissedTooltips: [],
+    } as TutorialState,
+    // Advisor prompts — context-sensitive warnings from community leaders
+    advisorState: {
+      dismissedConditions: [],
+      cooldowns: {},
+    } as AdvisorState,
   };
 }

@@ -60,6 +60,7 @@ function makeTile(id: string, overrides: Partial<Tile> = {}): Tile {
     communityOwned: false,
     adjacentTileIds: [],
     visualStage: 'dystopia',
+    consumedByproducts: [],
     ...overrides,
   };
 }
@@ -73,14 +74,14 @@ describe('canStartProject', () => {
   });
 
   it('blocks when budget is insufficient for player-initiated (100% cost)', () => {
-    // rain_garden costs 0.4. Set budget to 0.39 to block.
+    // rain_garden costs 0.14. Set budget to 0.13 to block.
     const state = makeState({
       meters: {
         communityTrust: 50,
         ecologicalHealth: 15,
         foodSovereignty: 10,
         politicalWill: 60,
-        budget: 0.39,
+        budget: 0.13,
         climatePressure: 30,
       },
     });
@@ -90,14 +91,14 @@ describe('canStartProject', () => {
   });
 
   it('blocks when budget is insufficient for community-led (130% cost)', () => {
-    // rain_garden costs 0.4. Community-led = 0.4 * 1.3 = 0.52. Budget = 0.50 should block.
+    // rain_garden costs 0.14. Community-led = 0.14 * 1.3 = 0.182. Budget = 0.17 should block.
     const state = makeState({
       meters: {
         communityTrust: 50,
         ecologicalHealth: 15,
         foodSovereignty: 10,
         politicalWill: 60,
-        budget: 0.50,
+        budget: 0.17,
         climatePressure: 30,
       },
     });
@@ -107,14 +108,14 @@ describe('canStartProject', () => {
   });
 
   it('allows community-led when budget exactly meets 130% cost', () => {
-    // rain_garden costs 0.4 * 1.3 = 0.52
+    // rain_garden costs 0.14 * 1.3 = 0.18200000000000002 (floating point)
     const state = makeState({
       meters: {
         communityTrust: 50,
         ecologicalHealth: 15,
         foodSovereignty: 10,
         politicalWill: 60,
-        budget: 0.52,
+        budget: 0.14 * 1.3, // exact value to avoid floating point mismatch
         climatePressure: 30,
       },
     });
@@ -253,51 +254,43 @@ describe('startProject', () => {
   it('deducts correct cost for player-initiated (100%)', () => {
     const state = makeState();
     const next = startProject(state, 'tile_a', 'rain_garden', 'player-initiated');
-    // rain_garden baseCost = 0.4, player-initiated = 100%
-    expect(next.meters.budget).toBeCloseTo(4.2 - 0.4, 10);
+    // rain_garden baseCost = 0.14, player-initiated = 100%
+    expect(next.meters.budget).toBeCloseTo(4.2 - 0.14, 10);
   });
 
   it('deducts correct cost for community-led (130%)', () => {
     const state = makeState();
     const next = startProject(state, 'tile_a', 'rain_garden', 'community-led');
-    // rain_garden baseCost = 0.4, community-led = 130% = 0.52
-    expect(next.meters.budget).toBeCloseTo(4.2 - 0.52, 10);
+    // rain_garden baseCost = 0.14, community-led = 130% = 0.182
+    expect(next.meters.budget).toBeCloseTo(4.2 - 0.182, 10);
   });
 
   it('creates ActiveProject with correct duration for player-initiated', () => {
-    const state = makeState();
+    const state = makeState({ season: 'winter' }); // winter = no seasonal bonus
     const next = startProject(state, 'tile_a', 'rain_garden', 'player-initiated');
     const project = next.tiles['tile_a'].activeProjects[0];
     expect(project.definitionId).toBe('rain_garden');
     expect(project.tileId).toBe('tile_a');
     expect(project.mode).toBe('player-initiated');
     expect(project.progress).toBe(0);
-    expect(project.duration).toBe(2); // baseDuration for rain_garden
-    expect(project.cost).toBeCloseTo(0.4, 10);
+    expect(project.duration).toBe(6); // baseDuration for rain_garden (monthly)
+    expect(project.cost).toBeCloseTo(0.14, 10);
   });
 
   it('creates ActiveProject with correct duration for community-led (ceil(base * 1.5), min base+1)', () => {
-    // rain_garden baseDuration = 2. ceil(2 * 1.5) = 3 = max(3, 2+1=3) => 3
-    const state = makeState();
+    // rain_garden baseDuration = 6. ceil(6 * 1.5) = 9. max(9, 6+1=7) => 9
+    const state = makeState({ season: 'winter' });
     const next = startProject(state, 'tile_a', 'rain_garden', 'community-led');
     const project = next.tiles['tile_a'].activeProjects[0];
-    expect(project.duration).toBe(3);
+    expect(project.duration).toBe(9);
   });
 
   it('community-led duration uses minimum of baseDuration + 1 when ceil is less', () => {
-    // food_forest baseDuration = 3. ceil(3 * 1.5) = 5 vs min = 3+1 = 4. 5 > 4, so 5.
-    // Actually let's test with maker_space: baseDuration = 2. ceil(2*1.5) = 3 vs 2+1=3 => 3
-    // solar_grid: baseDuration = 4. ceil(4*1.5) = 6 vs 4+1=5 => 6
-    // For the min to matter we'd need ceil(base*1.5) < base+1 => ceil(1.5b) < b+1
-    // That happens when b=1: ceil(1.5) = 2 vs 1+1 = 2, equal
-    // With integer durations >= 2, ceil(b*1.5) >= b+1 always.
-    // So the min only matters for baseDuration=1 (which none of our projects have).
-    // Let's just test a longer project instead.
-    // food_forest: baseDuration=3, ceil(3*1.5)=ceil(4.5)=5, min=4 => 5
-    const state = makeState();
+    // food_forest: baseDuration=9, ceil(9*1.5)=ceil(13.5)=14, min=10 => 14
+    const state = makeState({ season: 'winter' }); // winter = no seasonal bonus
     const next = startProject(state, 'tile_a', 'food_forest', 'community-led');
     const project = next.tiles['tile_a'].activeProjects[0];
-    expect(project.duration).toBe(5); // ceil(3 * 1.5) = 5
+    expect(project.duration).toBe(14); // ceil(9 * 1.5) = 14
   });
 
   it('does not mutate original state', () => {
@@ -363,7 +356,7 @@ describe('advanceProjects', () => {
   });
 
   it('applies tileEco and meter effects on completion', () => {
-    // rain_garden: tileEco=7, foodSov=0, trust=0
+    // rain_garden: tileEco=8, foodSov=0, trust=1
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -373,9 +366,9 @@ describe('advanceProjects', () => {
               definitionId: 'rain_garden',
               tileId: 'tile_a',
               mode: 'player-initiated',
-              progress: 1,
-              duration: 2,
-              cost: 0.4,
+              progress: 0,
+              duration: 1,
+              cost: 0.14,
             },
           ],
           adjacentTileIds: ['tile_b'],
@@ -385,11 +378,11 @@ describe('advanceProjects', () => {
     });
 
     const { state: next, deltas: _deltas } = advanceProjects(state);
-    expect(next.tiles['tile_a'].ecologicalHealth).toBe(17); // 10 + 7
+    expect(next.tiles['tile_a'].ecologicalHealth).toBe(18); // 10 + 8
   });
 
-  it('player-initiated trust gain is 60% of base', () => {
-    // food_forest: trust=1.5, player-initiated => 1.5 * 0.6 = 0.9
+  it('player-initiated trust gain is 50% of base', () => {
+    // food_forest: trust=2, player-initiated => 2 * 0.5 = 1.0
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -400,7 +393,7 @@ describe('advanceProjects', () => {
               mode: 'player-initiated',
               progress: 2,
               duration: 3,
-              cost: 0.75,
+              cost: 0.10,
             },
           ],
           adjacentTileIds: ['tile_b'],
@@ -412,11 +405,11 @@ describe('advanceProjects', () => {
     const { state: _next, deltas } = advanceProjects(state);
     const trustDelta = deltas.find((d) => d.meter === 'communityTrust');
     expect(trustDelta).toBeDefined();
-    expect(trustDelta!.amount).toBeCloseTo(0.9, 10);
+    expect(trustDelta!.amount).toBeCloseTo(1.0, 10);
   });
 
-  it('community-led trust gain is 160% of base', () => {
-    // food_forest: trust=1.5, community-led => 1.5 * 1.6 = 2.4
+  it('community-led trust gain is 120% of base', () => {
+    // food_forest: trust=2, community-led => 2 * 1.2 = 2.4
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -427,7 +420,7 @@ describe('advanceProjects', () => {
               mode: 'community-led',
               progress: 4, // community-led duration is 5 for food_forest
               duration: 5,
-              cost: 0.975,
+              cost: 0.13,
             },
           ],
           adjacentTileIds: ['tile_b'],
@@ -464,10 +457,10 @@ describe('advanceProjects', () => {
     });
 
     const { state: next } = advanceProjects(state);
-    expect(next.tiles['tile_a'].gentrificationPressure).toBeCloseTo(15, 10);
+    expect(next.tiles['tile_a'].gentrificationPressure).toBeCloseTo(7.5, 10);
   });
 
-  it('community-led gentrification: 10% base * 0.5 = 5% on tile', () => {
+  it('community-led gentrification: gentrificationChange(0) + 5 * 0.5 = 2.5 on tile', () => {
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -489,10 +482,10 @@ describe('advanceProjects', () => {
     });
 
     const { state: next } = advanceProjects(state);
-    expect(next.tiles['tile_a'].gentrificationPressure).toBeCloseTo(5, 10);
+    expect(next.tiles['tile_a'].gentrificationPressure).toBeCloseTo(2.5, 10);
   });
 
-  it('adjacent tile gentrification: player-initiated = 5% * 1.5 = 7.5%', () => {
+  it('adjacent tile gentrification: player-initiated = 3 * 1.5 = 4.5', () => {
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -514,10 +507,10 @@ describe('advanceProjects', () => {
     });
 
     const { state: next } = advanceProjects(state);
-    expect(next.tiles['tile_b'].gentrificationPressure).toBeCloseTo(7.5, 10);
+    expect(next.tiles['tile_b'].gentrificationPressure).toBeCloseTo(4.5, 10);
   });
 
-  it('adjacent tile gentrification: community-led = 5% * 0.5 = 2.5%', () => {
+  it('adjacent tile gentrification: community-led = 3 * 0.5 = 1.5', () => {
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -539,7 +532,7 @@ describe('advanceProjects', () => {
     });
 
     const { state: next } = advanceProjects(state);
-    expect(next.tiles['tile_b'].gentrificationPressure).toBeCloseTo(2.5, 10);
+    expect(next.tiles['tile_b'].gentrificationPressure).toBeCloseTo(1.5, 10);
   });
 
   it('community-led completion sets communityOwned and increments tokens', () => {
@@ -707,7 +700,7 @@ describe('advanceProjects', () => {
   });
 
   it('returns deltas for food sovereignty changes', () => {
-    // food_forest: foodSov = 3
+    // food_forest: foodSov = 8
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -718,7 +711,7 @@ describe('advanceProjects', () => {
               mode: 'player-initiated',
               progress: 2,
               duration: 3,
-              cost: 0.75,
+              cost: 0.10,
             },
           ],
           adjacentTileIds: ['tile_b'],
@@ -730,11 +723,11 @@ describe('advanceProjects', () => {
     const { deltas } = advanceProjects(state);
     const foodDelta = deltas.find((d) => d.meter === 'foodSovereignty');
     expect(foodDelta).toBeDefined();
-    expect(foodDelta!.amount).toBe(3);
+    expect(foodDelta!.amount).toBe(8);
   });
 
   it('adds annualRevenue to budget on completion', () => {
-    // solar_grid: annualRevenue = 0.2
+    // solar_grid: annualRevenue = 0.08
     const state = makeState({
       tiles: {
         tile_a: makeTile('tile_a', {
@@ -743,9 +736,9 @@ describe('advanceProjects', () => {
               definitionId: 'solar_grid',
               tileId: 'tile_a',
               mode: 'player-initiated',
-              progress: 3,
-              duration: 4,
-              cost: 1.5,
+              progress: 2,
+              duration: 3,
+              cost: 0.40,
             },
           ],
           adjacentTileIds: ['tile_b'],
@@ -757,7 +750,7 @@ describe('advanceProjects', () => {
     const { state: _next, deltas } = advanceProjects(state);
     const budgetDelta = deltas.find((d) => d.meter === 'budget');
     expect(budgetDelta).toBeDefined();
-    expect(budgetDelta!.amount).toBeCloseTo(0.2, 10);
+    expect(budgetDelta!.amount).toBeCloseTo(0.08, 10);
   });
 
   it('applies contamination reduction on soil_remediation completion', () => {
@@ -809,5 +802,111 @@ describe('decayGentrification', () => {
     const result = decayGentrification(tiles);
     expect(result['tile_a'].gentrificationPressure).toBe(0);
     expect(result['tile_b'].gentrificationPressure).toBe(0);
+  });
+});
+
+describe('direct-action mode', () => {
+  it('requires trust >= 50', () => {
+    const state = makeState({
+      meters: { communityTrust: 40, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+    });
+    const result = canStartProject(state, 'tile_a', 'rain_garden', 'direct-action');
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('trust >= 50');
+  });
+
+  it('allows direct action when trust >= 50', () => {
+    const state = makeState({
+      meters: { communityTrust: 55, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+    });
+    const result = canStartProject(state, 'tile_a', 'rain_garden', 'direct-action');
+    expect(result.allowed).toBe(true);
+  });
+
+  it('costs almost nothing in budget (scavenged materials)', () => {
+    const state = makeState({
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 0.05, climatePressure: 30 },
+    });
+    const after = startProject(state, 'tile_a', 'rain_garden', 'direct-action');
+    expect(after.meters.budget).toBeCloseTo(0.03, 2);
+  });
+
+  it('deducts 8 trust on start', () => {
+    const state = makeState({
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+    });
+    const after = startProject(state, 'tile_a', 'rain_garden', 'direct-action');
+    expect(after.meters.communityTrust).toBe(52);
+  });
+
+  it('angers all council members by -5 disposition', () => {
+    const state = makeState({
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      councilMembers: {
+        cm1: { id: 'cm1', name: 'Test', district: 'D1', districtNumber: 1, leaning: 'moderate', priorities: [], disposition: 20, backstory: '', tileIds: [] },
+        cm2: { id: 'cm2', name: 'Test2', district: 'D2', districtNumber: 2, leaning: 'progressive', priorities: [], disposition: 10, backstory: '', tileIds: [] },
+      },
+    });
+    const after = startProject(state, 'tile_a', 'rain_garden', 'direct-action');
+    expect(after.councilMembers['cm1'].disposition).toBe(15);
+    expect(after.councilMembers['cm2'].disposition).toBe(5);
+  });
+
+  it('halves project duration', () => {
+    const state = makeState({
+      season: 'winter', // no seasonal bonus
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+    });
+    // food_forest baseDuration = 9, halved = 5 (ceil(9*0.5) = 5)
+    const after = startProject(state, 'tile_a', 'food_forest', 'direct-action');
+    expect(after.tiles['tile_a'].activeProjects[0].duration).toBe(5);
+  });
+
+  it('zero gentrification on completion', () => {
+    const state = makeState({
+      tiles: {
+        tile_a: makeTile('tile_a', {
+          gentrificationPressure: 10,
+          activeProjects: [{
+            definitionId: 'solar_grid',
+            tileId: 'tile_a',
+            mode: 'direct-action',
+            progress: 1,
+            duration: 2,
+            cost: 0.02,
+          }],
+          adjacentTileIds: ['tile_b'],
+        }),
+        tile_b: makeTile('tile_b', { gentrificationPressure: 5, adjacentTileIds: ['tile_a'] }),
+      },
+    });
+    const { state: next } = advanceProjects(state);
+    // No gentrification added to either tile
+    expect(next.tiles['tile_a'].gentrificationPressure).toBe(10);
+    expect(next.tiles['tile_b'].gentrificationPressure).toBe(5);
+  });
+
+  it('grants bonus trust on completion', () => {
+    const state = makeState({
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      tiles: {
+        tile_a: makeTile('tile_a', {
+          activeProjects: [{
+            definitionId: 'rain_garden',
+            tileId: 'tile_a',
+            mode: 'direct-action',
+            progress: 0,
+            duration: 1,
+            cost: 0.02,
+          }],
+          adjacentTileIds: ['tile_b'],
+        }),
+        tile_b: makeTile('tile_b', { adjacentTileIds: ['tile_a'] }),
+      },
+    });
+    const { state: next, deltas } = advanceProjects(state);
+    // rain_garden trust effect = 1, multiplier 2.0 + bonus 6 = 8
+    const trustDelta = deltas.find(d => d.meter === 'communityTrust');
+    expect(trustDelta?.amount).toBe(8);
   });
 });

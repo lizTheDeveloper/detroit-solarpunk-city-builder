@@ -44,7 +44,7 @@ function AdvocacyDots({ power }: { power: number }) {
   return <div className="advocacy-dots">{dots}</div>;
 }
 
-function LeaderCard({ leader }: { leader: CommunityLeader }) {
+function LeaderCard({ leader, onTalk }: { leader: CommunityLeader; onTalk?: (id: string) => void }) {
   const level = getRelationshipLevel(leader.trust);
 
   return (
@@ -71,11 +71,16 @@ function LeaderCard({ leader }: { leader: CommunityLeader }) {
           <span key={p} className="tag tag--trait">{p.replace(/_/g, ' ')}</span>
         ))}
       </div>
+      {onTalk && (
+        <button type="button" className="btn btn-sm leader-talk-btn" onClick={() => onTalk(leader.id)}>
+          Talk
+        </button>
+      )}
     </div>
   );
 }
 
-export default function CharacterPanel() {
+export default function CharacterPanel({ onTalk }: { onTalk?: (characterId: string) => void }) {
   const { state } = useGame();
   const leaders = Object.values(state.leaders);
 
@@ -87,7 +92,7 @@ export default function CharacterPanel() {
       </p>
       <div className="leader-grid">
         {leaders.map((l) => (
-          <LeaderCard key={l.id} leader={l} />
+          <LeaderCard key={l.id} leader={l} onTalk={onTalk} />
         ))}
       </div>
     </div>

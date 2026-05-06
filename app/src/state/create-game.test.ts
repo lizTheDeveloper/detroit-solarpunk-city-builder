@@ -64,20 +64,20 @@ describe('createNewGame', () => {
       expect(state.meters.communityTrust).toBe(50);
     });
 
-    it('ecologicalHealth starts at 15', () => {
-      expect(state.meters.ecologicalHealth).toBe(15);
+    it('ecologicalHealth starts at 20', () => {
+      expect(state.meters.ecologicalHealth).toBe(20);
     });
 
-    it('foodSovereignty starts at 10', () => {
-      expect(state.meters.foodSovereignty).toBe(10);
+    it('foodSovereignty starts at 12', () => {
+      expect(state.meters.foodSovereignty).toBe(12);
     });
 
-    it('politicalWill starts at 60', () => {
-      expect(state.meters.politicalWill).toBe(60);
+    it('politicalWill starts at 25', () => {
+      expect(state.meters.politicalWill).toBe(25);
     });
 
-    it('budget starts at 2.8', () => {
-      expect(state.meters.budget).toBe(2.8);
+    it('budget starts at 1.5', () => {
+      expect(state.meters.budget).toBe(1.5);
     });
 
     it('climatePressure starts at 30', () => {

@@ -44,29 +44,29 @@ describe('calculateActionsPerTurn', () => {
 });
 
 describe('getBaseActionValues', () => {
-  it('community_meeting: will 1.0, trust 1.5, policy 0, opinion 0', () => {
+  it('community_meeting: will 0.33, trust 0.5, policy 0, opinion 0', () => {
     const v = getBaseActionValues('community_meeting');
-    expect(v).toEqual({ willGain: 1.0, trustGain: 1.5, policyThresholdReduction: 0, opinionGain: 0 });
+    expect(v).toEqual({ willGain: 0.33, trustGain: 0.5, policyThresholdReduction: 0, opinionGain: 0 });
   });
 
-  it('media_campaign: will 1.0, trust 0, policy 0.03, opinion 0', () => {
+  it('media_campaign: will 0.33, trust 0, policy 0.01, opinion 0', () => {
     const v = getBaseActionValues('media_campaign');
-    expect(v).toEqual({ willGain: 1.0, trustGain: 0, policyThresholdReduction: 0.03, opinionGain: 0 });
+    expect(v).toEqual({ willGain: 0.33, trustGain: 0, policyThresholdReduction: 0.01, opinionGain: 0 });
   });
 
-  it('education_program: will 0.5, trust 0, policy 0, opinion 2.0', () => {
+  it('education_program: will 0.17, trust 0, policy 0, opinion 0.67', () => {
     const v = getBaseActionValues('education_program');
-    expect(v).toEqual({ willGain: 0.5, trustGain: 0, policyThresholdReduction: 0, opinionGain: 2.0 });
+    expect(v).toEqual({ willGain: 0.17, trustGain: 0, policyThresholdReduction: 0, opinionGain: 0.67 });
   });
 
-  it('cultural_event: will 1.0, trust 1.5, policy 0, opinion 0', () => {
+  it('cultural_event: will 0.33, trust 0.5, policy 0, opinion 0', () => {
     const v = getBaseActionValues('cultural_event');
-    expect(v).toEqual({ willGain: 1.0, trustGain: 1.5, policyThresholdReduction: 0, opinionGain: 0 });
+    expect(v).toEqual({ willGain: 0.33, trustGain: 0.5, policyThresholdReduction: 0, opinionGain: 0 });
   });
 
-  it('demonstration: will 2.0, trust -1.5, policy 0, opinion 0', () => {
+  it('demonstration: will 2.0, trust -0.5, policy 0, opinion 0', () => {
     const v = getBaseActionValues('demonstration');
-    expect(v).toEqual({ willGain: 2.0, trustGain: -1.5, policyThresholdReduction: 0, opinionGain: 0 });
+    expect(v).toEqual({ willGain: 2.0, trustGain: -0.5, policyThresholdReduction: 0, opinionGain: 0 });
   });
 
   it('direct_engagement: all zeros', () => {
@@ -74,9 +74,9 @@ describe('getBaseActionValues', () => {
     expect(v).toEqual({ willGain: 0, trustGain: 0, policyThresholdReduction: 0, opinionGain: 0 });
   });
 
-  it('lobbying: all zeros', () => {
+  it('lobbying: will 0.5, trust -0.33, policy 0.02, opinion 0', () => {
     const v = getBaseActionValues('lobbying');
-    expect(v).toEqual({ willGain: 0, trustGain: 0, policyThresholdReduction: 0, opinionGain: 0 });
+    expect(v).toEqual({ willGain: 0.5, trustGain: -0.33, policyThresholdReduction: 0.02, opinionGain: 0 });
   });
 });
 
@@ -128,11 +128,11 @@ describe('applyNarrativeAction', () => {
     state.narrativeState.consecutiveTurns = { foodSovereignty: 2 };
     const result = applyNarrativeAction(state, 'media_campaign', 'foodSovereignty', 'brightmoor');
 
-    // base willGain = 1.0, compounding = 1 + 0.10 = 1.10
-    // effective willGain = 1.0 * 1.10 = 1.10
+    // base willGain = 0.33, compounding = 1 + 0.10 = 1.10
+    // effective willGain = 0.33 * 1.10 = 0.363
     const willDelta = result.deltas.find(d => d.meter === 'politicalWill');
     expect(willDelta).toBeDefined();
-    expect(willDelta!.amount).toBeCloseTo(1.10);
+    expect(willDelta!.amount).toBeCloseTo(0.363);
   });
 
   it('increments consecutiveTurns for the targeted topic', () => {
@@ -158,8 +158,8 @@ describe('applyNarrativeAction', () => {
     state.narrativeState.consecutiveTurns = {};
     state.publicOpinion.foodSovereignty = 15;
     const result = applyNarrativeAction(state, 'education_program', 'foodSovereignty', 'brightmoor');
-    // base opinionGain = 2.0, compounding = 0 (0 consecutive), effective = 2.0 * 1.0 = 2.0
-    expect(result.state.publicOpinion.foodSovereignty).toBeCloseTo(17.0);
+    // base opinionGain = 0.67, compounding = 0 (0 consecutive), effective = 0.67 * 1.0 = 0.67
+    expect(result.state.publicOpinion.foodSovereignty).toBeCloseTo(15.67);
   });
 
   it('demonstration gains Will but costs Trust', () => {
@@ -182,7 +182,7 @@ describe('applyNarrativeAction', () => {
 });
 
 describe('applyOpinionDrift', () => {
-  it('reduces opinion by 2.0 per turn of neglect', () => {
+  it('reduces opinion by 0.67 per turn of neglect', () => {
     const opinion: PublicOpinion = {
       foodSovereignty: 20,
       waterCommons: 15,
@@ -197,11 +197,11 @@ describe('applyOpinionDrift', () => {
       counterNarrativeCooldowns: {},
     };
     const drifted = applyOpinionDrift(opinion, narrativeState);
-    expect(drifted.foodSovereignty).toBeCloseTo(18);
-    expect(drifted.waterCommons).toBeCloseTo(13);
-    expect(drifted.landReform).toBeCloseTo(10);
-    expect(drifted.ecologicalRestoration).toBeCloseTo(23);
-    expect(drifted.cooperativeEconomics).toBeCloseTo(16);
+    expect(drifted.foodSovereignty).toBeCloseTo(19.33, 1);
+    expect(drifted.waterCommons).toBeCloseTo(14.33, 1);
+    expect(drifted.landReform).toBeCloseTo(11.33, 1);
+    expect(drifted.ecologicalRestoration).toBeCloseTo(24.33, 1);
+    expect(drifted.cooperativeEconomics).toBeCloseTo(17.33, 1);
   });
 
   it('does not drift below starting values', () => {
@@ -243,8 +243,8 @@ describe('applyOpinionDrift', () => {
     const drifted = applyOpinionDrift(opinion, narrativeState);
     // foodSovereignty had action, should not drift
     expect(drifted.foodSovereignty).toBe(25);
-    // others should drift
-    expect(drifted.waterCommons).toBeCloseTo(13);
+    // others should drift by 0.67
+    expect(drifted.waterCommons).toBeCloseTo(14.33, 1);
   });
 });
 

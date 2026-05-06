@@ -126,7 +126,7 @@ export function applyProposalResponse(
 
   switch (response) {
     case 'accept': {
-      newLeader.trust += 10;
+      newLeader.trust += 6;
       newLeader.consecutiveDeferrals = 0;
       startProject = true;
       costMultiplier = 0.85;
@@ -134,7 +134,7 @@ export function applyProposalResponse(
     }
 
     case 'modify': {
-      newLeader.trust += 3;
+      newLeader.trust += 2;
       newLeader.consecutiveDeferrals = 0;
       startProject = true;
       costMultiplier = 0.90;

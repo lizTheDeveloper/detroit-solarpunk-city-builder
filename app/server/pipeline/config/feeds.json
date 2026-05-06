@@ -1,0 +1,16 @@
+{
+  "sources": [
+    {
+      "id": "theblue_report",
+      "type": "json",
+      "url": "https://data.theblue.report/feeds/top-day.json",
+      "parser": "bluesky-trending"
+    },
+    {
+      "id": "memeorandum",
+      "type": "rss",
+      "url": "http://www.memeorandum.com/feed.xml",
+      "parser": "memeorandum"
+    }
+  ]
+}

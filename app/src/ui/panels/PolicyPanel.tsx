@@ -1,6 +1,7 @@
 import { useGame } from '@/state/store';
 import { POLICY_CATALOG } from '@/data/content/policy-catalog';
 import { canEnactPolicy, calculateEffectiveThreshold, getPolicyTopicMapping } from '@/systems/policies';
+import { formatCost } from '@/ui/format';
 import type { PolicyDefinition } from '@/state/types';
 
 function PolicyCard({
@@ -50,7 +51,7 @@ function PolicyCard({
           <span className="effect-tag">Food Sov +{policy.effects.foodSovBonus}%</span>
         )}
         {policy.effects.budgetBonus > 0 && (
-          <span className="effect-tag">Budget +${policy.effects.budgetBonus}M</span>
+          <span className="effect-tag">Budget +{formatCost(policy.effects.budgetBonus)}/yr</span>
         )}
       </div>
       {!isEnacted && (

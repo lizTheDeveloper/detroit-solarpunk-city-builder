@@ -1,11 +1,8 @@
 import { useGame } from '@/state/store';
 import { POLICY_CATALOG } from '@/data/content/policy-catalog';
 import { calculateTotalPolicyDrain } from '@/systems/policies';
+import { formatBudget } from '@/ui/format';
 import type { Meters, MeterDelta, PublicOpinion } from '@/state/types';
-
-function formatBudget(budget: number): string {
-  return `$${budget.toFixed(2)}M`;
-}
 
 function meterColor(value: number, thresholds: { green: number; yellow: number }): string {
   if (value >= thresholds.green) return 'var(--color-positive)';
@@ -128,10 +125,10 @@ export default function MeterBar() {
               <div className="opinion-mini-track">
                 <div
                   className="opinion-mini-fill"
-                  style={{ width: `${Math.min(100, publicOpinion[key] * 100)}%` }}
+                  style={{ width: `${Math.min(100, publicOpinion[key])}%` }}
                 />
               </div>
-              <span className="opinion-mini-value">{(publicOpinion[key] * 100).toFixed(0)}%</span>
+              <span className="opinion-mini-value">{publicOpinion[key].toFixed(0)}%</span>
             </div>
           ))}
         </div>

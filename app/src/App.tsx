@@ -1,18 +1,22 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GameContext } from '@/state/store';
 import type { GameState, GameAction } from '@/state/types';
 import { createNewGame } from '@/state/create-game';
 import { gameReducer } from '@/state/reducer';
-import { generateProposals } from '@/systems/proposals';
 import { generateEvents } from '@/systems/events';
+import { prepareTurn } from '@/systems/resolve';
 import { autoSave, loadGame, createUndoStack, pushState, undo, canUndo } from '@/systems/persistence';
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { LEADER_DEFINITIONS } from '@/data/content/leaders';
+import { initializeArcsFromPipeline } from '@/state/initialize-arcs-from-pipeline';
 import TopBar from '@/ui/components/TopBar';
 import MeterBar from '@/ui/components/MeterBar';
 import TileList from '@/ui/components/TileList';
 import EndTurnButton from '@/ui/components/EndTurnButton';
 import TurnSummary from '@/ui/components/TurnSummary';
+import AdvisorToast from '@/ui/components/AdvisorToast';
+import Dashboard from '@/ui/components/Dashboard';
+import TutorialTooltip from '@/ui/components/TutorialTooltip';
 import TileDetailPanel from '@/ui/panels/TileDetailPanel';
 import ProjectSelectPanel from '@/ui/panels/ProjectSelectPanel';
 import ProposalPanel from '@/ui/panels/ProposalPanel';
@@ -23,8 +27,11 @@ import NarrativePanel from '@/ui/panels/NarrativePanel';
 import EventPanel from '@/ui/panels/EventPanel';
 import TensionPanel from '@/ui/panels/TensionPanel';
 import SaveLoadPanel from '@/ui/panels/SaveLoadPanel';
+import ConversationPanel from '@/ui/panels/ConversationPanel';
+import CoalitionPanel from '@/ui/panels/CoalitionPanel';
+import LLMSettingsPanel from '@/ui/panels/LLMSettingsPanel';
 
-type ContentTab = 'tiles' | 'council' | 'characters' | 'policies' | 'narrative' | 'events' | 'tensions' | 'saves';
+type ContentTab = 'tiles' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'narrative' | 'events' | 'tensions' | 'saves' | 'settings';
 
 type RightPanel =
   | { kind: 'none' }
@@ -45,11 +52,7 @@ function initGame(): GameState {
 
   let state: GameState = { ...base, leaders };
 
-  // Generate initial proposals
-  const proposals = generateProposals(state);
-  state = { ...state, activeProposals: proposals };
-
-  return state;
+  return prepareTurn(state);
 }
 
 export default function App() {
@@ -58,6 +61,13 @@ export default function App() {
   const [showTurnSummary, setShowTurnSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<ContentTab>('tiles');
   const undoStackRef = useRef(createUndoStack());
+  const [conversation, setConversation] = useState<{ characterId: string; interactionType: string; message: string } | null>(null);
+
+  useEffect(() => {
+    initializeArcsFromPipeline(state).then((updated) => {
+      if (updated !== state) setState(updated);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dispatch = useCallback((action: GameAction) => {
     setState((prev) => gameReducer(prev, action, PROJECT_CATALOG));
@@ -93,9 +103,9 @@ export default function App() {
 
       // No events — resolve immediately
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
-      const proposals = generateProposals(afterEnd);
-      autoSave(afterEnd);
-      return { ...afterEnd, activeProposals: proposals };
+      const ready = prepareTurn(afterEnd);
+      autoSave(ready);
+      return ready;
     });
     setShowTurnSummary(true);
   }, []);
@@ -103,9 +113,9 @@ export default function App() {
   const handleResolveAfterEvents = useCallback(() => {
     setState((prev) => {
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
-      const proposals = generateProposals(afterEnd);
-      autoSave(afterEnd);
-      return { ...afterEnd, activeProposals: proposals };
+      const ready = prepareTurn(afterEnd);
+      autoSave(ready);
+      return ready;
     });
     setShowTurnSummary(true);
   }, []);
@@ -137,13 +147,16 @@ export default function App() {
 
   const TABS: { id: ContentTab; label: string; badge?: number }[] = [
     { id: 'tiles', label: 'Tiles' },
+    { id: 'dashboard', label: 'Briefing' },
     { id: 'council', label: 'Council' },
     { id: 'characters', label: 'Leaders' },
+    { id: 'coalitions', label: 'Coalitions' },
     { id: 'policies', label: 'Policies' },
     { id: 'narrative', label: 'Actions' },
     { id: 'events', label: 'Events', badge: eventCount > 0 ? eventCount : undefined },
     { id: 'tensions', label: 'Tensions' },
     { id: 'saves', label: 'Save/Load' },
+    { id: 'settings', label: 'Settings' },
   ];
 
   return (
@@ -191,7 +204,9 @@ export default function App() {
 
             {activeTab === 'tiles' && (
               <>
-                {state.activeProposals.length > 0 && <ProposalPanel />}
+                {state.activeProposals.length > 0 && (
+                  <ProposalPanel onConversation={(charId, type) => setConversation({ characterId: charId, interactionType: type, message: '' })} />
+                )}
 
                 {rightPanel.kind === 'tile-detail' && (
                   <TileDetailPanel
@@ -217,16 +232,29 @@ export default function App() {
               </>
             )}
 
+            {activeTab === 'dashboard' && <Dashboard />}
             {activeTab === 'council' && <CouncilPanel />}
-            {activeTab === 'characters' && <CharacterPanel />}
+            {activeTab === 'characters' && <CharacterPanel onTalk={(charId) => setConversation({ characterId: charId, interactionType: 'direct_engagement', message: '' })} />}
+            {activeTab === 'coalitions' && <CoalitionPanel />}
             {activeTab === 'policies' && <PolicyPanel />}
             {activeTab === 'narrative' && <NarrativePanel />}
             {activeTab === 'tensions' && <TensionPanel />}
             {activeTab === 'saves' && <SaveLoadPanel onLoad={handleLoadSave} />}
+            {activeTab === 'settings' && <LLMSettingsPanel />}
           </main>
         </div>
         <MeterBar />
+        {conversation && (
+          <ConversationPanel
+            characterId={conversation.characterId}
+            interactionType={conversation.interactionType}
+            onDismiss={() => setConversation(null)}
+            initialMessage={conversation.message}
+          />
+        )}
         {showTurnSummary && <TurnSummary onDismiss={handleDismissSummary} />}
+        <TutorialTooltip onStateUpdate={setState} />
+        <AdvisorToast onStateUpdate={setState} />
       </div>
     </GameContext.Provider>
   );

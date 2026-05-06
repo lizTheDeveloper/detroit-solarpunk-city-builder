@@ -1,0 +1,252 @@
+/* ── Timeline Component ── */
+
+.timeline {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.timeline__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.timeline__title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.timeline__range {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.timeline__body {
+  position: relative;
+  min-height: 120px;
+}
+
+/* ── Turn axis ── */
+
+.timeline__axis {
+  position: relative;
+  height: 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.timeline__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 4px;
+}
+
+.timeline__tick::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  background: var(--border);
+}
+
+.timeline__tick-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  transform: translateX(-50%);
+}
+
+/* ── Lanes ── */
+
+.timeline__lane {
+  position: relative;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.timeline__lane-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  width: 70px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.timeline__lane-track {
+  flex: 1;
+  position: relative;
+  min-height: 28px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* ── Project bars ── */
+
+.timeline__lane--projects .timeline__lane-track {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 0;
+  overflow: visible;
+}
+
+.timeline__project-bar {
+  position: relative;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+}
+
+.timeline__project-name {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Foreshadow regions ── */
+
+.timeline__foreshadow-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  cursor: default;
+}
+
+.timeline__foreshadow-text {
+  font-size: 9px;
+  color: var(--color-warning);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Arc items ── */
+
+.timeline__lane--arcs .timeline__lane-track {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+  overflow: visible;
+}
+
+.timeline__arc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline__arc-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-negative);
+  white-space: nowrap;
+}
+
+.timeline__arc-stage {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-negative);
+  opacity: 0.7;
+}
+
+.timeline__arc-timer-track {
+  width: 48px;
+  height: 5px;
+  background: rgba(248, 113, 113, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.timeline__arc-timer-fill {
+  height: 100%;
+  background: var(--color-negative);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Election marker ── */
+
+.timeline__election-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #a855f7;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.timeline__election-marker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a855f7;
+}
+
+.timeline__election-label {
+  position: absolute;
+  top: 10px;
+  left: 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a855f7;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.timeline__election-marker--urgent {
+  background: var(--color-negative);
+  animation: timeline-pulse 1.5s ease-in-out infinite;
+}
+
+.timeline__election-marker--urgent::after {
+  background: var(--color-negative);
+}
+
+.timeline__election-marker--urgent .timeline__election-label {
+  color: var(--color-negative);
+}
+
+@keyframes timeline-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

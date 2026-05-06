@@ -1,4 +1,5 @@
 import { useGame } from '@/state/store';
+import { formatBudget } from '@/ui/format';
 import type { Season } from '@/state/types';
 
 const SEASON_ICONS: Record<Season, string> = {
@@ -40,7 +41,7 @@ export default function TopBar() {
         Stage: {capitalize(state.stage)}
       </div>
       <div className="top-bar-stat top-bar-stat--budget">
-        ${state.meters.budget.toFixed(2)}M
+        {formatBudget(state.meters.budget)}
       </div>
       <div className="top-bar-stat">
         {actionsRemaining}/{actionsPerTurn} Actions

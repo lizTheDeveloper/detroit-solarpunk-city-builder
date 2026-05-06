@@ -137,6 +137,13 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     turnSummary: null,
     turnHistory: [],
     maxConcurrentProjects: 3,
+    regionalCities: {},
+    activeTransfers: [],
+    regionalProjects: [],
+    continentalGoals: [],
+    winCondition: null,
+    lossCondition: null,
+    sandbox: false,
     ...overrides,
   };
 }

@@ -1,4 +1,5 @@
 import { useGame } from '@/state/store';
+import { formatBudgetDelta } from '@/ui/format';
 import type { GameEvent, EventChoice } from '@/state/types';
 
 function EffectsPreview({ choice }: { choice: EventChoice }) {
@@ -22,7 +23,7 @@ function EffectsPreview({ choice }: { choice: EventChoice }) {
                     : d.meter;
         const color = d.amount >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
         const fmt = d.meter === 'budget'
-          ? `${d.amount >= 0 ? '+' : ''}$${d.amount.toFixed(2)}M`
+          ? formatBudgetDelta(d.amount)
           : `${d.amount >= 0 ? '+' : ''}${d.amount}%`;
         return (
           <span key={i} className="effect-tag" style={{ color }}>

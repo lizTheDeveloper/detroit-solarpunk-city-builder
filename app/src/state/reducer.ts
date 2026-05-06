@@ -10,6 +10,7 @@ import { applyNarrativeAction } from '../systems/narrative';
 import { applyEventChoice } from '../systems/events';
 import { calculateLobbyingBonus } from '../systems/council';
 import { canFormCoalition, formCoalition } from '../systems/relationships';
+import { reclaimLot, canReclaimLot } from '../systems/reclamation';
 import { POLICY_CATALOG } from '../data/content/policy-catalog';
 
 function countAllActiveProjects(state: GameState): number {
@@ -125,7 +126,7 @@ function handleRespondProposal(
           ...state.leaders,
           [leader.id]: {
             ...leader,
-            trust: leader.trust + 10,
+            trust: leader.trust + 5,
           },
         },
       };
@@ -166,7 +167,7 @@ function handleRespondProposal(
           ...state.leaders,
           [leader.id]: {
             ...leader,
-            trust: leader.trust + 3,
+            trust: leader.trust + 2,
           },
         },
       };
@@ -350,6 +351,23 @@ export function gameReducer(
       return handleFormCoalition(state, action);
     case 'CAMPAIGN_ACTION':
       return handleCampaignAction(state, action);
+    case 'RECLAIM_LOT': {
+      const check = canReclaimLot(state, action.tileId);
+      if (!check.allowed) return state;
+      return reclaimLot(state, action.tileId).state;
+    }
+    case 'CONVERSATION_OUTCOME': {
+      const leader = state.leaders[action.characterId];
+      if (!leader) return state;
+      const newTrust = Math.max(-100, Math.min(100, leader.trust + action.trustDelta));
+      return {
+        ...state,
+        leaders: {
+          ...state.leaders,
+          [action.characterId]: { ...leader, trust: newTrust },
+        },
+      };
+    }
     case 'END_TURN':
       return handleEndTurn(state);
     case 'PREPARE_TURN':

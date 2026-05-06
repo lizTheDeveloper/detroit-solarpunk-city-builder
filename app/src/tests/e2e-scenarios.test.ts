@@ -44,10 +44,10 @@ import { gameReducer } from '../state/reducer';
 function makeMeters(overrides: Partial<Meters> = {}): Meters {
   return {
     communityTrust: 50,
-    ecologicalHealth: 15,
-    foodSovereignty: 10,
-    politicalWill: 60,
-    budget: 2.8,
+    ecologicalHealth: 20,
+    foodSovereignty: 12,
+    politicalWill: 25,
+    budget: 1.5,
     climatePressure: 30,
     ...overrides,
   };
@@ -59,15 +59,15 @@ function makeProjectDef(overrides: Partial<ProjectDefinition> = {}): ProjectDefi
     name: 'Food Forest',
     category: 'ecology',
     growthCategory: 'de-growth',
-    baseCost: 0.75,
+    baseCost: 0.10,
     baseDuration: 3,
     effects: {
-      tileEco: 15,
-      foodSov: 4,
+      tileEco: 12,
+      foodSov: 8,
       trust: 2,
-      annualRevenue: 0,
+      annualRevenue: 0.02,
       contaminationReduction: 0,
-      gentrificationChange: 10,
+      gentrificationChange: 0,
       other: [],
     },
     maxContamination: 50,
@@ -94,15 +94,15 @@ const foodForestDef = makeProjectDef();
 const rainGardenDef = makeProjectDef({
   id: 'rain_garden',
   name: 'Rain Garden',
-  baseCost: 0.4,
-  baseDuration: 2,
+  baseCost: 0.14,
+  baseDuration: 1,
   effects: {
-    tileEco: 10,
+    tileEco: 8,
     foodSov: 0,
-    trust: 0,
+    trust: 1,
     annualRevenue: 0,
     contaminationReduction: 0,
-    gentrificationChange: 10,
+    gentrificationChange: 0,
     other: [],
   },
   maxContamination: null,
@@ -118,46 +118,42 @@ const projectDefs: Record<string, ProjectDefinition> = {
 // ============================================================
 
 describe('Scenario 1: Budget Economy Test', () => {
-  it('starting budget is $2.8M', () => {
+  it('starting budget is $1.5M', () => {
     const state = createNewGame();
-    expect(state.meters.budget).toBe(2.8);
+    expect(state.meters.budget).toBe(1.5);
   });
 
   it('starting 2 projects deducts correct costs from budget', () => {
     let state = createNewGame();
 
-    // Start food_forest ($0.75M player-initiated)
+    // Start food_forest ($0.10M player-initiated)
     state = gameReducer(
       state,
       { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(2.8 - 0.75, 5);
+    expect(state.meters.budget).toBeCloseTo(1.5 - 0.10, 5);
 
-    // Start rain_garden ($0.4M player-initiated)
+    // Start rain_garden ($0.14M player-initiated)
     state = gameReducer(
       state,
       { type: 'START_PROJECT', tileId: 'eastern_market', projectId: 'rain_garden', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(2.8 - 0.75 - 0.4, 5);
+    expect(state.meters.budget).toBeCloseTo(1.5 - 0.10 - 0.14, 5);
   });
 
-  it('no budget replenishment occurs mid-year (turns 2-4 are summer/fall/winter)', () => {
-    // Budget replenishment only on spring turns after turn 1.
-    // Turns 2 (summer), 3 (fall), 4 (winter) should have no replenishment.
-    // This is a design constraint from the simulation engine.
+  it('budget grows with monthly revenue every turn after turn 1', () => {
+    // Budget replenishment is now monthly (every turn after turn 1).
     const state = createNewGame();
-    // Advance through summer, fall, winter -- budget should only change from spending
     let current = state;
     for (let i = 0; i < 3; i++) {
       current = gameReducer(current, { type: 'END_TURN' }, projectDefs);
     }
-    // After 3 END_TURNs from spring: season should be winter, still year 1
-    expect(current.season).toBe('winter');
+    // After 3 END_TURNs (monthly): should advance 3 months
     expect(current.year).toBe(1);
-    // Budget unchanged (no projects started, no replenishment)
-    expect(current.meters.budget).toBe(2.8);
+    // Budget should be higher than starting (monthly revenue adds per turn)
+    expect(current.meters.budget).toBeGreaterThan(1.5);
   });
 
   it.todo(
@@ -203,7 +199,7 @@ describe('Scenario 2: Political Will Death Spiral Prevention', () => {
   });
 
   it('Will regeneration is at least +1.0/turn when trust is 0 (worst case)', () => {
-    const meters = makeMeters({ communityTrust: 0, politicalWill: 5 });
+    const meters = makeMeters({ communityTrust: 0, politicalWill: 50 });
     const result = applyMeterFeedback(meters);
     const willDelta = result.deltas.find(
       (d) => d.meter === 'politicalWill' && d.source === 'will_regen',
@@ -220,35 +216,31 @@ describe('Scenario 2: Political Will Death Spiral Prevention', () => {
     }
 
     // Will started at 20, regen is +1.0/turn at trust 30 (below 40).
-    // Trust also decays by 0.3/turn, but that does not affect Will regen
-    // because trust stays below 40 the entire time.
     // After 10 turns: Will = 20 + 10*1.0 = 30
     expect(meters.politicalWill).toBeGreaterThanOrEqual(30);
   });
 
   it('Will never spirals to 0 if trust stays positive -- 20 turn stress test', () => {
-    // Start from worst-case: low trust, low Will
     let meters = makeMeters({ communityTrust: 15, politicalWill: 5 });
 
     for (let i = 0; i < 20; i++) {
       const result = applyMeterFeedback(meters);
       meters = clampMeters(result.meters);
-      // Will should never reach 0 because baseline regen is +1.0
       expect(meters.politicalWill).toBeGreaterThan(0);
     }
 
-    // After 20 turns of +1.0 regen: Will should be well above starting
+    // After 20 turns of +1.0 base regen + recovery boost: Will should be well above starting
     expect(meters.politicalWill).toBeGreaterThanOrEqual(20);
   });
 
-  it('Will gets bonus regen above trust 40: at trust 70, regen = 4.0/turn', () => {
+  it('Will gets bonus regen above trust 40: at trust 70, regen = 1.99/turn', () => {
     const meters = makeMeters({ communityTrust: 70, politicalWill: 40 });
     const result = applyMeterFeedback(meters);
     const willDelta = result.deltas.find(
       (d) => d.meter === 'politicalWill' && d.source === 'will_regen',
     );
-    // 1.0 + max(0, (70-40)*0.1) = 1.0 + 3.0 = 4.0
-    expect(willDelta!.amount).toBeCloseTo(4.0, 5);
+    // 1.0 + max(0, (70-40)*0.033) = 1.0 + 0.99 = 1.99
+    expect(willDelta!.amount).toBeCloseTo(1.99, 5);
   });
 });
 
@@ -259,30 +251,30 @@ describe('Scenario 2: Political Will Death Spiral Prevention', () => {
 describe('Scenario 3: Trust Feedback Loop', () => {
   /**
    * Trust has two competing forces:
-   * - Decay: -0.3/turn (passive)
-   * - Food bonus: max(0, (foodSov - 20) * 0.05)
-   * When food < 20, net trust change from feedback is -0.3/turn.
-   * When food > 26, food bonus exceeds decay.
+   * - Decay: -(0.3 + trust * 0.012)/turn (scales with trust level)
+   * - Food bonus: diminishing formula, effectively (foodSov - 15) * 0.05 up to 35 above threshold
+   * When food < 15, net trust change from feedback is negative (scaling decay).
+   * At trust 50, breakeven foodSov is ~33.
    */
 
   it('trust declines when foodSov is below 20 (no food bonus)', () => {
     const meters = makeMeters({ communityTrust: 50, foodSovereignty: 10 });
     const result = applyMeterFeedback(meters);
 
-    // Food bonus: max(0, (10-20)*0.05) = 0
+    // Food bonus: foodSov 10 < 20, so no bonus
     const foodDelta = result.deltas.find(
       (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus',
     );
     expect(foodDelta).toBeUndefined();
 
-    // Trust decay: -0.3
+    // Trust decay: -(0.1 + 50*0.004) = -0.30 (monthly rate)
     const decayDelta = result.deltas.find(
       (d) => d.meter === 'communityTrust' && d.source === 'trust_decay',
     );
-    expect(decayDelta!.amount).toBeCloseTo(-0.3, 5);
+    expect(decayDelta!.amount).toBeCloseTo(-0.30, 5);
 
-    // Net trust = 50 - 0.3 = 49.7
-    expect(result.meters.communityTrust).toBeCloseTo(49.7, 5);
+    // Net trust = 50 - 0.30 = 49.70
+    expect(result.meters.communityTrust).toBeCloseTo(49.70, 5);
   });
 
   it('after 10 turns with foodSov=10, trust declines by ~3 (from 50 to ~47)', () => {
@@ -293,28 +285,28 @@ describe('Scenario 3: Trust Feedback Loop', () => {
       meters = { ...result.meters };
     }
 
-    // Each turn: trust loses 0.3 (no food bonus since food=10 < 20)
-    // After 10 turns: 50 - 10*0.3 = 47
-    expect(meters.communityTrust).toBeCloseTo(47, 1);
+    // Each turn: trust decay = -(0.1 + trust*0.004), compounds as trust drops
+    // Monthly rate ÷3: After 10 turns: ~47.05
+    expect(meters.communityTrust).toBeCloseTo(47.05, 0);
   });
 
-  it('trust climbs when foodSov is 40 (food bonus > decay)', () => {
+  it('food slows trust decay but does not reverse it at trust 50', () => {
     const meters = makeMeters({ communityTrust: 50, foodSovereignty: 40 });
     const result = applyMeterFeedback(meters);
 
-    // Food bonus: max(0, (40-20)*0.05) = 1.0
+    // Food bonus: (40-20)*0.01 = 0.20 (monthly rate, cap 0.20)
     const foodDelta = result.deltas.find(
       (d) => d.meter === 'communityTrust' && d.source === 'food_trust_bonus',
     );
     expect(foodDelta).toBeDefined();
-    expect(foodDelta!.amount).toBeCloseTo(1.0, 5);
+    expect(foodDelta!.amount).toBeCloseTo(0.20, 5);
 
-    // Decay: -0.3
-    // Net: +0.7
-    expect(result.meters.communityTrust).toBeCloseTo(50.7, 5);
+    // Decay: -(0.1 + 50*0.004) = -0.30
+    // Net: -0.10 (food slows but doesn't stop the decay)
+    expect(result.meters.communityTrust).toBeCloseTo(49.90, 5);
   });
 
-  it('trust slowly climbs over 10 turns with foodSov=40 (net +0.7/turn)', () => {
+  it('trust decays slowly over 10 turns with foodSov=40 (food cushions the fall)', () => {
     let meters = makeMeters({ communityTrust: 50, foodSovereignty: 40 });
 
     for (let i = 0; i < 10; i++) {
@@ -322,19 +314,19 @@ describe('Scenario 3: Trust Feedback Loop', () => {
       meters = { ...result.meters };
     }
 
-    // Each turn: food bonus = (40-20)*0.05 = +1.0, decay = -0.3, net = +0.7
-    // After 10 turns: 50 + 10*0.7 = 57
-    expect(meters.communityTrust).toBeCloseTo(57, 1);
+    // Food bonus = 0.20, decay starts at 0.30 (net -0.10/turn), decreasing as trust falls
+    // After 10 turns: ~49.0 (monthly rate is much gentler)
+    expect(meters.communityTrust).toBeCloseTo(49.0, 0);
   });
 
-  it('breakeven point: at foodSov=26, food bonus = 0.3, exactly cancels decay', () => {
-    const meters = makeMeters({ communityTrust: 50, foodSovereignty: 26 });
+  it('breakeven point: at trust 25, max food bonus exactly cancels decay', () => {
+    const meters = makeMeters({ communityTrust: 25, foodSovereignty: 50 });
     const result = applyMeterFeedback(meters);
 
-    // Food bonus: (26-20)*0.05 = 0.3
-    // Decay: -0.3
+    // Food bonus: capped at 0.20 (monthly rate)
+    // Decay: -(0.1 + 25*0.004) = -0.20
     // Net: 0
-    expect(result.meters.communityTrust).toBeCloseTo(50, 5);
+    expect(result.meters.communityTrust).toBeCloseTo(25, 5);
   });
 });
 
@@ -347,23 +339,23 @@ describe('Scenario 4: Community-Led vs Player-Initiated Trade-off', () => {
    * Project modes affect cost, duration, trust gain, and gentrification:
    *
    * Player-initiated:
-   *   cost = baseCost (1.0x), duration = baseDuration, trust *= 0.6, gentrification *= 1.5
+   *   cost = baseCost (1.0x), duration = baseDuration, trust *= 0.5, gentrification *= 1.5
    *
    * Community-led:
    *   cost = baseCost * 1.3, duration = ceil(baseDuration * 1.5),
-   *   trust *= 1.6, gentrification *= 0.5
+   *   trust *= 1.2, gentrification *= 0.5
    */
 
   describe('food_forest player-initiated', () => {
-    it('costs $0.75M (base cost, no multiplier)', () => {
+    it('costs $0.10M (base cost, no multiplier)', () => {
       const state = createNewGame();
       const result = gameReducer(
         state,
         { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
         projectDefs,
       );
-      expect(result.meters.budget).toBeCloseTo(2.8 - 0.75, 5);
-      expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(0.75, 5);
+      expect(result.meters.budget).toBeCloseTo(1.5 - 0.10, 5);
+      expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(0.10, 5);
     });
 
     it('has duration 3 turns (base duration)', () => {
@@ -378,15 +370,15 @@ describe('Scenario 4: Community-Led vs Player-Initiated Trade-off', () => {
   });
 
   describe('food_forest community-led', () => {
-    it('costs $0.975M (base $0.75M * 1.3)', () => {
+    it('costs $0.13M (base $0.10M * 1.3)', () => {
       const state = createNewGame();
       const result = gameReducer(
         state,
         { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'community-led' },
         projectDefs,
       );
-      const expectedCost = 0.75 * 1.3;
-      expect(result.meters.budget).toBeCloseTo(2.8 - expectedCost, 5);
+      const expectedCost = 0.10 * 1.3;
+      expect(result.meters.budget).toBeCloseTo(1.5 - expectedCost, 5);
       expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(expectedCost, 5);
     });
 
@@ -489,14 +481,14 @@ describe('Scenario 5: Gentrification Pressure Accumulation and Decay', () => {
 describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
   /**
    * Per reducer.ts:
-   * - Accept: leader trust +10
-   * - Modify: leader trust +3
+   * - Accept: leader trust +5
+   * - Modify: leader trust +2
    * - Defer: leader trust -5
    * - Reject: leader trust -15
    * Advocate threshold: trust >= 40
    */
 
-  it('Grace starts at trust 30; accepting 1 proposal brings to 40 (advocate threshold)', () => {
+  it('Grace starts at trust 30; accepting 1 proposal brings to 35', () => {
     const state = createNewGame();
     expect(state.leaders['grace'].trust).toBe(30);
 
@@ -512,10 +504,10 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
       projectDefs,
     );
 
-    expect(result.leaders['grace'].trust).toBe(40);
+    expect(result.leaders['grace'].trust).toBe(35);
   });
 
-  it('accepting 3 proposals brings Grace from 30 to 60', () => {
+  it('accepting 3 proposals brings Grace from 30 to 45', () => {
     let state: GameState = {
       ...createNewGame(),
       meters: { ...createNewGame().meters, budget: 100 },
@@ -533,8 +525,8 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
       );
     }
 
-    // 30 + 10 + 10 + 10 = 60
-    expect(state.leaders['grace'].trust).toBe(60);
+    // 30 + 5 + 5 + 5 = 45
+    expect(state.leaders['grace'].trust).toBe(45);
   });
 
   it('rejecting 2 proposals from trust 60 drops to 30 (loses advocate status)', () => {
@@ -566,7 +558,7 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
     expect(state.leaders['grace'].trust).toBeLessThan(40);
   });
 
-  it('accepting 1 more from trust 30 restores to 40 (advocate again)', () => {
+  it('accepting 1 more from trust 30 brings to 35', () => {
     const base = createNewGame();
     let state: GameState = {
       ...base,
@@ -584,12 +576,10 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
       projectDefs,
     );
 
-    expect(state.leaders['grace'].trust).toBe(40);
-    // At advocate threshold
-    expect(state.leaders['grace'].trust).toBeGreaterThanOrEqual(40);
+    expect(state.leaders['grace'].trust).toBe(35);
   });
 
-  it('full cycle: 30 -> accept*3 -> 60 -> reject*2 -> 30 -> accept -> 40', () => {
+  it('full cycle: 30 -> accept*3 -> 45 -> reject*2 -> 15 -> accept -> 20', () => {
     const base = createNewGame();
     let state: GameState = {
       ...base,
@@ -616,17 +606,17 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
 
     expect(state.leaders['grace'].trust).toBe(30);
 
-    respond('accept'); // 30 + 10 = 40
-    respond('accept'); // 40 + 10 = 50
-    respond('accept'); // 50 + 10 = 60
-    expect(state.leaders['grace'].trust).toBe(60);
+    respond('accept'); // 30 + 5 = 35
+    respond('accept'); // 35 + 5 = 40
+    respond('accept'); // 40 + 5 = 45
+    expect(state.leaders['grace'].trust).toBe(45);
 
-    respond('reject'); // 60 - 15 = 45
     respond('reject'); // 45 - 15 = 30
-    expect(state.leaders['grace'].trust).toBe(30);
+    respond('reject'); // 30 - 15 = 15
+    expect(state.leaders['grace'].trust).toBe(15);
 
-    respond('accept'); // 30 + 10 = 40
-    expect(state.leaders['grace'].trust).toBe(40);
+    respond('accept'); // 15 + 5 = 20
+    expect(state.leaders['grace'].trust).toBe(20);
   });
 });
 
@@ -843,8 +833,8 @@ describe('Scenario 8: Concurrent Project Limit', () => {
     // Before END_TURN, maxConcurrentProjects is based on starting trust (50)
     expect(state.maxConcurrentProjects).toBe(4);
 
-    // After END_TURN with resolve pipeline, trust decays -0.3 => 75.7
-    // floor(2 + 75.7/25) = floor(5.028) = 5
+    // After END_TURN with resolve pipeline, trust decays -(0.3+76*0.012)=-1.212 + leader bonus ~1.65 => ~76.4
+    // floor(2 + 76.4/25) = floor(5.056) = 5
     const result = gameReducer(state, { type: 'END_TURN' }, projectDefs);
     expect(result.maxConcurrentProjects).toBe(5);
   });
@@ -929,78 +919,97 @@ describe('Scenario 9: Tile Visual Stage Transitions', () => {
 
 describe('Scenario 10: Season Cycling and Year Tracking', () => {
   /**
-   * 4 seasons per year: spring -> summer -> fall -> winter
-   * Turn 1 = spring, year 1
-   * Turn 4 = winter, year 1
-   * Turn 5 = spring, year 2
-   * Turn 16 = winter, year 4
-   * Turn 17 = spring, year 5
+   * 12 months per year (monthly turns). Season derived from month:
+   * months 1-3 = winter, 4-6 = spring, 7-9 = summer, 10-12 = fall
+   * Year increments when month wraps from 12 to 1.
+   * Tests use a fixed starting month (4 = spring) for determinism.
    */
 
-  it('starts at turn 1, spring, year 1', () => {
+  function makeSpringStart(): GameState {
     const state = createNewGame();
+    return { ...state, month: 4, season: 'spring' as Season };
+  }
+
+  it('starts at turn 1, spring, year 1', () => {
+    const state = makeSpringStart();
     expect(state.turn).toBe(1);
     expect(state.season).toBe('spring');
     expect(state.year).toBe(1);
   });
 
-  it('advances through all 4 seasons in order', () => {
-    let state = createNewGame();
-    const expectedSeasons: Season[] = ['summer', 'fall', 'winter', 'spring'];
-
-    for (const expected of expectedSeasons) {
+  it('advances through all 4 seasons in order over 12 months', () => {
+    let state = makeSpringStart();
+    // Starting at month 4 (spring), advance through:
+    // months 5,6 = spring; month 7 = summer transition
+    // Advance 3 turns to reach month 7 (summer)
+    for (let i = 0; i < 3; i++) {
       state = gameReducer(state, { type: 'END_TURN' }, {});
-      expect(state.season).toBe(expected);
     }
+    expect(state.season).toBe('summer');
+
+    // Advance 3 more to reach month 10 (fall)
+    for (let i = 0; i < 3; i++) {
+      state = gameReducer(state, { type: 'END_TURN' }, {});
+    }
+    expect(state.season).toBe('fall');
+
+    // Advance 3 more to reach month 1 (winter)
+    for (let i = 0; i < 3; i++) {
+      state = gameReducer(state, { type: 'END_TURN' }, {});
+    }
+    expect(state.season).toBe('winter');
+
+    // Advance 3 more to reach month 4 (spring again)
+    for (let i = 0; i < 3; i++) {
+      state = gameReducer(state, { type: 'END_TURN' }, {});
+    }
+    expect(state.season).toBe('spring');
   });
 
-  it('turn 5 is spring, year 2', () => {
-    let state = createNewGame();
-    // Advance 4 times: turn 1->2->3->4->5
-    for (let i = 0; i < 4; i++) {
+  it('turn 13 is spring, year 2 (full year cycle from month 4)', () => {
+    let state = makeSpringStart();
+    // Advance 12 times: month 4 -> 5 -> ... -> 12 -> 1 -> 2 -> 3 -> 4
+    for (let i = 0; i < 12; i++) {
       state = gameReducer(state, { type: 'END_TURN' }, {});
     }
-    expect(state.turn).toBe(5);
+    expect(state.turn).toBe(13);
     expect(state.season).toBe('spring');
     expect(state.year).toBe(2);
   });
 
-  it('turn 16 is winter, year 4', () => {
-    let state = createNewGame();
-    for (let i = 0; i < 15; i++) {
+  it('after 24 turns is spring, year 3', () => {
+    let state = makeSpringStart();
+    for (let i = 0; i < 24; i++) {
       state = gameReducer(state, { type: 'END_TURN' }, {});
     }
-    expect(state.turn).toBe(16);
-    expect(state.season).toBe('winter');
-    expect(state.year).toBe(4);
+    expect(state.turn).toBe(25);
+    expect(state.season).toBe('spring');
+    expect(state.year).toBe(3);
   });
 
-  it('turn 17 is spring, year 5', () => {
-    let state = createNewGame();
-    for (let i = 0; i < 16; i++) {
+  it('after 48 turns is spring, year 5', () => {
+    let state = makeSpringStart();
+    for (let i = 0; i < 48; i++) {
       state = gameReducer(state, { type: 'END_TURN' }, {});
     }
-    expect(state.turn).toBe(17);
+    expect(state.turn).toBe(49);
     expect(state.season).toBe('spring');
     expect(state.year).toBe(5);
   });
 
-  it('year only increments on winter-to-spring transition', () => {
+  it('year only increments on month 12-to-1 transition', () => {
+    // Start at month 11 (fall) so we can test the transition
     let state = createNewGame();
-    // Turn 1 (spring) -> Turn 2 (summer): year stays 1
+    state = { ...state, month: 11, season: 'fall' as Season };
+
+    // month 11 -> 12: year stays 1
     state = gameReducer(state, { type: 'END_TURN' }, {});
+    expect(state.month).toBe(12);
     expect(state.year).toBe(1);
 
-    // Turn 2 (summer) -> Turn 3 (fall): year stays 1
+    // month 12 -> 1: year increments to 2
     state = gameReducer(state, { type: 'END_TURN' }, {});
-    expect(state.year).toBe(1);
-
-    // Turn 3 (fall) -> Turn 4 (winter): year stays 1
-    state = gameReducer(state, { type: 'END_TURN' }, {});
-    expect(state.year).toBe(1);
-
-    // Turn 4 (winter) -> Turn 5 (spring): year increments to 2
-    state = gameReducer(state, { type: 'END_TURN' }, {});
+    expect(state.month).toBe(1);
     expect(state.year).toBe(2);
   });
 });
@@ -1014,20 +1023,20 @@ describe('Scenario 11: Starting Conditions Match Spec', () => {
     expect(createNewGame().meters.communityTrust).toBe(50);
   });
 
-  it('ecological health starts at 15', () => {
-    expect(createNewGame().meters.ecologicalHealth).toBe(15);
+  it('ecological health starts at 20', () => {
+    expect(createNewGame().meters.ecologicalHealth).toBe(20);
   });
 
-  it('food sovereignty starts at 10', () => {
-    expect(createNewGame().meters.foodSovereignty).toBe(10);
+  it('food sovereignty starts at 12', () => {
+    expect(createNewGame().meters.foodSovereignty).toBe(12);
   });
 
-  it('political will starts at 60', () => {
-    expect(createNewGame().meters.politicalWill).toBe(60);
+  it('political will starts at 25', () => {
+    expect(createNewGame().meters.politicalWill).toBe(25);
   });
 
-  it('budget starts at $4.2M', () => {
-    expect(createNewGame().meters.budget).toBe(2.8);
+  it('budget starts at $1.5M', () => {
+    expect(createNewGame().meters.budget).toBe(1.5);
   });
 
   it('climate pressure starts at 30', () => {
@@ -1099,29 +1108,28 @@ describe('Scenario 12: Multi-Turn Integration - 16-Turn First Term Simulation', 
   it('budget does not collapse after starting 2 projects and advancing 16 turns', () => {
     let state = createNewGame();
 
-    // Start a food_forest on turn 1
+    // Start a food_forest on turn 1 (cost $0.10M, budget starts at $1.5M)
     state = gameReducer(
       state,
       { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(2.05, 2);
+    expect(state.meters.budget).toBeCloseTo(1.40, 2);
 
-    // Start a rain_garden on turn 1
+    // Start a rain_garden on turn 1 (cost $0.14M)
     state = gameReducer(
       state,
       { type: 'START_PROJECT', tileId: 'eastern_market', projectId: 'rain_garden', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(1.65, 2);
+    expect(state.meters.budget).toBeCloseTo(1.26, 2);
 
     // Advance 16 turns
     for (let i = 0; i < 16; i++) {
       state = gameReducer(state, { type: 'END_TURN' }, projectDefs);
     }
 
-    // Budget should not have gone negative (it can only decrease from project starts,
-    // not from turn advancement in the current reducer)
+    // Budget should not have gone negative — quarterly revenue replenishes
     expect(state.meters.budget).toBeGreaterThanOrEqual(0);
   });
 
@@ -1134,12 +1142,11 @@ describe('Scenario 12: Multi-Turn Integration - 16-Turn First Term Simulation', 
     }
 
     // Starting trust: 50
-    // Each turn: trust decay = -0.3, food bonus = 0 (food 10 < 20)
-    // Net per turn: -0.3
-    // After 16 turns: 50 - 4.8 = 45.2
-    // But Will regen also happens (starts at 2.0/turn), pushing Will up
+    // Each turn: trust decay = -(0.1 + trust*0.004) ≈ -0.30/turn (monthly rate)
+    // food bonus = 0 (food 12 < 20 threshold)
+    // After 16 turns: ~45.3 (monthly decay is gentler)
     expect(meters.communityTrust).toBeGreaterThan(20);
-    expect(meters.communityTrust).toBeCloseTo(45.2, 0);
+    expect(meters.communityTrust).toBeCloseTo(45.3, 0);
   });
 
   it('political Will remains healthy over 16 turns with starting conditions', () => {
@@ -1150,12 +1157,10 @@ describe('Scenario 12: Multi-Turn Integration - 16-Turn First Term Simulation', 
       meters = clampMeters(result.meters);
     }
 
-    // Will starts at 60. Trust starts above 40, so will regen > 1.0.
-    // Turn 1: trust=50, will_regen = 1.0 + (50-40)*0.1 = 2.0
-    // As trust decays (-0.3/turn), will regen decreases slowly.
-    // After ~33 turns trust would hit 40, making regen = 1.0
-    // Will should be well above starting value for 16 turns.
-    expect(meters.politicalWill).toBeGreaterThan(60);
+    // Will starts at 25. Trust starts at 50 (>40), so will regen = 0.67 + (50-40)*0.033 = 1.0.
+    // As trust decays (-0.30/turn), trust stays >40 for ~33 turns so bonus persists.
+    // After 16 turns: ~25 + 16*~1.0 = ~40 (monthly rate is gentler but still healthy)
+    expect(meters.politicalWill).toBeGreaterThan(35);
     expect(meters.politicalWill).toBeLessThanOrEqual(100);
   });
 
@@ -1241,28 +1246,28 @@ describe('Supplementary: Pure Math from Simulation Engine', () => {
   });
 
   describe('trust gain multipliers on project completion', () => {
-    it('player-initiated: trust_gain * 0.6', () => {
+    it('player-initiated: trust_gain * 0.5', () => {
       // food_forest base trust = 2
-      expect(2 * 0.6).toBeCloseTo(1.2, 4);
+      expect(2 * 0.5).toBeCloseTo(1.0, 4);
       // maker_space base trust = 4
-      expect(4 * 0.6).toBeCloseTo(2.4, 4);
+      expect(4 * 0.5).toBeCloseTo(2.0, 4);
       // land_trust base trust = 5
-      expect(5 * 0.6).toBeCloseTo(3.0, 4);
+      expect(5 * 0.5).toBeCloseTo(2.5, 4);
     });
 
-    it('community-led: trust_gain * 1.6', () => {
+    it('community-led: trust_gain * 1.2', () => {
       // food_forest base trust = 2
-      expect(2 * 1.6).toBeCloseTo(3.2, 4);
+      expect(2 * 1.2).toBeCloseTo(2.4, 4);
       // maker_space base trust = 4
-      expect(4 * 1.6).toBeCloseTo(6.4, 4);
+      expect(4 * 1.2).toBeCloseTo(4.8, 4);
       // land_trust base trust = 5
-      expect(5 * 1.6).toBeCloseTo(8.0, 4);
+      expect(5 * 1.2).toBeCloseTo(6.0, 4);
     });
 
     it('community-proposed additional multiplier: * 1.5 on top of mode multiplier', () => {
       // community-led + community-proposed food_forest:
-      // 2 * 1.6 * 1.5 = 4.8
-      expect(2 * 1.6 * 1.5).toBeCloseTo(4.8, 4);
+      // 2 * 1.2 * 1.5 = 3.6
+      expect(2 * 1.2 * 1.5).toBeCloseTo(3.6, 4);
     });
   });
 

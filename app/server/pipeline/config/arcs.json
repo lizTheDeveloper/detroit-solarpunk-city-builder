@@ -1,0 +1,34 @@
+{
+  "arcs": {
+    "energy-grid": {
+      "escalationThreshold": 3,
+      "minStageDuration": 48,
+      "keywords": ["grid", "DTE", "outage", "power", "transformer", "solar", "microgrid", "blackout", "energy"],
+      "locality": ["detroit", "michigan", "great lakes"]
+    },
+    "water-pfas": {
+      "escalationThreshold": 3,
+      "minStageDuration": 48,
+      "keywords": ["PFAS", "water", "contamination", "forever chemicals", "drinking water", "filtration", "cleanup"],
+      "locality": ["detroit", "michigan", "great lakes"]
+    },
+    "phosphorus-food": {
+      "escalationThreshold": 4,
+      "minStageDuration": 72,
+      "keywords": ["phosphorus", "fertilizer", "Morocco", "phosphate", "nutrient recovery", "food supply", "agriculture"],
+      "locality": ["detroit", "michigan", "national", "global"]
+    },
+    "housing-speculation": {
+      "escalationThreshold": 3,
+      "minStageDuration": 48,
+      "keywords": ["housing", "eviction", "rent", "speculation", "land bank", "blight", "foreclosure", "gentrification"],
+      "locality": ["detroit", "michigan"]
+    },
+    "infrastructure-debt": {
+      "escalationThreshold": 4,
+      "minStageDuration": 72,
+      "keywords": ["infrastructure", "bridge", "road", "sewer", "debt", "bond", "maintenance", "crumbling", "pipe"],
+      "locality": ["detroit", "michigan", "national"]
+    }
+  }
+}

@@ -1,8 +1,9 @@
 import { useGame } from '@/state/store';
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
+import { formatCost, formatBudget } from '@/ui/format';
 import type { Proposal, ProposalResponse } from '@/state/types';
 
-function ProposalCard({ proposal }: { proposal: Proposal }) {
+function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConversation?: (characterId: string, interactionType: string) => void }) {
   const { state, dispatch } = useGame();
   const leader = state.leaders[proposal.leaderId];
   const def = PROJECT_CATALOG[proposal.projectDefinitionId];
@@ -17,6 +18,13 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
   function handleResponse(response: ProposalResponse) {
     dispatch({ type: 'RESPOND_PROPOSAL', proposalId: proposal.id, response });
+    if (onConversation) {
+      const interactionType = response === 'accept' ? 'proposal_accepted'
+        : response === 'reject' ? 'proposal_rejected'
+        : response === 'defer' ? 'proposal_deferred'
+        : 'proposal_modified';
+      onConversation(proposal.leaderId, interactionType);
+    }
   }
 
   return (
@@ -32,7 +40,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         <div className="proposal-project-name">{def.name}</div>
         <div className="proposal-project-details">
           <span className="proposal-cost-highlight">
-            ${acceptCost.toFixed(2)}M
+            {formatCost(acceptCost)}
           </span>
           <span>{def.baseDuration} turns</span>
           <span>{tile.name}</span>
@@ -50,18 +58,18 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           onClick={() => handleResponse('accept')}
           type="button"
           disabled={!canAffordAccept}
-          title={canAffordAccept ? `Fund this project (-$${acceptCost.toFixed(2)}M, trust +10)` : `Need $${acceptCost.toFixed(2)}M`}
+          title={canAffordAccept ? `Fund this project (-${formatCost(acceptCost)}, trust +10)` : `Need ${formatCost(acceptCost)}`}
         >
-          Fund (${acceptCost.toFixed(2)}M)
+          Fund ({formatCost(acceptCost)})
         </button>
         <button
           className="btn btn-sm btn-modify"
           onClick={() => handleResponse('modify')}
           type="button"
           disabled={!canAffordModify}
-          title={canAffordModify ? `Fund with changes (-$${modifyCost.toFixed(2)}M, trust +3)` : `Need $${modifyCost.toFixed(2)}M`}
+          title={canAffordModify ? `Fund with changes (-${formatCost(modifyCost)}, trust +3)` : `Need ${formatCost(modifyCost)}`}
         >
-          Modify (${modifyCost.toFixed(2)}M)
+          Modify ({formatCost(modifyCost)})
         </button>
         <button
           className="btn btn-sm btn-defer"
@@ -84,7 +92,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   );
 }
 
-export default function ProposalPanel() {
+export default function ProposalPanel({ onConversation }: { onConversation?: (characterId: string, interactionType: string) => void }) {
   const { state } = useGame();
 
   if (state.activeProposals.length === 0) return null;
@@ -94,14 +102,14 @@ export default function ProposalPanel() {
       <div className="proposal-panel-header">
         <h2 className="panel-title">Community Proposals</h2>
         <span className="budget-indicator">
-          Budget: <strong>${state.meters.budget.toFixed(2)}M</strong>
+          Budget: <strong>{formatBudget(state.meters.budget)}</strong>
         </span>
       </div>
       <p className="panel-subtitle">
         Leaders want you to fund their projects. Accepting costs budget, not actions.
       </p>
       {state.activeProposals.map((proposal) => (
-        <ProposalCard key={proposal.id} proposal={proposal} />
+        <ProposalCard key={proposal.id} proposal={proposal} onConversation={onConversation} />
       ))}
     </div>
   );

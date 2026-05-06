@@ -1,0 +1,226 @@
+/* ── Mayor's Briefing Dashboard ── */
+/* Industrial-organic: dense data, warm accents, solarpunk war room */
+
+.dashboard {
+  padding: 20px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+}
+
+/* ── Header ── */
+
+.dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-header__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-header__label {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: -0.3px;
+}
+
+.dash-header__sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  letter-spacing: 0.3px;
+}
+
+.dash-header__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.dash-header__stage-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-accent);
+  font-weight: 600;
+  background: rgba(74, 222, 128, 0.1);
+  padding: 3px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.dash-header__election {
+  font-size: 10px;
+  color: #a855f7;
+  font-family: var(--mono);
+}
+
+/* ── Meter Card Grid ── */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dash-card__icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.dash-card__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+  flex: 1;
+}
+
+.dash-card__delta {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.dash-card__delta--up {
+  color: var(--color-positive);
+}
+
+.dash-card__delta--down {
+  color: var(--color-negative);
+}
+
+.dash-card__value {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--mono);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.dash-card__spark {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-bottom: 4px;
+}
+
+.dash-card__threshold {
+  font-size: 9px;
+  color: var(--color-warning);
+  font-family: var(--mono);
+  letter-spacing: 0.3px;
+  opacity: 0.8;
+}
+
+.dash-card__threshold--met {
+  color: var(--color-positive);
+}
+
+/* ── Timeline wrapper ── */
+
+.dash-timeline-wrap {
+  margin-bottom: 20px;
+}
+
+/* ── Intel section ── */
+
+.dash-intel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dash-intel__section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.dash-intel__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.dash-intel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dash-intel__dot--positive {
+  background: var(--color-positive);
+}
+
+.dash-intel__dot--warning {
+  background: var(--color-warning);
+}
+
+.dash-intel__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+}
+
+.dash-intel__item:last-child {
+  border-bottom: none;
+}
+
+.dash-intel__item--warning .dash-intel__text {
+  color: var(--color-warning);
+}
+
+.dash-intel__turn {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.dash-intel__text {
+  color: var(--text);
+  line-height: 1.3;
+}

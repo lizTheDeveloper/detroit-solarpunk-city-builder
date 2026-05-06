@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "node --import tsx server/index.ts",
+    "test:server": "vitest run --config vitest.server.config.ts",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "playtest": "NODE_OPTIONS='--max-old-space-size=4096' npm run build && npx serve dist"
   },
   "dependencies": {
     "react": "^19.2.5",
