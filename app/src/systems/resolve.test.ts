@@ -80,12 +80,6 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       decarceration: 0,
       deGrowth: 0,
     },
-    narrativeState: {
-      actionsRemaining: 2,
-      actionsPerTurn: 2,
-      consecutiveTurns: {},
-      counterNarrativeCooldowns: {},
-    },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},
@@ -104,6 +98,25 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     activeArcs: [],
     delayedConsequenceQueue: [],
     resolvedArcs: [],
+    calendarState: {
+      totalSlots: 60,
+      fixedSlots: 38,
+      discretionarySlots: 22,
+      slotsSpent: 0,
+      overscheduleAmount: 0,
+      overscheduleLimit: 5,
+      burnoutBuffer: 15,
+      burnoutBufferMax: 20,
+      burnoutState: 'sustainable',
+      interactionsThisMonth: {},
+      lastInteractionMonth: {},
+      monthNumber: 1,
+      delegationTier: 0,
+      crisisSlotTax: 0,
+      neighborhoodTimeAllocation: {},
+    },
+    strategicContacts: [],
+    mentors: [],
     ...overrides,
   } as GameState;
 }
@@ -789,15 +802,9 @@ describe('Phase 2 resolve pipeline', () => {
         decarceration: 0,
         deGrowth: 0,
       },
-      narrativeState: {
-        actionsRemaining: 0,
-        actionsPerTurn: 2,
-        consecutiveTurns: {},
-        counterNarrativeCooldowns: {},
-      },
     });
     const result = resolveTurn(state, noFireRng);
-    // All topics should drift down by 0.67 (no actions taken, monthly rate)
+    // All topics should drift down by 0.67 (monthly rate)
     // foodSovereignty: 25 - 0.67 = 24.33
     expect(result.publicOpinion.foodSovereignty).toBeCloseTo(24.33, 1);
     // ecologicalRestoration: 30 - 0.67 = 29.33
@@ -926,24 +933,35 @@ describe('Phase 2 resolve pipeline', () => {
 
 describe('Phase 2 prepareTurn', () => {
   // ----------------------------------------------------------
-  // 10. prepareTurn resets narrative actions
+  // 10. prepareTurn resets calendar slots for the new month
   // ----------------------------------------------------------
 
-  it('resets narrative actions', () => {
+  it('resets calendar slots for new month', () => {
     const state = makeState({
-      narrativeState: {
-        actionsRemaining: 0,
-        actionsPerTurn: 2,
-        consecutiveTurns: { foodSovereignty: 2 },
-        counterNarrativeCooldowns: {},
+      turn: 2,
+      calendarState: {
+        totalSlots: 60,
+        fixedSlots: 38,
+        discretionarySlots: 22,
+        slotsSpent: 15,
+        overscheduleAmount: 0,
+        overscheduleLimit: 5,
+        burnoutBuffer: 15,
+        burnoutBufferMax: 20,
+        burnoutState: 'sustainable' as const,
+        interactionsThisMonth: { grace: 2 },
+        lastInteractionMonth: {},
+        monthNumber: 2,
+        delegationTier: 0,
+        crisisSlotTax: 0,
+        neighborhoodTimeAllocation: {},
+        consecutiveRecoveryMonths: 0,
       },
     });
     const result = prepareTurn(state, noFireRng);
-    // trust=50 => actionsPerTurn = floor(1 + 50/30) = floor(2.66) = 2
-    expect(result.narrativeState.actionsRemaining).toBe(2);
-    expect(result.narrativeState.actionsPerTurn).toBe(2);
-    // consecutiveTurns with count > 0 are preserved
-    expect(result.narrativeState.consecutiveTurns['foodSovereignty']).toBe(2);
+    // Calendar should reset slotsSpent for the new month
+    expect(result.calendarState.slotsSpent).toBe(0);
+    expect(result.calendarState.monthNumber).toBe(3);
   });
 
   // ----------------------------------------------------------

@@ -7,7 +7,7 @@ import { DETROIT_CENTER, DETROIT_BOUNDS } from './types';
 import type { MapViewState } from './types';
 
 const TILE_SOURCE = import.meta.env.VITE_TILE_SOURCE
-  || 'https://tiles.openfreemap.org/styles/liberty';
+  || 'https://tiles.openfreemap.org/planet';
 
 const NEIGHBORHOODS_DATA = {
   type: 'FeatureCollection' as const,
@@ -31,11 +31,22 @@ interface MapPanelProps {
 export default function MapPanel({ onSelectTile, selectedTileId, tileHealthMap = {} }: MapPanelProps) {
   const [viewState, setViewState] = useState<MapViewState>(DETROIT_CENTER);
   const [blocksData, setBlocksData] = useState<object | null>(null);
-
-  const mapStyle = useMemo(() => createDarkTerminalStyle(TILE_SOURCE), []);
+  const [tileUrls, setTileUrls] = useState<string[] | null>(null);
 
   useEffect(() => {
-    fetch('/data/detroit-blocks.geojson')
+    fetch(TILE_SOURCE)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => { if (json?.tiles) setTileUrls(json.tiles); })
+      .catch(() => {});
+  }, []);
+
+  const mapStyle = useMemo(
+    () => createDarkTerminalStyle(tileUrls ?? TILE_SOURCE),
+    [tileUrls],
+  );
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}data/detroit-blocks.geojson`)
       .then(res => { if (res.ok) return res.json(); return null; })
       .then(data => { if (data) setBlocksData(data); })
       .catch(() => {});
@@ -65,7 +76,7 @@ export default function MapPanel({ onSelectTile, selectedTileId, tileHealthMap =
   }, [tileHealthMap]);
 
   const selectedFilter = useMemo(
-    () => selectedTileId ? ['==', ['get', 'id'], selectedTileId] : ['==', 1, 0],
+    () => selectedTileId ? ['==', ['get', 'id'], selectedTileId] : ['==', ['get', 'id'], ''],
     [selectedTileId],
   );
 
@@ -109,7 +120,7 @@ export default function MapPanel({ onSelectTile, selectedTileId, tileHealthMap =
           <Layer
             id="neighborhood-labels"
             type="symbol"
-            layout={{ 'text-field': ['upcase', ['get', 'name']], 'text-size': 12 }}
+            layout={{ 'text-field': ['upcase', ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': 12 }}
             paint={{ 'text-color': '#2ea043', 'text-halo-color': '#0a0a0a', 'text-halo-width': 2 }}
           />
         </Source>

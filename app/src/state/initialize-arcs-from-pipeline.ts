@@ -2,7 +2,7 @@ import type { GameState } from './types';
 import type { PipelineArcState } from './crisis-types';
 import { initializeArcsFromSnapshot } from '../systems/arc-progression';
 
-const PIPELINE_URL = '/api/arc-state';
+const PIPELINE_URL = `${import.meta.env.BASE_URL}api/arc-state`;
 
 /**
  * Fetch current arc states from the live-news-pipeline and initialize

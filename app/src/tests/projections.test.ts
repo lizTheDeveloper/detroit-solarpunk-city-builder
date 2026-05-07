@@ -73,6 +73,7 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       overscheduleAmount: 0, overscheduleLimit: 5, burnoutBuffer: 15, burnoutBufferMax: 20,
       burnoutState: 'sustainable', interactionsThisMonth: {}, lastInteractionMonth: {},
       monthNumber: 1, delegationTier: 0, crisisSlotTax: 0, neighborhoodTimeAllocation: {},
+      consecutiveRecoveryMonths: 0,
     },
     strategicContacts: [],
     mentors: [],

@@ -15,6 +15,7 @@ function makeCalendarState(): CalendarState {
     interactionsThisMonth: {}, lastInteractionMonth: {},
     monthNumber: 1, delegationTier: 0, crisisSlotTax: 0,
     neighborhoodTimeAllocation: {},
+    consecutiveRecoveryMonths: 0,
   };
 }
 

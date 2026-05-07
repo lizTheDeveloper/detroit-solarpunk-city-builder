@@ -1,0 +1,41 @@
+services:
+  solarpunk-detroit:
+    build:
+      context: ./app
+      args:
+        VITE_BASE_PATH: /solarpunk-detroit/
+    container_name: solarpunk-detroit
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health/pipeline || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - coolify
+    labels:
+      - traefik.enable=true
+      # HTTPS
+      - traefik.http.routers.solarpunk.rule=Host(`play.multiversestudios.xyz`) && PathPrefix(`/solarpunk-detroit`)
+      - traefik.http.routers.solarpunk.entrypoints=https
+      - traefik.http.routers.solarpunk.tls.certresolver=letsencrypt
+      - traefik.http.routers.solarpunk.priority=200
+      # Strip prefix so server sees /
+      - traefik.http.routers.solarpunk.middlewares=solarpunk-strip
+      - traefik.http.middlewares.solarpunk-strip.stripprefix.prefixes=/solarpunk-detroit
+      # HTTP redirect
+      - traefik.http.routers.solarpunk-http.rule=Host(`play.multiversestudios.xyz`) && PathPrefix(`/solarpunk-detroit`)
+      - traefik.http.routers.solarpunk-http.entrypoints=http
+      - traefik.http.routers.solarpunk-http.middlewares=solarpunk-redirect
+      - traefik.http.middlewares.solarpunk-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.solarpunk-redirect.redirectscheme.permanent=true
+      # Backend
+      - traefik.http.services.solarpunk.loadbalancer.server.port=3000
+
+networks:
+  coolify:
+    external: true

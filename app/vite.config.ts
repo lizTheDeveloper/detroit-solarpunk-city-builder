@@ -37,6 +37,7 @@ function pipelineProxyPlugin(): Plugin {
 }
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [react(), chatProxyPlugin(), pipelineProxyPlugin()],
   resolve: {
     alias: {

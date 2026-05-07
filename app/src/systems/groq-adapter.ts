@@ -2,7 +2,7 @@ import type { ChatCompletionFn } from './llm-service';
 
 export function createGroqChatFn(): ChatCompletionFn {
   return async ({ model, system, messages, temperature }) => {
-    const response = await fetch('/api/chat', {
+    const response = await fetch(`${import.meta.env.BASE_URL}api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
