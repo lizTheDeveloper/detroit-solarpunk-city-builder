@@ -1,15 +1,65 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { loadFeedConfig, fetchAllSources, loadSeenIds } from './fetcher.ts';
-import { storeHeadlines } from './storage.ts';
+import { storeHeadlines, loadUnclassifiedHeadlines, updateHeadlineClassifications } from './storage.ts';
 import { updateArcStates } from './arc-state.ts';
+import { classifyBatch, type ClassifierConfig, type ClassifierChatFn } from './llm-classifier.ts';
 import { createLogger } from './utils.ts';
 import type { PipelineRunResult, PipelineHealth } from './types.ts';
 
 const log = createLogger('pipeline');
 
 const DATA_DIR = join(import.meta.dirname, 'data');
+const CONFIG_DIR = join(import.meta.dirname, 'config');
 const RUN_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+let classifierConfig: ClassifierConfig = {
+  enabled: !!process.env.ANTHROPIC_API_KEY,
+  model: process.env.CLASSIFIER_MODEL ?? 'claude-haiku-4-5-20251001',
+  apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  apiUrl: process.env.ANTHROPIC_API_URL ?? 'https://api.anthropic.com',
+};
+
+let classifierChatFn: ClassifierChatFn | null = null;
+
+export function setClassifierConfig(config: ClassifierConfig): void {
+  classifierConfig = config;
+}
+
+export function setClassifierChatFn(fn: ClassifierChatFn): void {
+  classifierChatFn = fn;
+}
+
+async function defaultChatFn(params: {
+  model: string;
+  system: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  maxTokens: number;
+  temperature: number;
+}): Promise<string> {
+  const resp = await fetch(`${classifierConfig.apiUrl}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': classifierConfig.apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: params.model,
+      system: params.system,
+      messages: params.messages,
+      max_tokens: params.maxTokens,
+      temperature: params.temperature,
+    }),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Anthropic API error: ${resp.status} ${resp.statusText}`);
+  }
+
+  const body = await resp.json() as { content: Array<{ text: string }> };
+  return body.content[0]?.text ?? '';
+}
 
 let lastRunResult: PipelineRunResult | null = null;
 let pipelineHealth: PipelineHealth = {
@@ -48,7 +98,25 @@ export async function runPipeline(): Promise<PipelineRunResult> {
   // Store new headlines
   const stored = storeHeadlines(DATA_DIR, rawHeadlines);
 
-  // Update arc states with any classified headlines (initially none will be classified)
+  // Classify headlines: new ones plus any previously unclassified (retry)
+  const unclassified = loadUnclassifiedHeadlines(DATA_DIR);
+  const chatFn = classifierChatFn ?? defaultChatFn;
+
+  let classifiedCount = 0;
+  if (unclassified.length > 0 && classifierConfig.enabled) {
+    try {
+      const classifications = await classifyBatch(unclassified, chatFn, classifierConfig, CONFIG_DIR);
+      if (classifications.length > 0) {
+        const newlyClassified = updateHeadlineClassifications(DATA_DIR, classifications);
+        classifiedCount = newlyClassified.length;
+        updateArcStates(DATA_DIR, newlyClassified);
+      }
+    } catch (err) {
+      log.error('Classification step failed, headlines stored as unclassified for retry', err);
+    }
+  }
+
+  // Update arc states with any pre-classified headlines from storage
   const classifiedHeadlines = stored.filter(h => h.classified);
   if (classifiedHeadlines.length > 0) {
     updateArcStates(DATA_DIR, classifiedHeadlines);

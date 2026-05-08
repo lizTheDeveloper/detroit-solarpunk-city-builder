@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
 import type { RawHeadline, ProcessedHeadline } from './types.ts';
+import type { LLMClassification } from './llm-classifier.ts';
 import { getDateString, createLogger } from './utils.ts';
 
 const log = createLogger('storage');
@@ -132,6 +133,95 @@ export function loadHeadlines(
   }
 
   return allHeadlines;
+}
+
+/**
+ * Apply LLM classification results to stored headlines.
+ * Returns the list of newly classified ProcessedHeadlines.
+ */
+export function updateHeadlineClassifications(
+  dataDir: string,
+  classifications: LLMClassification[]
+): ProcessedHeadline[] {
+  if (classifications.length === 0) return [];
+
+  const classMap = new Map(classifications.map(c => [c.headlineId, c]));
+  const headlinesDir = join(dataDir, 'headlines');
+  if (!existsSync(headlinesDir)) return [];
+
+  const updated: ProcessedHeadline[] = [];
+
+  let files: string[];
+  try {
+    files = readdirSync(headlinesDir).filter(f => f.endsWith('.json'));
+  } catch {
+    return [];
+  }
+
+  for (const file of files) {
+    const filePath = join(headlinesDir, file);
+    let headlines: ProcessedHeadline[];
+    try {
+      headlines = JSON.parse(readFileSync(filePath, 'utf-8'));
+    } catch {
+      continue;
+    }
+
+    let modified = false;
+    for (let i = 0; i < headlines.length; i++) {
+      const classification = classMap.get(headlines[i].id);
+      if (classification) {
+        headlines[i] = {
+          ...headlines[i],
+          classified: true,
+          arcs: classification.arcs,
+          severity: classification.severity,
+          locality: classification.locality,
+          confidence: classification.confidence,
+          neighborhoodTag: classification.neighborhoodTag ?? undefined,
+        };
+        modified = true;
+        updated.push(headlines[i]);
+      }
+    }
+
+    if (modified) {
+      writeFileSync(filePath, JSON.stringify(headlines, null, 2), 'utf-8');
+      log.info(`Updated classifications in ${file} (${updated.length} so far)`);
+    }
+  }
+
+  return updated;
+}
+
+/**
+ * Load unclassified headlines for retry classification.
+ */
+export function loadUnclassifiedHeadlines(dataDir: string, limit?: number): ProcessedHeadline[] {
+  const headlinesDir = join(dataDir, 'headlines');
+  if (!existsSync(headlinesDir)) return [];
+
+  let files: string[];
+  try {
+    files = readdirSync(headlinesDir).filter(f => f.endsWith('.json')).sort().reverse();
+  } catch {
+    return [];
+  }
+
+  const results: ProcessedHeadline[] = [];
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(headlinesDir, file), 'utf-8');
+      const headlines = JSON.parse(content) as ProcessedHeadline[];
+      results.push(...headlines.filter(h => !h.classified));
+      if (limit && results.length >= limit) break;
+    } catch {
+      continue;
+    }
+  }
+
+  return limit ? results.slice(0, limit) : results;
 }
 
 /**
