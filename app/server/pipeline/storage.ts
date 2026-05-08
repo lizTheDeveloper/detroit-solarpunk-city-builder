@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join } from 'path';
 import type { RawHeadline, ProcessedHeadline } from './types.ts';
 import type { LLMClassification } from './llm-classifier.ts';
+import type { GeneratedFrames } from './frame-generator.ts';
 import { getDateString, createLogger } from './utils.ts';
 
 const log = createLogger('storage');
@@ -222,6 +223,93 @@ export function loadUnclassifiedHeadlines(dataDir: string, limit?: number): Proc
   }
 
   return limit ? results.slice(0, limit) : results;
+}
+
+/**
+ * Apply generated frames to stored headlines.
+ */
+export function updateHeadlineFrames(
+  dataDir: string,
+  generatedFrames: GeneratedFrames[]
+): number {
+  if (generatedFrames.length === 0) return 0;
+
+  const frameMap = new Map(generatedFrames.map(f => [f.headlineId, f]));
+  const headlinesDir = join(dataDir, 'headlines');
+  if (!existsSync(headlinesDir)) return 0;
+
+  let updatedCount = 0;
+
+  let files: string[];
+  try {
+    files = readdirSync(headlinesDir).filter(f => f.endsWith('.json'));
+  } catch {
+    return 0;
+  }
+
+  for (const file of files) {
+    const filePath = join(headlinesDir, file);
+    let headlines: ProcessedHeadline[];
+    try {
+      headlines = JSON.parse(readFileSync(filePath, 'utf-8'));
+    } catch {
+      continue;
+    }
+
+    let modified = false;
+    for (let i = 0; i < headlines.length; i++) {
+      const frame = frameMap.get(headlines[i].id);
+      if (frame) {
+        headlines[i] = {
+          ...headlines[i],
+          frames: {
+            establishment: frame.establishment?.text ?? null,
+            community: frame.community?.text ?? null,
+            market: frame.market?.text ?? null,
+          },
+        };
+        modified = true;
+        updatedCount++;
+      }
+    }
+
+    if (modified) {
+      writeFileSync(filePath, JSON.stringify(headlines, null, 2), 'utf-8');
+    }
+  }
+
+  log.info(`Updated frames for ${updatedCount} headlines`);
+  return updatedCount;
+}
+
+/**
+ * Load classified headlines that need frames (severity >= 2, no frames).
+ */
+export function loadFramelessHeadlines(dataDir: string, limit = 100): ProcessedHeadline[] {
+  const headlinesDir = join(dataDir, 'headlines');
+  if (!existsSync(headlinesDir)) return [];
+
+  let files: string[];
+  try {
+    files = readdirSync(headlinesDir).filter(f => f.endsWith('.json')).sort().reverse();
+  } catch {
+    return [];
+  }
+
+  const results: ProcessedHeadline[] = [];
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(headlinesDir, file), 'utf-8');
+      const headlines = JSON.parse(content) as ProcessedHeadline[];
+      results.push(...headlines.filter(h => h.classified && h.severity >= 2 && !h.frames));
+      if (results.length >= limit) break;
+    } catch {
+      continue;
+    }
+  }
+
+  return results.slice(0, limit);
 }
 
 /**

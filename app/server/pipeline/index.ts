@@ -1,9 +1,10 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { loadFeedConfig, fetchAllSources, loadSeenIds } from './fetcher.ts';
-import { storeHeadlines, loadUnclassifiedHeadlines, updateHeadlineClassifications } from './storage.ts';
+import { storeHeadlines, loadUnclassifiedHeadlines, updateHeadlineClassifications, updateHeadlineFrames, loadFramelessHeadlines } from './storage.ts';
 import { updateArcStates } from './arc-state.ts';
 import { classifyBatch, type ClassifierConfig, type ClassifierChatFn } from './llm-classifier.ts';
+import { generateFramesBatch, type FrameGeneratorConfig } from './frame-generator.ts';
 import { createLogger } from './utils.ts';
 import type { PipelineRunResult, PipelineHealth } from './types.ts';
 
@@ -21,6 +22,15 @@ let classifierConfig: ClassifierConfig = {
 };
 
 let classifierChatFn: ClassifierChatFn | null = null;
+
+let frameGenConfig: FrameGeneratorConfig = {
+  enabled: !!process.env.ANTHROPIC_API_KEY,
+  model: process.env.FRAME_GEN_MODEL ?? 'claude-haiku-4-5-20251001',
+};
+
+export function setFrameGenConfig(config: FrameGeneratorConfig): void {
+  frameGenConfig = config;
+}
 
 export function setClassifierConfig(config: ClassifierConfig): void {
   classifierConfig = config;
@@ -120,6 +130,22 @@ export async function runPipeline(): Promise<PipelineRunResult> {
   const classifiedHeadlines = stored.filter(h => h.classified);
   if (classifiedHeadlines.length > 0) {
     updateArcStates(DATA_DIR, classifiedHeadlines);
+  }
+
+  // Generate frames for classified headlines without frames (severity >= 2)
+  if (frameGenConfig.enabled) {
+    try {
+      const frameless = loadFramelessHeadlines(DATA_DIR);
+      if (frameless.length > 0) {
+        const frames = await generateFramesBatch(frameless, chatFn, frameGenConfig);
+        if (frames.length > 0) {
+          updateHeadlineFrames(DATA_DIR, frames);
+          log.info(`Generated frames for ${frames.length} headlines`);
+        }
+      }
+    } catch (err) {
+      log.error('Frame generation step failed, headlines stored without frames for retry', err);
+    }
   }
 
   // Build run result
