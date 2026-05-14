@@ -10,7 +10,8 @@
     "test:server": "vitest run --config vitest.server.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "playtest": "NODE_OPTIONS='--max-old-space-size=4096' npm run build && npx serve dist"
+    "playtest": "NODE_OPTIONS='--max-old-space-size=4096' npm run build && npx serve dist",
+    "ingest": "npx tsx scripts/ingest-headlines.ts"
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",

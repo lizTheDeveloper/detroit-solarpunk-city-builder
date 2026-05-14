@@ -17,21 +17,49 @@ function chatProxyPlugin(): Plugin {
 }
 
 function pipelineProxyPlugin(): Plugin {
+  let pipelineStarted = false
+
   return {
     name: 'pipeline-proxy',
     configureServer(server) {
-      server.middlewares.use('/api/headlines', async (req, res) => {
-        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
-        handlePipelineRoute(req, res)
-      })
-      server.middlewares.use('/api/arc-state', async (req, res) => {
-        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
-        handlePipelineRoute(req, res)
-      })
-      server.middlewares.use('/api/health/pipeline', async (req, res) => {
-        const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
-        handlePipelineRoute(req, res)
-      })
+      // Start the pipeline scheduler once when the dev server starts.
+      // This runs an initial fetch immediately then every hour, so The Wire
+      // always has fresh headlines without a separate manual ingest step.
+      if (!pipelineStarted) {
+        pipelineStarted = true
+        import('./server/pipeline/index.ts').then(({ startPipelineSchedule }) => {
+          startPipelineSchedule()
+        }).catch((err) => {
+          console.error('[pipeline-proxy] Failed to start pipeline scheduler:', err)
+        })
+      }
+
+      // Mount pipeline API routes. Vite's connect-style middleware strips the
+      // mount prefix from req.url, so we restore the full path before passing
+      // to handlePipelineRoute which uses the pathname for routing.
+      //
+      // Example: request to /api/headlines?limit=10 arrives at handler with
+      //   req.url = '/?limit=10'
+      // We rewrite it to /api/headlines?limit=10 so the router can match.
+      const PIPELINE_ROUTES = ['/api/headlines', '/api/arc-state', '/api/health/pipeline']
+
+      for (const route of PIPELINE_ROUTES) {
+        server.middlewares.use(route, async (req, res, next) => {
+          try {
+            const { handlePipelineRoute } = await import('./server/pipeline/routes.ts')
+            // req.url after prefix stripping is '/' or '/?query=...'
+            // Rebuild full URL: strip leading '/' then prepend the route
+            const stripped = req.url ?? '/'
+            const queryPart = stripped.includes('?') ? stripped.slice(stripped.indexOf('?')) : ''
+            req.url = route + queryPart
+            const handled = handlePipelineRoute(req, res)
+            if (!handled) next()
+          } catch (err) {
+            console.error('[pipeline-proxy] Error handling route:', err)
+            next(err)
+          }
+        })
+      }
     },
   }
 }

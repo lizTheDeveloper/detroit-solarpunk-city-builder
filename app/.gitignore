@@ -26,3 +26,6 @@ dist-ssr
 # Large GeoJSON data files (generated, not bundled)
 public/data/detroit-blocks.geojson
 public/data/detroit-neighborhoods.geojson
+
+# Live news pipeline data (runtime-generated, not committed)
+server/pipeline/data/
