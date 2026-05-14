@@ -119,7 +119,7 @@ export default function MeterBar() {
       <MeterItem
         label="Budget"
         value={formatBudget(meters.budget)}
-        barPercent={(meters.budget / 10) * 100}
+        barPercent={(meters.budget / 2000) * 100}
         barColor="#60a5fa"
         delta={getDelta(deltas, 'budget')}
       />

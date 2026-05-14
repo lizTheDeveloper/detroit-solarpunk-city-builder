@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useGame } from '@/state/store';
 import type { Tile, VisualStage } from '@/state/types';
+import { DISTRICTS } from '@/data/content/districts';
 
 const STAGE_COLORS: Record<VisualStage, string> = {
   dystopia: '#6b7280',
@@ -66,21 +68,90 @@ function TileCard({ tile, selected, onSelect }: { tile: Tile; selected: boolean;
   );
 }
 
+function DistrictGroup({
+  district,
+  tiles,
+  councilMember,
+  selectedTileId,
+  onSelectTile,
+}: {
+  district: typeof DISTRICTS[number];
+  tiles: Tile[];
+  councilMember: { name: string; disposition: number; leaning: string } | null;
+  selectedTileId: string | null;
+  onSelectTile: (tileId: string) => void;
+}) {
+  const hasSelected = tiles.some(t => t.id === selectedTileId);
+  const [expanded, setExpanded] = useState(hasSelected);
+
+  const avgEco = tiles.length > 0
+    ? Math.round(tiles.reduce((sum, t) => sum + t.ecologicalHealth, 0) / tiles.length)
+    : 0;
+
+  const dispositionColor = councilMember
+    ? councilMember.disposition > 30 ? '#4ade80'
+    : councilMember.disposition > 0 ? '#a3e635'
+    : councilMember.disposition > -30 ? '#fbbf24'
+    : '#f87171'
+    : '#6b7280';
+
+  return (
+    <div className={`district-group ${expanded ? 'district-group--expanded' : ''}`}>
+      <button
+        className="district-header"
+        onClick={() => setExpanded(!expanded)}
+        type="button"
+      >
+        <span className="district-expand">{expanded ? '▾' : '▸'}</span>
+        <span className="district-label">
+          <span className="district-name">{district.name}</span>
+          <span className="district-region">{district.region}</span>
+        </span>
+        {councilMember && (
+          <span className="district-council" style={{ color: dispositionColor }}>
+            {councilMember.name.split(' ').pop()}
+          </span>
+        )}
+        <span className="district-eco">Eco {avgEco}%</span>
+      </button>
+      {expanded && (
+        <div className="district-tiles">
+          {tiles.map((tile) => (
+            <TileCard
+              key={tile.id}
+              tile={tile}
+              selected={tile.id === selectedTileId}
+              onSelect={() => onSelectTile(tile.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TileList({ selectedTileId, onSelectTile }: TileListProps) {
   const { state } = useGame();
-  const tiles = Object.values(state.tiles);
 
   return (
     <div className="tile-list">
-      <h2 className="tile-list-title">Neighborhoods</h2>
-      {tiles.map((tile) => (
-        <TileCard
-          key={tile.id}
-          tile={tile}
-          selected={tile.id === selectedTileId}
-          onSelect={() => onSelectTile(tile.id)}
-        />
-      ))}
+      <h2 className="tile-list-title">City Council Districts</h2>
+      {DISTRICTS.map((district) => {
+        const tiles = district.tileIds
+          .map(id => state.tiles[id])
+          .filter(Boolean);
+        const cm = state.councilMembers[district.councilMemberId] ?? null;
+        return (
+          <DistrictGroup
+            key={district.number}
+            district={district}
+            tiles={tiles}
+            councilMember={cm}
+            selectedTileId={selectedTileId}
+            onSelectTile={onSelectTile}
+          />
+        );
+      })}
     </div>
   );
 }

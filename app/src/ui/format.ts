@@ -1,28 +1,31 @@
 /**
- * Format a budget value (stored as millions internally) as thousands for display.
- * $0.14M internal → "$140K" display
- * $1.5M internal → "$1,500K" display
- * This matches real Detroit grant/project scale.
+ * Format a budget value (stored in millions internally) for display.
+ * Budget is the Detroit general fund: ~$1,576M ($1.576B).
  */
 export function formatBudget(amount: number): string {
-  const k = Math.round(amount * 1000);
-  if (k >= 1000) {
-    return `$${(k / 1000).toFixed(1)}M`;
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(2)}B`;
   }
+  if (amount >= 1) {
+    return `$${Math.round(amount)}M`;
+  }
+  const k = Math.round(amount * 1000);
   return `$${k.toLocaleString()}K`;
 }
 
 /**
  * Format a budget delta (change) for display.
- * +0.14M internal → "+$140K"
- * -0.08M internal → "-$80K"
  */
 export function formatBudgetDelta(amount: number): string {
-  const k = Math.round(Math.abs(amount) * 1000);
   const sign = amount >= 0 ? '+' : '-';
-  if (k >= 1000) {
-    return `${sign}$${(k / 1000).toFixed(1)}M`;
+  const abs = Math.abs(amount);
+  if (abs >= 1000) {
+    return `${sign}$${(abs / 1000).toFixed(2)}B`;
   }
+  if (abs >= 1) {
+    return `${sign}$${Math.round(abs)}M`;
+  }
+  const k = Math.round(abs * 1000);
   return `${sign}$${k.toLocaleString()}K`;
 }
 
@@ -30,9 +33,12 @@ export function formatBudgetDelta(amount: number): string {
  * Format a project/policy cost for display.
  */
 export function formatCost(amount: number): string {
-  const k = Math.round(amount * 1000);
-  if (k >= 1000) {
-    return `$${(k / 1000).toFixed(1)}M`;
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(1)}B`;
   }
+  if (amount >= 1) {
+    return `$${amount.toFixed(1)}M`;
+  }
+  const k = Math.round(amount * 1000);
   return `$${k}K`;
 }

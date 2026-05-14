@@ -56,20 +56,21 @@ export function createNewGame(): GameState {
     phase: 'player-actions',
     stage: 'awakening',
     path: null,
-    // Starting meters calibrated to Detroit 2024 baseline.
-    // Trust 50%: Duggan approval was 84% but that's after 12 years; new mayor starts lower.
+    // Starting meters calibrated to Detroit FY2025-26 baseline.
+    // Trust 50%: New mayor starts with moderate goodwill but no coalitions yet.
     // Eco 20%: Tree canopy 26% (target 40%), 2200+ gardens but <5% food needs met.
     // Food 12%: 36% lack adequate food access (USDA), 550K lbs grown but city needs millions.
     // Will 25%: Fresh administration, some goodwill but no active coalitions yet.
-    // Budget $1.5M: First-year discretionary budget (general fund portion for sustainability).
+    // Budget $1,576M: Real Detroit general fund ($1.576B). Police $442M, Fire $167M,
+    //   Transit $209M, Water/Sewer $633M (enterprise), Parks $113M, Housing $29M.
+    //   Source: detroitmi.gov FY2026 adopted budget.
     // Climate 30%: Already experiencing floods every 1-2 years, 13 days 90F+/year.
-    // Source: Detroit FY2024 budget, Keep Growing Detroit, American Lung Association, GLISA.
     meters: {
       communityTrust,
       ecologicalHealth: 20,
       foodSovereignty: 12,
       politicalWill: 25,
-      budget: 1.5,
+      budget: 1576,
       climatePressure: 30,
     },
     tiles: {
