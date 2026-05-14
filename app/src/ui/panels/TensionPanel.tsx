@@ -26,6 +26,18 @@ function TensionBar({ label, leftLabel, rightLabel, ratio }: {
   );
 }
 
+const GROWTH_EXPLANATIONS: Record<string, string> = {
+  'growth-dominant': 'Heavy on revenue-generating projects (solar, maker spaces). Risk: gentrification outpaces community benefit.',
+  'balanced': 'Mix of growth and de-growth projects. Both economic development and ecological restoration.',
+  'degrowth-dominant': 'Heavy on ecological projects (food forests, prairies, wetlands). Low revenue but strong community resilience.',
+};
+
+const MODE_EXPLANATIONS: Record<string, string> = {
+  'top-down': 'You\'re driving most decisions. Community leaders may feel sidelined — accept more proposals.',
+  'mixed': 'Healthy mix of your projects and community proposals.',
+  'bottom-up': 'Community is leading. Strong trust, but you may need to initiate strategic infrastructure.',
+};
+
 export default function TensionPanel() {
   const { state } = useGame();
   const summary = getTensionSummary(state);
@@ -39,6 +51,8 @@ export default function TensionPanel() {
     critical: 'var(--color-negative)',
   };
 
+  const totalCompleted = Object.values(state.tiles).reduce((sum, t) => sum + t.completedProjects.length, 0);
+
   return (
     <div className="panel tension-panel">
       <h2 className="panel-title">
@@ -51,8 +65,14 @@ export default function TensionPanel() {
         </span>
       </h2>
       <p className="panel-subtitle">
-        Balance competing values. Extremes in any direction cause problems.
+        Your choices create trade-offs. The city thrives when you balance competing values — extremes in any direction trigger backlash.
       </p>
+
+      {totalCompleted < 3 && (
+        <div className="tension-early-notice">
+          Tensions emerge as you make decisions. Complete a few projects and these bars will start reflecting your approach.
+        </div>
+      )}
 
       <TensionBar
         label="Speed vs Justice"
@@ -61,6 +81,9 @@ export default function TensionPanel() {
         ratio={speedVsJustice.justiceScore / Math.max(1, speedVsJustice.speedScore + speedVsJustice.justiceScore)}
       />
       <div className="tension-advice">{advice}</div>
+      <div className="tension-explanation">
+        Progress = ecological + food sovereignty gains. Equity = anti-gentrification. If you build fast without protecting residents, tension rises.
+      </div>
 
       <TensionBar
         label="Growth vs De-Growth"
@@ -69,6 +92,7 @@ export default function TensionPanel() {
         ratio={growthVsDegrowth.ratio}
       />
       <div className="tension-label-tag">{growthVsDegrowth.label}</div>
+      <div className="tension-explanation">{GROWTH_EXPLANATIONS[growthVsDegrowth.label]}</div>
 
       <TensionBar
         label="Top-Down vs Bottom-Up"
@@ -77,13 +101,17 @@ export default function TensionPanel() {
         ratio={topDownVsBottomUp.ratio}
       />
       <div className="tension-label-tag">{topDownVsBottomUp.label}</div>
+      <div className="tension-explanation">{MODE_EXPLANATIONS[topDownVsBottomUp.label]}</div>
 
       {gentrification.atRisk.length > 0 && (
         <div className="tension-warning">
-          Gentrification risk in: {gentrification.atRisk.map(id => {
+          <strong>Gentrification risk:</strong> {gentrification.atRisk.map(id => {
             const tile = state.tiles[id];
             return tile ? tile.name : id;
           }).join(', ')}
+          <div className="tension-warning-advice">
+            Build Community Land Trusts or accept de-growth proposals in these areas to reduce pressure.
+          </div>
         </div>
       )}
     </div>

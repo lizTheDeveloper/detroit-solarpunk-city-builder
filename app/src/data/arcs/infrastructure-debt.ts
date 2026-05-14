@@ -226,4 +226,13 @@ export const infrastructureDebtArc: ArcTemplate = {
     { doi: 'doi:10.3390/su12229327', title: 'Green infrastructure for urban stormwater management', relevance: 'Cost-benefit analysis: green vs grey infrastructure for combined sewer overflow' },
     { doi: 'doi:10.1061/(ASCE)IS.1943-555X.0000582', title: 'Cooperative maintenance models for municipal infrastructure', relevance: 'Evidence for community-owned infrastructure maintenance effectiveness' },
   ],
+
+  slotTaxByStage: {
+    dormant: 0,
+    foreshadow: 1,
+    escalation: 2,
+    crisis: 3,
+    reckoning: 2,
+    resolved: 0,
+  },
 };

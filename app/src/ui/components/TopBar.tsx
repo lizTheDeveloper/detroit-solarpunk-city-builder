@@ -25,8 +25,8 @@ export default function TopBar() {
 
   const activePolicyCount = state.activePolicies.length;
   const activeCoalitionCount = state.coalitions.filter((c) => c.active).length;
-  const actionsRemaining = state.narrativeState.actionsRemaining;
-  const actionsPerTurn = state.narrativeState.actionsPerTurn;
+  const slotsRemaining = state.calendarState.discretionarySlots - state.calendarState.slotsSpent;
+  const slotsTotal = state.calendarState.discretionarySlots;
 
   return (
     <div className="top-bar">
@@ -44,7 +44,7 @@ export default function TopBar() {
         {formatBudget(state.meters.budget)}
       </div>
       <div className="top-bar-stat">
-        {actionsRemaining}/{actionsPerTurn} Actions
+        {slotsRemaining}/{slotsTotal} Slots
       </div>
       {activePolicyCount > 0 && (
         <div className="top-bar-stat top-bar-stat--policy">

@@ -253,38 +253,38 @@ describe('Advisor System', () => {
       expect(prompt?.conditionId).not.toBe('food-stagnant');
     });
 
-    it('no-narrative-used fires when all narrative actions remain and turn > 6', () => {
+    it('no-slots-used fires when no calendar slots spent and turn > 6', () => {
       let state = createNewGame();
       state = { ...state, turn: 7 };
       state = withMeters(state, { communityTrust: 50, ecologicalHealth: 50 });
-      // narrativeState starts with actionsRemaining === actionsPerTurn (2 === 2)
+      // calendarState starts with slotsSpent === 0
 
       const prompt = getAdvisorPrompt(state);
       expect(prompt).not.toBeNull();
-      expect(prompt!.conditionId).toBe('no-narrative-used');
+      expect(prompt!.conditionId).toBe('no-slots-used');
       expect(prompt!.characterId).toBe('darius');
     });
 
-    it('no-narrative-used does not fire when an action has been used', () => {
+    it('no-slots-used does not fire when a slot has been spent', () => {
       let state = createNewGame();
       state = { ...state, turn: 7 };
       state = withMeters(state, { communityTrust: 50, ecologicalHealth: 50 });
       state = {
         ...state,
-        narrativeState: { ...state.narrativeState, actionsRemaining: 1 },
+        calendarState: { ...state.calendarState, slotsSpent: 1 },
       };
 
       const prompt = getAdvisorPrompt(state);
-      expect(prompt?.conditionId).not.toBe('no-narrative-used');
+      expect(prompt?.conditionId).not.toBe('no-slots-used');
     });
 
-    it('no-narrative-used does not fire at turn <= 6', () => {
+    it('no-slots-used does not fire at turn <= 6', () => {
       let state = createNewGame();
       state = { ...state, turn: 6 };
       state = withMeters(state, { communityTrust: 50, ecologicalHealth: 50 });
 
       const prompt = getAdvisorPrompt(state);
-      expect(prompt?.conditionId).not.toBe('no-narrative-used');
+      expect(prompt?.conditionId).not.toBe('no-slots-used');
     });
   });
 
@@ -300,10 +300,10 @@ describe('Advisor System', () => {
         politicalWill: 30,
         budget: 1.5,
       });
-      // Use a narrative action so that condition doesn't fire
+      // Spend at least one slot so that condition doesn't fire
       safe = {
         ...safe,
-        narrativeState: { ...safe.narrativeState, actionsRemaining: 0 },
+        calendarState: { ...safe.calendarState, slotsSpent: 1 },
       };
 
       const prompt = getAdvisorPrompt(safe);

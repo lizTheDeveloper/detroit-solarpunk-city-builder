@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGame } from '@/state/store';
 import { getAdvisorPrompt, dismissCondition, applyCooldown } from '@/systems/advisors';
 import type { AdvisorPrompt } from '@/systems/advisors';
+import { trackAdvisorShown } from '@/systems/analytics';
 
 interface AdvisorToastProps {
   onStateUpdate: (updater: (prev: import('@/state/types').GameState) => import('@/state/types').GameState) => void;
@@ -19,6 +20,7 @@ export default function AdvisorToast({ onStateUpdate }: AdvisorToastProps) {
       setPrompt(advisorPrompt);
       setVisible(true);
       setFading(false);
+      trackAdvisorShown(advisorPrompt.conditionId);
     } else {
       setVisible(false);
     }

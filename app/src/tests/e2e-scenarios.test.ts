@@ -89,6 +89,8 @@ function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
     tileId: 'brightmoor',
     reason: 'Community needs food access',
     turnProposed: 1,
+    expirationTurn: 4,
+    pressureLevel: 0,
     ...overrides,
   };
 }
@@ -596,7 +598,7 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
       return makeProposal({ id: `p_${proposalCounter}` });
     }
 
-    function respond(response: 'accept' | 'reject' | 'defer') {
+    function respond(response: 'accept' | 'reject') {
       state = {
         ...state,
         activeProposals: [nextProposal()],
@@ -621,154 +623,6 @@ describe('Scenario 6: Proposal Accept/Reject Trust Dynamics', () => {
 
     respond('accept'); // 15 + 5 = 20
     expect(state.leaders['grace'].trust).toBe(20);
-  });
-});
-
-// ============================================================
-// Scenario 7: Three Consecutive Deferrals = Rejection
-// ============================================================
-
-describe('Scenario 7: Three Consecutive Deferrals = Rejection', () => {
-  /**
-   * Per reducer.ts:
-   * - Defer 1: trust -5, consecutiveDeferrals increments to 1
-   * - Defer 2: trust -5, consecutiveDeferrals increments to 2
-   * - Defer 3: treated as reject, trust -15, consecutiveDeferrals increments to 3
-   * Total: -5 - 5 - 15 = -25
-   */
-
-  it('first deferral: trust -5, consecutiveDeferrals = 1', () => {
-    const base = createNewGame();
-    const state: GameState = {
-      ...base,
-      activeProposals: [makeProposal()],
-    };
-
-    const result = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'proposal_1', response: 'defer' },
-      projectDefs,
-    );
-
-    expect(result.leaders['grace'].trust).toBe(30 - 5);
-    expect(result.leaders['grace'].consecutiveDeferrals).toBe(1);
-  });
-
-  it('second deferral: trust -5, consecutiveDeferrals = 2', () => {
-    const base = createNewGame();
-    const state: GameState = {
-      ...base,
-      leaders: {
-        ...base.leaders,
-        grace: { ...base.leaders['grace'], consecutiveDeferrals: 1, trust: 25 },
-      },
-      activeProposals: [makeProposal()],
-    };
-
-    const result = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'proposal_1', response: 'defer' },
-      projectDefs,
-    );
-
-    expect(result.leaders['grace'].trust).toBe(25 - 5);
-    expect(result.leaders['grace'].consecutiveDeferrals).toBe(2);
-  });
-
-  it('third deferral converts to reject: trust -15, consecutiveDeferrals = 3', () => {
-    const base = createNewGame();
-    const state: GameState = {
-      ...base,
-      leaders: {
-        ...base.leaders,
-        grace: { ...base.leaders['grace'], consecutiveDeferrals: 2, trust: 20 },
-      },
-      activeProposals: [makeProposal()],
-    };
-
-    const result = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'proposal_1', response: 'defer' },
-      projectDefs,
-    );
-
-    // Third deferral treated as reject: -15 instead of -5
-    expect(result.leaders['grace'].trust).toBe(20 - 15);
-    expect(result.leaders['grace'].consecutiveDeferrals).toBe(3);
-    // Should NOT go to pendingProposals (it was rejected)
-    expect(result.pendingProposals).toHaveLength(0);
-    expect(result.activeProposals).toHaveLength(0);
-  });
-
-  it('full 3-deferral sequence: total trust loss is -25', () => {
-    const base = createNewGame();
-    let state: GameState = { ...base };
-
-    // Starting trust: 30
-    // Defer 1: -5 => 25
-    state = {
-      ...state,
-      activeProposals: [makeProposal({ id: 'p1' })],
-    };
-    state = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'p1', response: 'defer' },
-      projectDefs,
-    );
-    expect(state.leaders['grace'].trust).toBe(25);
-
-    // Defer 2: -5 => 20
-    state = {
-      ...state,
-      activeProposals: [makeProposal({ id: 'p2' })],
-    };
-    state = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'p2', response: 'defer' },
-      projectDefs,
-    );
-    expect(state.leaders['grace'].trust).toBe(20);
-
-    // Defer 3 (auto-reject): -15 => 5
-    state = {
-      ...state,
-      activeProposals: [makeProposal({ id: 'p3' })],
-    };
-    state = gameReducer(
-      state,
-      { type: 'RESPOND_PROPOSAL', proposalId: 'p3', response: 'defer' },
-      projectDefs,
-    );
-    expect(state.leaders['grace'].trust).toBe(5);
-
-    // Total: 30 - 5 - 5 - 15 = 5 (lost 25)
-    expect(30 - state.leaders['grace'].trust).toBe(25);
-  });
-
-  it('leader starting at trust 10 ends at -15 after 3 deferrals', () => {
-    const base = createNewGame();
-    let state: GameState = {
-      ...base,
-      leaders: {
-        ...base.leaders,
-        grace: { ...base.leaders['grace'], trust: 10 },
-      },
-    };
-
-    // Defer 1: 10 - 5 = 5
-    state = { ...state, activeProposals: [makeProposal({ id: 'p1' })] };
-    state = gameReducer(state, { type: 'RESPOND_PROPOSAL', proposalId: 'p1', response: 'defer' }, projectDefs);
-    expect(state.leaders['grace'].trust).toBe(5);
-
-    // Defer 2: 5 - 5 = 0
-    state = { ...state, activeProposals: [makeProposal({ id: 'p2' })] };
-    state = gameReducer(state, { type: 'RESPOND_PROPOSAL', proposalId: 'p2', response: 'defer' }, projectDefs);
-    expect(state.leaders['grace'].trust).toBe(0);
-
-    // Defer 3 (auto-reject): 0 - 15 = -15
-    state = { ...state, activeProposals: [makeProposal({ id: 'p3' })] };
-    state = gameReducer(state, { type: 'RESPOND_PROPOSAL', proposalId: 'p3', response: 'defer' }, projectDefs);
-    expect(state.leaders['grace'].trust).toBe(-15);
   });
 });
 

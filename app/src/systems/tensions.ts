@@ -44,7 +44,14 @@ export function calculateSpeedVsJustice(state: GameState): SpeedVsJusticeResult 
       : 0;
   const justiceScore = 100 - averageGentrification;
 
-  const tension = Math.abs(speedScore - justiceScore);
+  // Raw gap between progress and anti-gentrification
+  const rawTension = Math.abs(speedScore - justiceScore);
+
+  // Scale tension by how much has actually happened — early game with no projects
+  // isn't "tension," it's just the starting state. Ramp in over first 10 completed projects.
+  const totalCompleted = tiles.reduce((sum, t) => sum + t.completedProjects.length, 0);
+  const rampFactor = Math.min(1, totalCompleted / 10);
+  const tension = rawTension * rampFactor;
 
   let level: 'low' | 'medium' | 'high';
   if (tension < 15) {

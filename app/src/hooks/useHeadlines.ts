@@ -9,6 +9,7 @@ export interface Headline {
   severity: 0 | 1 | 2 | 3;
   locality: 'detroit' | 'michigan' | 'national' | 'global' | null;
   arcs: string[];
+  neighborhoodTag: string | null;
 }
 
 interface UseHeadlinesResult {

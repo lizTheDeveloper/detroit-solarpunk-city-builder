@@ -1,6 +1,7 @@
 import { useGame } from '@/state/store';
 import { checkTutorialTriggers, completeStep, skipTutorial } from '@/systems/tutorial';
 import type { GameState } from '@/state/types';
+import { trackTutorialStep } from '@/systems/analytics';
 
 interface TutorialTooltipProps {
   onStateUpdate: (updater: (prev: GameState) => GameState) => void;
@@ -13,10 +14,12 @@ export default function TutorialTooltip({ onStateUpdate }: TutorialTooltipProps)
   if (!current) return null;
 
   const handleComplete = () => {
+    trackTutorialStep(current.stepId);
     onStateUpdate((prev) => completeStep(prev, current.stepId));
   };
 
   const handleSkip = () => {
+    trackTutorialStep('tutorial_skipped');
     onStateUpdate((prev) => skipTutorial(prev));
   };
 

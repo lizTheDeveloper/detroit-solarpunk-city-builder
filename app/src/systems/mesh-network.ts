@@ -66,7 +66,10 @@ export function applyMeshNetworkEffects(state: GameState): { state: GameState; d
     });
   }
 
-  if (status.extraActions > 0 && state.narrativeState.actionsPerTurn < 3) {
+  // At 6+ community-owned tiles, reduce fixed obligations by 2 (freeing 2 discretionary slots)
+  if (status.extraActions > 0 && state.calendarState && state.calendarState.fixedSlots > 34) {
+    const newFixed = Math.max(34, state.calendarState.fixedSlots - 2);
+    const newDiscretionary = state.calendarState.totalSlots - newFixed - state.calendarState.crisisSlotTax;
     return {
       state: {
         ...state,
@@ -74,9 +77,10 @@ export function applyMeshNetworkEffects(state: GameState): { state: GameState; d
           ...state.meters,
           communityTrust: state.meters.communityTrust + status.passiveTrustGain,
         },
-        narrativeState: {
-          ...state.narrativeState,
-          actionsPerTurn: state.narrativeState.actionsPerTurn + status.extraActions,
+        calendarState: {
+          ...state.calendarState,
+          fixedSlots: newFixed,
+          discretionarySlots: newDiscretionary,
         },
       },
       deltas,

@@ -54,12 +54,6 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       decarceration: 0,
       deGrowth: 0,
     },
-    narrativeState: {
-      actionsRemaining: 2,
-      actionsPerTurn: 2,
-      consecutiveTurns: {},
-      counterNarrativeCooldowns: {},
-    },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},

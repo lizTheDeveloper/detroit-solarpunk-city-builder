@@ -41,6 +41,8 @@ function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
     tileId: 'brightmoor',
     reason: 'We need clean energy',
     turnProposed: 1,
+    expirationTurn: 4,
+    pressureLevel: 0,
     ...overrides,
   };
 }
@@ -344,80 +346,6 @@ describe('gameReducer', () => {
       });
     });
 
-    describe('defer', () => {
-      it('decreases leader trust by -5', () => {
-        const state = stateWithProposal();
-        const action: GameAction = {
-          type: 'RESPOND_PROPOSAL',
-          proposalId: 'proposal_1',
-          response: 'defer',
-        };
-
-        const result = gameReducer(state, action, projects);
-
-        expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust - 5);
-      });
-
-      it('moves proposal to pendingProposals', () => {
-        const state = stateWithProposal();
-        const action: GameAction = {
-          type: 'RESPOND_PROPOSAL',
-          proposalId: 'proposal_1',
-          response: 'defer',
-        };
-
-        const result = gameReducer(state, action, projects);
-
-        expect(result.activeProposals).toHaveLength(0);
-        expect(result.pendingProposals).toHaveLength(1);
-        expect(result.pendingProposals[0].id).toBe('proposal_1');
-      });
-
-      it('increments leader consecutiveDeferrals', () => {
-        const state = stateWithProposal();
-        const action: GameAction = {
-          type: 'RESPOND_PROPOSAL',
-          proposalId: 'proposal_1',
-          response: 'defer',
-        };
-
-        const result = gameReducer(state, action, projects);
-
-        expect(result.leaders['grace'].consecutiveDeferrals).toBe(1);
-      });
-
-      it('treats as reject when consecutiveDeferrals >= 3 (before increment would be 3)', () => {
-        const state = stateWithProposal();
-        // Set Grace to already have 2 consecutive deferrals; this 3rd will trigger reject
-        const stateWith2Deferrals: GameState = {
-          ...state,
-          leaders: {
-            ...state.leaders,
-            grace: {
-              ...state.leaders['grace'],
-              consecutiveDeferrals: 2,
-            },
-          },
-        };
-
-        const action: GameAction = {
-          type: 'RESPOND_PROPOSAL',
-          proposalId: 'proposal_1',
-          response: 'defer',
-        };
-
-        const result = gameReducer(stateWith2Deferrals, action, projects);
-
-        // Should behave as reject: trust -15 (not -5)
-        expect(result.leaders['grace'].trust).toBe(
-          stateWith2Deferrals.leaders['grace'].trust - 15,
-        );
-        // Should NOT go to pendingProposals (rejected, not deferred)
-        expect(result.pendingProposals).toHaveLength(0);
-        expect(result.activeProposals).toHaveLength(0);
-      });
-    });
-
     describe('reject', () => {
       it('decreases leader trust by -15', () => {
         const state = stateWithProposal();
@@ -432,7 +360,7 @@ describe('gameReducer', () => {
         expect(result.leaders['grace'].trust).toBe(state.leaders['grace'].trust - 15);
       });
 
-      it('removes proposal from activeProposals without adding to pending', () => {
+      it('removes proposal from activeProposals', () => {
         const state = stateWithProposal();
         const action: GameAction = {
           type: 'RESPOND_PROPOSAL',
@@ -443,7 +371,6 @@ describe('gameReducer', () => {
         const result = gameReducer(state, action, projects);
 
         expect(result.activeProposals).toHaveLength(0);
-        expect(result.pendingProposals).toHaveLength(0);
       });
     });
 
@@ -633,45 +560,6 @@ describe('gameReducer', () => {
     });
   });
 
-  describe('NARRATIVE_ACTION', () => {
-    it('deducts action and applies effects', () => {
-      const state = createNewGame();
-      // Default narrativeState.actionsRemaining = 2
-      const action: GameAction = {
-        type: 'NARRATIVE_ACTION',
-        actionType: 'community_meeting',
-        target: 'brightmoor',
-        topic: 'foodSovereignty',
-      };
-
-      const result = gameReducer(state, action);
-
-      expect(result.narrativeState.actionsRemaining).toBe(1);
-      // community_meeting: willGain=0.01, trustGain=0.02
-      expect(result.meters.politicalWill).toBeGreaterThan(state.meters.politicalWill);
-      expect(result.meters.communityTrust).toBeGreaterThan(state.meters.communityTrust);
-    });
-
-    it('returns state unchanged with 0 actions remaining', () => {
-      const state = createNewGame();
-      const noActionsState: GameState = {
-        ...state,
-        narrativeState: { ...state.narrativeState, actionsRemaining: 0 },
-      };
-
-      const action: GameAction = {
-        type: 'NARRATIVE_ACTION',
-        actionType: 'community_meeting',
-        target: 'brightmoor',
-        topic: 'foodSovereignty',
-      };
-
-      const result = gameReducer(noActionsState, action);
-
-      expect(result).toBe(noActionsState);
-    });
-  });
-
   describe('RESPOND_EVENT', () => {
     it('applies choice effects and removes event from queue', () => {
       const state = createNewGame();
@@ -735,7 +623,7 @@ describe('gameReducer', () => {
   });
 
   describe('LOBBY_COUNCIL', () => {
-    it('applies disposition change and deducts narrative action', () => {
+    it('applies disposition change and spends calendar slot', () => {
       const state = createNewGame();
       const stateWithCouncil: GameState = {
         ...state,
@@ -752,7 +640,6 @@ describe('gameReducer', () => {
             tileIds: [],
           },
         },
-        narrativeState: { ...state.narrativeState, actionsRemaining: 2 },
       };
 
       const action: GameAction = {
@@ -766,10 +653,11 @@ describe('gameReducer', () => {
 
       // high alignment = +15 disposition
       expect(result.councilMembers['cm1'].disposition).toBe(25);
-      expect(result.narrativeState.actionsRemaining).toBe(1);
+      // quick_check_in costs 1 slot
+      expect(result.calendarState.slotsSpent).toBe(stateWithCouncil.calendarState.slotsSpent + 1);
     });
 
-    it('returns state unchanged with 0 actions remaining', () => {
+    it('returns state unchanged with no calendar slots remaining', () => {
       const state = createNewGame();
       const stateWithCouncil: GameState = {
         ...state,
@@ -786,7 +674,10 @@ describe('gameReducer', () => {
             tileIds: [],
           },
         },
-        narrativeState: { ...state.narrativeState, actionsRemaining: 0 },
+        calendarState: {
+          ...state.calendarState,
+          slotsSpent: state.calendarState.discretionarySlots + state.calendarState.overscheduleLimit,
+        },
       };
 
       const action: GameAction = {
@@ -854,7 +745,7 @@ describe('gameReducer', () => {
       const state = createNewGame();
       const campaignState: GameState = {
         ...state,
-        turn: 15,
+        turn: 44,
       };
 
       const action: GameAction = {
@@ -869,7 +760,7 @@ describe('gameReducer', () => {
       expect(result.meters.communityTrust).toBeCloseTo(campaignState.meters.communityTrust + 1);
     });
 
-    it('returns state unchanged on wrong turn', () => {
+    it('returns state unchanged before campaign window', () => {
       const state = createNewGame(); // turn 1
 
       const action: GameAction = {

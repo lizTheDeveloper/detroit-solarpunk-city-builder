@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, GameEvent, Antagonist } from '../state/types';
+import type { GameState, GameEvent, Antagonist, AntagonistArcState } from '../state/types';
 import { createNewGame } from '../state/create-game';
 import {
   generateEvents,
@@ -8,6 +8,8 @@ import {
   checkAntagonistActivation,
   escalateAntagonists,
   getEventPriority,
+  advanceMarcusPhase,
+  createMarcusEvent,
 } from './events';
 
 /** Helper: create a base game state with sensible defaults */
@@ -115,30 +117,30 @@ describe('generateEvents', () => {
     expect(events.some((e) => e.type === 'heat_wave')).toBe(false);
   });
 
-  it('9. community events respect Trust thresholds (neighborhood_request needs Trust > 40%)', () => {
-    // Block all other event types with cooldowns so only community events can fire
+  it('9. community events respect Trust thresholds (mutual_aid needs Trust > 60%)', () => {
+    // Block all other event types with cooldowns so only mutual_aid can fire
     const blockOthers = {
       heat_wave: 1, flooding: 1, severe_storm: 1, ice_storm: 1,
       federal_grant: 1, developer_proposal: 1,
       water_shutoff: 1, infrastructure_failure: 1, public_health_emergency: 1,
-      mutual_aid: 1, cultural_celebration: 1,
+      cultural_celebration: 1,
     };
 
-    // Trust at 30 — should not generate (needs > 40)
+    // Trust at 50 — should not generate (needs > 60)
     const lowTrust = makeState({
-      meters: { communityTrust: 30, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
-      eventCooldowns: blockOthers,
-    });
-    const events1 = generateEvents(lowTrust, () => 0.001);
-    expect(events1.some((e) => e.type === 'neighborhood_request')).toBe(false);
-
-    // Trust at 50 — should generate
-    const highTrust = makeState({
       meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
       eventCooldowns: blockOthers,
     });
+    const events1 = generateEvents(lowTrust, () => 0.001);
+    expect(events1.some((e) => e.type === 'mutual_aid')).toBe(false);
+
+    // Trust at 70 — should generate
+    const highTrust = makeState({
+      meters: { communityTrust: 70, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      eventCooldowns: blockOthers,
+    });
     const events2 = generateEvents(highTrust, () => 0.001);
-    expect(events2.some((e) => e.type === 'neighborhood_request')).toBe(true);
+    expect(events2.some((e) => e.type === 'mutual_aid')).toBe(true);
   });
 
   it('10. crisis events respect meter thresholds (water_shutoff needs Budget < $1.0M)', () => {
@@ -547,5 +549,355 @@ describe('getEventPriority', () => {
     expect(getEventPriority(makeEvent('antagonist'))).toBe(3);
     expect(getEventPriority(makeEvent('political'))).toBe(2);
     expect(getEventPriority(makeEvent('community'))).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Marcus Webb 4-phase arc
+// ---------------------------------------------------------------------------
+
+function makeMarcusArc(overrides: Partial<AntagonistArcState> = {}): AntagonistArcState {
+  return {
+    phase: 1,
+    phaseEventsFired: 0,
+    confrontations: 0,
+    ignores: 0,
+    coOpted: false,
+    resolutionType: null,
+    sterlingConnectionRevealed: false,
+    ...overrides,
+  };
+}
+
+function makeMarcus(overrides: Partial<Antagonist> = {}): Antagonist {
+  return makeAntagonist({
+    id: 'marcus_webb',
+    name: 'Marcus Webb',
+    role: 'Media Figure',
+    active: true,
+    escalationLevel: 0,
+    escalationInterval: 0,
+    lastEscalationTurn: 0,
+    arcState: makeMarcusArc(),
+    ...overrides,
+  });
+}
+
+describe('Marcus Webb arc: advanceMarcusPhase', () => {
+  it('stays in Phase 1 when no transition conditions are met', () => {
+    const marcus = makeMarcus();
+    const state = makeState({ turn: 5, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(1);
+  });
+
+  it('transitions to Phase 2 at turn 9+ when ignores >= 3', () => {
+    const marcus = makeMarcus({ arcState: makeMarcusArc({ ignores: 3 }) });
+    const state = makeState({ turn: 9, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(2);
+    expect(result.arcState!.phaseEventsFired).toBe(0);
+    expect(result.escalationLevel).toBe(1);
+  });
+
+  it('transitions to Phase 2 early via Sterling Cross at turn 6+', () => {
+    const sterling = makeAntagonist({ id: 'sterling_cross', active: true });
+    const marcus = makeMarcus();
+    const state = makeState({
+      turn: 6,
+      antagonists: { marcus_webb: marcus, sterling_cross: sterling },
+    });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(2);
+  });
+
+  it('does not early-transition via Sterling Cross before turn 6', () => {
+    const sterling = makeAntagonist({ id: 'sterling_cross', active: true });
+    const marcus = makeMarcus();
+    const state = makeState({
+      turn: 5,
+      antagonists: { marcus_webb: marcus, sterling_cross: sterling },
+    });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(1);
+  });
+
+  it('transitions to Phase 2 when 2+ proposals have pressureLevel >= 3', () => {
+    const marcus = makeMarcus();
+    const state = makeState({
+      turn: 9,
+      antagonists: { marcus_webb: marcus },
+      activeProposals: [
+        { id: 'p1', leaderId: 'l1', projectDefinitionId: 'pd1', tileId: 't1', reason: '', turnProposed: 1, expirationTurn: 10, pressureLevel: 3, },
+        { id: 'p2', leaderId: 'l2', projectDefinitionId: 'pd2', tileId: 't2', reason: '', turnProposed: 2, expirationTurn: 11, pressureLevel: 4, },
+      ],
+    });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(2);
+  });
+
+  it('transitions to Phase 3 at turn 20+ with 4+ Phase 2 events', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 2, phaseEventsFired: 4 }),
+      escalationLevel: 1,
+    });
+    const state = makeState({ turn: 20, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(3);
+    expect(result.escalationLevel).toBe(2);
+  });
+
+  it('does not transition to Phase 3 before 4 Phase 2 events', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 2, phaseEventsFired: 3 }),
+      escalationLevel: 1,
+    });
+    const state = makeState({ turn: 20, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(2);
+  });
+
+  it('transitions to Phase 4 at turn 36+', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 3, confrontations: 5, ignores: 2 }),
+      escalationLevel: 2,
+    });
+    const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.phase).toBe(4);
+    expect(result.arcState!.resolutionType).not.toBeNull();
+  });
+
+  it('determines reluctant_ally when co-opted and 4+ confrontations', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 3, confrontations: 4, coOpted: true }),
+      escalationLevel: 2,
+    });
+    const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.resolutionType).toBe('reluctant_ally');
+  });
+
+  it('determines election_threat when ignored > 60% and not co-opted', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 3, confrontations: 2, ignores: 6, coOpted: false }),
+      escalationLevel: 2,
+    });
+    const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.resolutionType).toBe('election_threat');
+  });
+
+  it('determines cynicism_engine for inconsistent responses', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 3, confrontations: 3, ignores: 3, coOpted: false }),
+      escalationLevel: 2,
+    });
+    const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
+    const result = advanceMarcusPhase(marcus, state);
+    expect(result.arcState!.resolutionType).toBe('cynicism_engine');
+  });
+});
+
+describe('Marcus Webb arc: createMarcusEvent', () => {
+  it('generates Phase 1 events with 3 choices', () => {
+    const marcus = makeMarcus();
+    const state = makeState({ turn: 2, antagonists: { marcus_webb: marcus } });
+    const event = createMarcusEvent(marcus, state);
+    expect(event).not.toBeNull();
+    expect(event!.category).toBe('antagonist');
+    expect(event!.choices.length).toBe(3);
+    expect(event!.type).toMatch(/^marcus_webb_potshot/);
+  });
+
+  it('generates different Phase 1 variants based on turn', () => {
+    const marcus = makeMarcus();
+    const s1 = makeState({ turn: 1, antagonists: { marcus_webb: marcus } });
+    const s2 = makeState({ turn: 2, antagonists: { marcus_webb: marcus } });
+    const e1 = createMarcusEvent(marcus, s1);
+    const e2 = createMarcusEvent(marcus, s2);
+    expect(e1!.type).not.toBe(e2!.type);
+  });
+
+  it('generates Phase 2 sterling reveal event when sterling active and not revealed', () => {
+    const sterling = makeAntagonist({ id: 'sterling_cross', active: true });
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 2, sterlingConnectionRevealed: false }),
+    });
+    const state = makeState({
+      turn: 10,
+      antagonists: { marcus_webb: marcus, sterling_cross: sterling },
+    });
+    const event = createMarcusEvent(marcus, state);
+    expect(event!.type).toBe('marcus_webb_sterling_reveal');
+  });
+
+  it('generates Phase 3 council run event on first event with few confrontations', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 3, phaseEventsFired: 0, confrontations: 1 }),
+    });
+    const state = makeState({ turn: 22, antagonists: { marcus_webb: marcus } });
+    const event = createMarcusEvent(marcus, state);
+    expect(event!.type).toBe('marcus_webb_council_run');
+    const coOptChoice = event!.choices.find(c => c.id === 'co_opt');
+    expect(coOptChoice).toBeDefined();
+  });
+
+  it('generates Phase 4 reluctant ally event', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 4, resolutionType: 'reluctant_ally' }),
+    });
+    const state = makeState({ turn: 38, antagonists: { marcus_webb: marcus } });
+    const event = createMarcusEvent(marcus, state);
+    expect(event!.type).toBe('marcus_webb_reluctant_ally');
+    expect(event!.choices.some(c => c.effects.meterDeltas.some(d => d.amount > 0))).toBe(true);
+  });
+
+  it('generates Phase 4 election threat event', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 4, resolutionType: 'election_threat' }),
+    });
+    const state = makeState({ turn: 38, antagonists: { marcus_webb: marcus } });
+    const event = createMarcusEvent(marcus, state);
+    expect(event!.type).toBe('marcus_webb_election_threat');
+  });
+
+  it('generates Phase 4 cynicism event', () => {
+    const marcus = makeMarcus({
+      arcState: makeMarcusArc({ phase: 4, resolutionType: 'cynicism_engine' }),
+    });
+    const state = makeState({ turn: 38, antagonists: { marcus_webb: marcus } });
+    const event = createMarcusEvent(marcus, state);
+    expect(event!.type).toBe('marcus_webb_cynicism');
+  });
+});
+
+describe('Marcus Webb arc: escalateAntagonists integration', () => {
+  it('Marcus generates phase-based events through escalateAntagonists', () => {
+    const marcus = makeMarcus({ active: true });
+    const state = makeState({
+      turn: 3,
+      antagonists: { marcus_webb: marcus },
+    });
+    const result = escalateAntagonists(state);
+    expect(result.events.length).toBe(1);
+    expect(result.events[0].type).toMatch(/^marcus_webb_potshot/);
+    expect(result.antagonists.marcus_webb.arcState!.phaseEventsFired).toBe(1);
+    expect(result.antagonists.marcus_webb.lastEscalationTurn).toBe(3);
+  });
+
+  it('Marcus phase advances during escalation', () => {
+    const marcus = makeMarcus({
+      active: true,
+      arcState: makeMarcusArc({ ignores: 4 }),
+    });
+    const state = makeState({
+      turn: 10,
+      antagonists: { marcus_webb: marcus },
+    });
+    const result = escalateAntagonists(state);
+    expect(result.antagonists.marcus_webb.arcState!.phase).toBe(2);
+  });
+});
+
+describe('Marcus Webb arc: applyEventChoice tracking', () => {
+  it('tracks confrontation when player chooses confront', () => {
+    const marcus = makeMarcus({ active: true });
+    const event: GameEvent = {
+      id: 'evt-test',
+      type: 'marcus_webb_potshot_spending',
+      category: 'antagonist',
+      title: 'Test',
+      description: 'Test',
+      turnGenerated: 1,
+      cooldownTurns: 2,
+      targetTileId: null,
+      targetCharacterId: null,
+      choices: [{
+        id: 'confront',
+        label: 'Confront',
+        description: 'Test',
+        effects: {
+          meterDeltas: [{ meter: 'politicalWill', amount: -3, source: 'test' }],
+          relationshipChanges: [],
+          other: [],
+        },
+        requirements: null,
+      }],
+    };
+    const state = makeState({
+      antagonists: { marcus_webb: marcus },
+      eventQueue: [event],
+    });
+    const result = applyEventChoice(state, 'evt-test', 'confront');
+    expect(result.state.antagonists.marcus_webb.arcState!.confrontations).toBe(1);
+  });
+
+  it('tracks ignore when player chooses ignore', () => {
+    const marcus = makeMarcus({ active: true });
+    const event: GameEvent = {
+      id: 'evt-test',
+      type: 'marcus_webb_potshot_spending',
+      category: 'antagonist',
+      title: 'Test',
+      description: 'Test',
+      turnGenerated: 1,
+      cooldownTurns: 2,
+      targetTileId: null,
+      targetCharacterId: null,
+      choices: [{
+        id: 'ignore',
+        label: 'Ignore',
+        description: 'Test',
+        effects: {
+          meterDeltas: [{ meter: 'communityTrust', amount: -2, source: 'test' }],
+          relationshipChanges: [],
+          other: [],
+        },
+        requirements: null,
+      }],
+    };
+    const state = makeState({
+      antagonists: { marcus_webb: marcus },
+      eventQueue: [event],
+    });
+    const result = applyEventChoice(state, 'evt-test', 'ignore');
+    expect(result.state.antagonists.marcus_webb.arcState!.ignores).toBe(1);
+  });
+
+  it('marks co-opted when player chooses co_opt', () => {
+    const marcus = makeMarcus({
+      active: true,
+      arcState: makeMarcusArc({ phase: 3 }),
+    });
+    const event: GameEvent = {
+      id: 'evt-test',
+      type: 'marcus_webb_council_run',
+      category: 'antagonist',
+      title: 'Test',
+      description: 'Test',
+      turnGenerated: 1,
+      cooldownTurns: 0,
+      targetTileId: null,
+      targetCharacterId: null,
+      choices: [{
+        id: 'co_opt',
+        label: 'Co-opt',
+        description: 'Test',
+        effects: {
+          meterDeltas: [{ meter: 'politicalWill', amount: -3, source: 'test' }],
+          relationshipChanges: [],
+          other: [],
+        },
+        requirements: null,
+      }],
+    };
+    const state = makeState({
+      antagonists: { marcus_webb: marcus },
+      eventQueue: [event],
+    });
+    const result = applyEventChoice(state, 'evt-test', 'co_opt');
+    expect(result.state.antagonists.marcus_webb.arcState!.coOpted).toBe(true);
+    expect(result.state.antagonists.marcus_webb.arcState!.confrontations).toBe(1);
   });
 });

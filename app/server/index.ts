@@ -27,7 +27,7 @@ const server = createServer(async (req, res) => {
   }
 
   // Pipeline API routes
-  if (url.startsWith('/api/headlines') || url.startsWith('/api/arc-state') || url.startsWith('/api/health/pipeline')) {
+  if (url.startsWith('/api/headlines') || url.startsWith('/api/arc-state') || url.startsWith('/api/papers') || url.startsWith('/api/health/pipeline')) {
     handlePipelineRoute(req, res);
     return;
   }

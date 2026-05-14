@@ -59,8 +59,26 @@ function makeState(communityOwnedCount: number): GameState {
     activePolicies: [],
     eventQueue: [],
     eventCooldowns: {},
-    narrativeState: { opinionMomentum: 0, framingStrength: 0, counterNarrativeActive: false, actionsThisTurn: 0, maxActionsPerTurn: 2 },
     publicOpinion: { approval: 50, mediaFrame: 'neutral', activeCampaigns: [] },
+    calendarState: {
+      totalSlots: 60,
+      fixedSlots: 38,
+      discretionarySlots: 22,
+      slotsSpent: 0,
+      overscheduleAmount: 0,
+      overscheduleLimit: 5,
+      burnoutBuffer: 15,
+      burnoutBufferMax: 20,
+      burnoutState: 'sustainable',
+      interactionsThisMonth: {},
+      lastInteractionMonth: {},
+      monthNumber: 1,
+      delegationTier: 0,
+      crisisSlotTax: 0,
+      neighborhoodTimeAllocation: {},
+    },
+    strategicContacts: [],
+    mentors: [],
     turnHistory: [],
     turnSummary: null,
     maxConcurrentProjects: 4,
@@ -132,10 +150,13 @@ describe('mesh-network', () => {
       expect(newState.meters.communityTrust).toBeCloseTo(55.15, 5);
     });
 
-    it('increases maxActionsPerTurn at 6+ tiles', () => {
+    it('reduces fixed obligations at 6+ community tiles (freeing 2 discretionary slots)', () => {
       const state = makeState(6);
       const { state: newState } = applyMeshNetworkEffects(state);
-      expect(newState.narrativeState.actionsPerTurn).toBe(3);
+      // fixedSlots should be reduced by 2 (38 -> 36)
+      expect(newState.calendarState.fixedSlots).toBe(36);
+      // discretionarySlots should increase by 2 (22 -> 24)
+      expect(newState.calendarState.discretionarySlots).toBe(24);
     });
   });
 });

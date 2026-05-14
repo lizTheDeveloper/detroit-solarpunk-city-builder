@@ -33,6 +33,15 @@ export const ANTAGONIST_DEFINITIONS: Record<string, Antagonist> = {
     active: false,
     lastEscalationTurn: 0,
     tileTargets: [],
+    arcState: {
+      phase: 1,
+      phaseEventsFired: 0,
+      confrontations: 0,
+      ignores: 0,
+      coOpted: false,
+      resolutionType: null,
+      sterlingConnectionRevealed: false,
+    },
   },
   amanda_chen: {
     id: 'amanda_chen',

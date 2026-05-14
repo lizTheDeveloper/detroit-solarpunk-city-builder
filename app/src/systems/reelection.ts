@@ -12,6 +12,7 @@ export interface ElectionScoreBreakdown {
   antagonistPenalty: number;
   politicalWill: number;
   displacementPenalty: number;
+  calendarEquity: number;
 }
 
 export interface ElectionResult {
@@ -106,6 +107,37 @@ export function calculateElectionScore(state: GameState): ElectionResult {
     }
   }
 
+  // calendarEquity: Based on how equitably the mayor distributed time across neighborhoods
+  let calendarEquity = 0;
+  if (state.calendarState?.neighborhoodTimeAllocation) {
+    const allocation = state.calendarState.neighborhoodTimeAllocation;
+    const tileIds = Object.keys(state.tiles);
+    const totalSlots = Object.values(allocation).reduce(
+      (sum, months) => sum + months.reduce((s, n) => s + n, 0), 0
+    );
+
+    if (totalSlots > 0 && tileIds.length > 0) {
+      const averagePerTile = totalSlots / tileIds.length;
+      let neglectedCount = 0;
+      let belowTenPercent = 0;
+
+      for (const tileId of tileIds) {
+        const tileTotal = (allocation[tileId] ?? []).reduce((s, n) => s + n, 0);
+        const share = tileTotal / totalSlots;
+        if (share < 0.05) neglectedCount++;
+        if (tileTotal < averagePerTile * 0.1) belowTenPercent++;
+      }
+
+      // Equitable distribution bonus: +5 if no neighborhood below 10% of average
+      if (belowTenPercent === 0 && tileIds.length > 1) {
+        calendarEquity += 5;
+      }
+
+      // Neglect penalty: -3 per neighborhood with less than 5% of total time
+      calendarEquity -= neglectedCount * 3;
+    }
+  }
+
   const breakdown: ElectionScoreBreakdown = {
     baseTrust,
     councilSupport,
@@ -114,6 +146,7 @@ export function calculateElectionScore(state: GameState): ElectionResult {
     antagonistPenalty,
     politicalWill,
     displacementPenalty,
+    calendarEquity,
   };
 
   const score =
@@ -123,7 +156,8 @@ export function calculateElectionScore(state: GameState): ElectionResult {
     coalitionBonus +
     antagonistPenalty +
     politicalWill +
-    displacementPenalty;
+    displacementPenalty +
+    calendarEquity;
 
   // Threshold 45 (not 50) because the bonus sources push a trust-50% player to ~30 base
   // + some allies. This means 50% trust alone isn't enough — you need some allies too.
@@ -263,4 +297,48 @@ export function predictElectionOutcome(state: GameState): { predictedScore: numb
     predictedScore: result.score,
     risks,
   };
+}
+
+// ---------------------------------------------------------------------------
+// 8. generateCalendarPortrait
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a narrative summary of the mayor's time allocation for election display.
+ */
+export function generateCalendarPortrait(state: GameState): string {
+  if (!state.calendarState?.neighborhoodTimeAllocation) {
+    return 'No calendar data available.';
+  }
+
+  const allocation = state.calendarState.neighborhoodTimeAllocation;
+  const totalSlots = Object.values(allocation).reduce(
+    (sum, months) => sum + months.reduce((s, n) => s + n, 0), 0
+  );
+
+  if (totalSlots === 0) return 'The mayor spent no discretionary time on neighborhoods.';
+
+  const ranked = Object.entries(allocation)
+    .map(([tileId, months]) => ({
+      tileId,
+      total: months.reduce((s, n) => s + n, 0),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const topTile = ranked[0];
+  const topPercent = Math.round((topTile.total / totalSlots) * 100);
+
+  const neglected = ranked.filter(r => (r.total / totalSlots) < 0.05);
+
+  const lines: string[] = [];
+  lines.push(`Over ${state.calendarState.monthNumber} months, you allocated ${totalSlots} discretionary slots across ${ranked.length} neighborhoods.`);
+  lines.push(`Most attention: ${topTile.tileId} (${topPercent}% of your time).`);
+
+  if (neglected.length > 0) {
+    lines.push(`Neglected (< 5% of time): ${neglected.map(n => n.tileId).join(', ')}.`);
+  } else {
+    lines.push('No neighborhood was neglected — an equitable distribution.');
+  }
+
+  return lines.join(' ');
 }

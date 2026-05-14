@@ -9,6 +9,19 @@ import { autoSave, loadGame, createUndoStack, pushState, undo, canUndo } from '@
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { LEADER_DEFINITIONS } from '@/data/content/leaders';
 import { initializeArcsFromPipeline } from '@/state/initialize-arcs-from-pipeline';
+import {
+  initAnalytics,
+  trackGameAction,
+  trackSessionEnd,
+  trackTabOpen,
+  trackPanelOpen,
+  trackConversationStart,
+  trackFunnelStep,
+  trackSaveGame,
+  trackLoadGame,
+  trackUndo as trackUndoAnalytics,
+  trackStrategySnapshot,
+} from '@/systems/analytics';
 import TopBar from '@/ui/components/TopBar';
 import MeterBar from '@/ui/components/MeterBar';
 import TileList from '@/ui/components/TileList';
@@ -33,13 +46,16 @@ import HeadlinesPanel from '@/ui/panels/HeadlinesPanel';
 import { CalendarBar } from '@/ui/components/CalendarBar';
 import { CalendarGrid } from '@/ui/components/CalendarGrid';
 import MapPanel from '@/map/MapPanel';
+import BlockDetailPanel from '@/ui/panels/BlockDetailPanel';
+import { useHeadlines } from '@/hooks/useHeadlines';
 
 type ContentTab = 'map' | 'tiles' | 'calendar' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
 
 type RightPanel =
   | { kind: 'none' }
   | { kind: 'tile-detail'; tileId: string }
-  | { kind: 'project-select'; tileId: string };
+  | { kind: 'project-select'; tileId: string; blockId?: string }
+  | { kind: 'block-detail'; tileId: string; blockId: string };
 
 /** Create initial game state with leader definitions applied and first proposals generated. */
 function initGame(): GameState {
@@ -65,6 +81,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ContentTab>('map');
   const undoStackRef = useRef(createUndoStack());
   const [conversation, setConversation] = useState<{ characterId: string; interactionType: string; message: string; proposalId?: string } | null>(null);
+  const { headlines } = useHeadlines(20);
+
+  useEffect(() => {
+    initAnalytics();
+    trackFunnelStep('game_started');
+  }, []);
 
   useEffect(() => {
     initializeArcsFromPipeline(state).then((updated) => {
@@ -72,17 +94,41 @@ export default function App() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const stateRef = { current: state };
+    stateRef.current = state;
+    const handleBeforeUnload = () => trackSessionEnd(stateRef.current);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state]);
+
   const dispatch = useCallback((action: GameAction) => {
-    setState((prev) => gameReducer(prev, action, PROJECT_CATALOG));
+    setState((prev) => {
+      const next = gameReducer(prev, action, PROJECT_CATALOG);
+      trackGameAction(action, prev, next);
+      return next;
+    });
   }, []);
 
   const handleSelectTile = useCallback((tileId: string) => {
     setRightPanel({ kind: 'tile-detail', tileId });
+    trackPanelOpen('tile-detail', { tile_id: tileId });
     setActiveTab('tiles');
   }, []);
 
+  const handleSelectBlock = useCallback((blockId: string, neighborhoodId: string) => {
+    dispatch({ type: 'MAP_SELECT_BLOCK', blockId, neighborhoodId });
+    setRightPanel((prev) => {
+      const tileId = neighborhoodId || (prev.kind !== 'none' ? prev.tileId : '');
+      return { kind: 'block-detail' as const, tileId, blockId };
+    });
+    trackPanelOpen('block-detail', { block_id: blockId });
+    setActiveTab('tiles');
+  }, [dispatch]);
+
   const handleStartProjectClick = useCallback((tileId: string) => {
     setRightPanel({ kind: 'project-select', tileId });
+    trackPanelOpen('project-select', { tile_id: tileId });
   }, []);
 
   const handleBackToTile = useCallback((tileId: string) => {
@@ -91,10 +137,8 @@ export default function App() {
 
   const handleEndTurn = useCallback(() => {
     setState((prev) => {
-      // Push current state onto undo stack before advancing
       undoStackRef.current = pushState(undoStackRef.current, prev);
 
-      // Generate events for the player to respond to before resolving
       const events = generateEvents(prev, Math.random);
       if (events.length > 0) {
         return {
@@ -104,10 +148,11 @@ export default function App() {
         };
       }
 
-      // No events — resolve immediately
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
+      trackGameAction({ type: 'END_TURN' }, prev, afterEnd);
       const ready = prepareTurn(afterEnd);
       autoSave(ready);
+      trackStrategySnapshot(ready);
       return ready;
     });
     setShowTurnSummary(true);
@@ -116,8 +161,10 @@ export default function App() {
   const handleResolveAfterEvents = useCallback(() => {
     setState((prev) => {
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
+      trackGameAction({ type: 'END_TURN' }, prev, afterEnd);
       const ready = prepareTurn(afterEnd);
       autoSave(ready);
+      trackStrategySnapshot(ready);
       return ready;
     });
     setShowTurnSummary(true);
@@ -129,12 +176,17 @@ export default function App() {
     if (result.state) {
       undoStackRef.current = result.stack;
       setState(result.state);
+      trackUndoAnalytics();
     }
   }, []);
 
   const handleLoadSave = useCallback((slot: string) => {
     const loaded = loadGame(slot);
-    if (loaded) setState(loaded);
+    if (loaded) {
+      setState(loaded);
+      trackLoadGame(slot);
+      trackFunnelStep('returning_player');
+    }
   }, []);
 
   const handleDismissSummary = useCallback(() => {
@@ -146,9 +198,13 @@ export default function App() {
   }, [dispatch]);
 
   const selectedTileId =
-    rightPanel.kind === 'tile-detail' || rightPanel.kind === 'project-select'
+    rightPanel.kind === 'tile-detail' || rightPanel.kind === 'project-select' || rightPanel.kind === 'block-detail'
       ? rightPanel.tileId
       : null;
+
+  const selectedBlockId = rightPanel.kind === 'block-detail' || (rightPanel.kind === 'project-select' && rightPanel.blockId)
+    ? ('blockId' in rightPanel ? rightPanel.blockId : null)
+    : null;
 
   const eventCount = state.eventQueue.length;
 
@@ -197,7 +253,7 @@ export default function App() {
                 <button
                   key={tab.id}
                   className={`content-tab ${activeTab === tab.id ? 'content-tab--active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => { trackTabOpen(tab.id, activeTab); setActiveTab(tab.id); }}
                   type="button"
                 >
                   {tab.label}
@@ -212,10 +268,13 @@ export default function App() {
               <div className="map-container">
                 <MapPanel
                   onSelectTile={handleSelectTile}
+                  onSelectBlock={handleSelectBlock}
                   selectedTileId={selectedTileId}
+                  selectedBlockId={selectedBlockId}
                   tileHealthMap={Object.fromEntries(
                     Object.values(state.tiles).map(t => [t.id, t.ecologicalHealth])
                   )}
+                  headlines={headlines}
                 />
               </div>
             )}
@@ -228,20 +287,29 @@ export default function App() {
             {activeTab === 'tiles' && (
               <>
                 {rightPanel.kind === 'none' && state.activeProposals.length > 0 && (
-                  <ProposalPanel onConversation={(charId, type, proposalId) => setConversation({ characterId: charId, interactionType: type, message: '', proposalId })} />
+                  <ProposalPanel onConversation={(charId, type, proposalId) => { trackConversationStart(charId, type); setConversation({ characterId: charId, interactionType: type, message: '', proposalId }); }} />
                 )}
 
                 {rightPanel.kind === 'tile-detail' && (
                   <TileDetailPanel
                     tileId={rightPanel.tileId}
                     onStartProjectClick={() => handleStartProjectClick(rightPanel.tileId)}
-                    onConversation={(charId, type, proposalId) => setConversation({ characterId: charId, interactionType: type, message: '', proposalId })}
+                    onConversation={(charId, type, proposalId) => { trackConversationStart(charId, type); setConversation({ characterId: charId, interactionType: type, message: '', proposalId }); }}
+                  />
+                )}
+
+                {rightPanel.kind === 'block-detail' && (
+                  <BlockDetailPanel
+                    blockId={rightPanel.blockId}
+                    onBack={() => setRightPanel({ kind: 'tile-detail', tileId: rightPanel.tileId })}
+                    onStartProject={() => setRightPanel({ kind: 'project-select', tileId: rightPanel.tileId, blockId: rightPanel.blockId })}
                   />
                 )}
 
                 {rightPanel.kind === 'project-select' && (
                   <ProjectSelectPanel
                     tileId={rightPanel.tileId}
+                    blockId={'blockId' in rightPanel ? rightPanel.blockId : undefined}
                     onBack={() => handleBackToTile(rightPanel.tileId)}
                   />
                 )}
@@ -286,7 +354,7 @@ export default function App() {
 
             {activeTab === 'dashboard' && <Dashboard />}
             {activeTab === 'council' && <CouncilPanel />}
-            {activeTab === 'characters' && <CharacterPanel onTalk={(charId) => setConversation({ characterId: charId, interactionType: 'direct_engagement', message: '' })} />}
+            {activeTab === 'characters' && <CharacterPanel onTalk={(charId) => { trackConversationStart(charId, 'direct_engagement'); setConversation({ characterId: charId, interactionType: 'direct_engagement', message: '' }); }} />}
             {activeTab === 'coalitions' && <CoalitionPanel />}
             {activeTab === 'policies' && <PolicyPanel />}
             {activeTab === 'tensions' && <TensionPanel />}

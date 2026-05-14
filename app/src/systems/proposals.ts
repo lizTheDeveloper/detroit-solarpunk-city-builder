@@ -4,6 +4,7 @@ import type {
   Proposal,
   ProposalResponse,
   ActiveProject,
+  GameEvent,
 } from '../state/types';
 import { PROJECT_CATALOG } from '../data/content/project-catalog';
 
@@ -27,17 +28,19 @@ function generateReason(leader: CommunityLeader, projectId: string): string {
 
 function canPlaceOnTile(
   projectId: string,
-  tile: { contamination: number; activeProjects: ActiveProject[] },
+  tile: { contamination: number; activeProjects: ActiveProject[]; completedProjects: string[] },
 ): boolean {
   const def = PROJECT_CATALOG[projectId];
   if (!def) return false;
 
-  // Check if project is already active on this tile
   if (tile.activeProjects.some((p) => p.definitionId === projectId)) {
     return false;
   }
 
-  // Check contamination constraint
+  if (tile.completedProjects.includes(projectId)) {
+    return false;
+  }
+
   if (def.maxContamination !== null && tile.contamination > def.maxContamination) {
     return false;
   }
@@ -49,17 +52,18 @@ function canPlaceOnTile(
 // generateProposals
 // ---------------------------------------------------------------------------
 
+const DEFAULT_URGENCY_WINDOW = 3;
+
 export function generateProposals(state: GameState): Proposal[] {
   const proposals: Proposal[] = [];
+  const activeLeaderIds = new Set(state.activeProposals.map(p => p.leaderId));
 
-  // Sort leaders by id for deterministic ordering
   const leaderIds = Object.keys(state.leaders).sort();
 
   for (const leaderId of leaderIds) {
     const leader = state.leaders[leaderId];
 
-    // Eligibility: trust >= 0 and no cooldown
-    if (leader.trust < 0 || leader.proposalCooldown > 0) {
+    if (leader.trust < 0 || leader.proposalCooldown > 0 || activeLeaderIds.has(leaderId)) {
       continue;
     }
 
@@ -67,7 +71,6 @@ export function generateProposals(state: GameState): Proposal[] {
     const tile = state.tiles[tileId];
     if (!tile) continue;
 
-    // Find first available priority project
     let selectedProject: string | null = null;
     for (const priority of leader.priorities) {
       if (canPlaceOnTile(priority, tile)) {
@@ -85,12 +88,70 @@ export function generateProposals(state: GameState): Proposal[] {
       tileId,
       reason: generateReason(leader, selectedProject),
       turnProposed: state.turn,
+      expirationTurn: state.turn + DEFAULT_URGENCY_WINDOW,
+      pressureLevel: 0,
     };
 
     proposals.push(proposal);
   }
 
   return proposals;
+}
+
+export function tickProposalPressure(
+  proposals: Proposal[],
+  currentTurn: number,
+  leaders: Record<string, CommunityLeader>,
+): { active: Proposal[]; expired: Proposal[]; pressureEvents: GameEvent[] } {
+  const active: Proposal[] = [];
+  const expired: Proposal[] = [];
+  const pressureEvents: GameEvent[] = [];
+
+  for (const p of proposals) {
+    if (currentTurn >= p.expirationTurn) {
+      expired.push(p);
+      continue;
+    }
+
+    const ticked: Proposal = { ...p, pressureLevel: p.pressureLevel + 1 };
+    active.push(ticked);
+
+    if (ticked.pressureLevel >= 3) {
+      const leader = leaders[p.leaderId];
+      const leaderName = leader?.name ?? p.leaderId;
+      pressureEvents.push({
+        id: `pressure_${p.id}_${currentTurn}`,
+        type: 'proposal_pressure',
+        title: `${leaderName} Goes Public`,
+        description: `${leaderName} has taken their ignored proposal to the press. Community frustration is mounting.`,
+        category: 'community',
+        choices: [],
+        turnGenerated: currentTurn,
+        cooldownTurns: 0,
+        targetTileId: p.tileId,
+        targetCharacterId: p.leaderId,
+      });
+    }
+  }
+
+  return { active, expired, pressureEvents };
+}
+
+export function applyExpirationPenalties(
+  leaders: Record<string, CommunityLeader>,
+  expiredProposals: Proposal[],
+): Record<string, CommunityLeader> {
+  const updated = { ...leaders };
+  for (const p of expiredProposals) {
+    const leader = updated[p.leaderId];
+    if (!leader) continue;
+    const penalty = leader.trust >= 40 ? -12 : leader.trust >= 0 ? -8 : -3;
+    updated[p.leaderId] = {
+      ...leader,
+      trust: clampTrust(leader.trust + penalty),
+    };
+  }
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,21 +199,6 @@ export function applyProposalResponse(
       newLeader.consecutiveDeferrals = 0;
       startProject = true;
       costMultiplier = 0.90;
-      break;
-    }
-
-    case 'defer': {
-      if (newLeader.consecutiveDeferrals >= 2) {
-        // Third consecutive deferral -> treat as reject
-        newLeader.trust -= 15;
-        newLeader.consecutiveDeferrals = 0;
-        // proposal is already removed from activeProposals (filtered above)
-        // do NOT add to pending
-      } else {
-        newLeader.trust -= 5;
-        newLeader.consecutiveDeferrals += 1;
-        newPendingProposals = [...newPendingProposals, proposal];
-      }
       break;
     }
 

@@ -250,4 +250,13 @@ export const phosphorusFoodArc: ArcTemplate = {
     { doi: 'doi:10.2166/wst.2019.135', title: 'Nutrient recovery from source-separated urine — Swedish pilot results', relevance: 'Real-world municipal-scale implementation data' },
     { doi: 'doi:10.1016/j.resconrec.2019.104515', title: 'Morocco\'s phosphate monopoly and global food vulnerability', relevance: 'Geopolitical risk analysis of concentrated supply' },
   ],
+
+  slotTaxByStage: {
+    dormant: 0,
+    foreshadow: 1,
+    escalation: 2,
+    crisis: 3,
+    reckoning: 2,
+    resolved: 0,
+  },
 };

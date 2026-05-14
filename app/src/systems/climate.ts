@@ -332,36 +332,36 @@ export function generateClimateEvent(
       {
         id: 'emergency_response',
         label: 'Emergency Response',
-        description: 'Deploy emergency resources to mitigate damage. Costs budget but protects residents.',
+        description: 'Deploy city resources — expensive but cuts damage to 25%. The city looks competent.',
         effects: {
           meterDeltas: [
-            { meter: 'budget', amount: data.budgetDamage * 0.5, source: 'emergency_spending' },
-            { meter: 'communityTrust', amount: 2, source: 'emergency_response_trust' },
+            { meter: 'budget', amount: data.budgetDamage * 1.5, source: 'emergency_spending' },
+            { meter: 'ecologicalHealth', amount: data.ecoDamage * 0.25, source: 'mitigated_eco_damage' },
+            { meter: 'communityTrust', amount: 3, source: 'emergency_response_trust' },
           ],
           relationshipChanges: [],
-          other: ['reduce_damage_50'],
+          other: ['reduce_damage_75'],
         },
-        requirements: { minWill: null, minBudget: Math.abs(data.budgetDamage * 0.5), minTrust: null },
+        requirements: { minWill: null, minBudget: Math.abs(data.budgetDamage * 1.5), minTrust: null },
       },
       {
         id: 'community_shelter',
         label: 'Community Mutual Aid',
-        description: 'Activate community networks and open shelters. Builds solidarity but doesn\'t prevent infrastructure damage.',
+        description: 'Let the neighborhood handle it — free for the city, builds solidarity, but infrastructure still takes a hit',
         effects: {
           meterDeltas: [
-            { meter: 'budget', amount: data.budgetDamage, source: 'unmitigated_damage' },
-            { meter: 'communityTrust', amount: 3, source: 'mutual_aid_solidarity' },
-            { meter: 'ecologicalHealth', amount: data.ecoDamage * 0.5, source: 'partial_eco_damage' },
+            { meter: 'ecologicalHealth', amount: data.ecoDamage * 0.75, source: 'partial_eco_damage' },
+            { meter: 'communityTrust', amount: 4, source: 'mutual_aid_solidarity' },
           ],
           relationshipChanges: [],
           other: ['reduce_damage_25'],
         },
-        requirements: { minWill: null, minBudget: null, minTrust: 30 },
+        requirements: { minWill: null, minBudget: null, minTrust: 20 },
       },
       {
         id: 'weather_the_storm',
-        label: 'Weather the Storm',
-        description: 'No resources to deploy. The city takes the full hit.',
+        label: 'No Proactive Response',
+        description: 'Deploy nothing — full damage hits, cleanup costs pile up, people remember',
         effects: {
           meterDeltas: [
             { meter: 'budget', amount: data.budgetDamage, source: 'climate_damage' },
@@ -375,7 +375,7 @@ export function generateClimateEvent(
       },
     ],
     turnGenerated: state.turn,
-    cooldownTurns: 2,
+    cooldownTurns: 3,
     targetTileId: null,
     targetCharacterId: null,
   };

@@ -107,13 +107,13 @@ describe('Calendar System', () => {
     it('applies overschedule penalty next month', () => {
       const state = { ...initCalendarState(), overscheduleAmount: 3 };
       const result = transitionMonth(state, 0);
-      expect(result.discretionarySlots).toBe(20); // 22 - 2 penalty
+      expect(result.discretionarySlots).toBe(19); // 22 - 3 proportional penalty
     });
 
-    it('drains burnout buffer from overschedule', () => {
+    it('preserves burnout buffer (overschedule drain handled by calculateBufferAdjustment)', () => {
       const state = { ...initCalendarState(), overscheduleAmount: 4 };
       const result = transitionMonth(state, 0);
-      expect(result.burnoutBuffer).toBe(11); // 15 - 4
+      expect(result.burnoutBuffer).toBe(15);
     });
   });
 });

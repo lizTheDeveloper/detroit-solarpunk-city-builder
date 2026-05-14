@@ -56,7 +56,7 @@ function MeterItem({ label, value, barPercent, barColor, delta, subtext }: Meter
 }
 
 const OPINION_LABELS: Record<keyof PublicOpinion, string> = {
-  foodSovereignty: 'Food Sov',
+  foodSovereignty: 'Food',
   waterCommons: 'Water',
   landReform: 'Land',
   ecologicalRestoration: 'Eco',
@@ -68,6 +68,13 @@ const OPINION_LABELS: Record<keyof PublicOpinion, string> = {
   decarceration: 'Decarcer',
 };
 
+function getTopOpinions(opinion: PublicOpinion, count: number): { key: keyof PublicOpinion; label: string; value: number }[] {
+  return (Object.keys(OPINION_LABELS) as (keyof PublicOpinion)[])
+    .map((key) => ({ key, label: OPINION_LABELS[key], value: opinion[key] }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, count);
+}
+
 export default function MeterBar() {
   const { state } = useGame();
   const { meters, turnSummary, activePolicies, publicOpinion } = state;
@@ -75,6 +82,8 @@ export default function MeterBar() {
 
   const totalDrain = calculateTotalPolicyDrain(activePolicies, POLICY_CATALOG);
   const drainText = totalDrain > 0 ? `drain: -${(totalDrain * 100).toFixed(1)}%/turn` : undefined;
+
+  const topIssues = getTopOpinions(publicOpinion, 4);
 
   return (
     <div className="meter-bar">
@@ -122,19 +131,12 @@ export default function MeterBar() {
         delta={getDelta(deltas, 'climatePressure')}
       />
       <div className="meter-item meter-item--opinion">
-        <div className="meter-label">Public Opinion</div>
-        <div className="opinion-mini-bars">
-          {(Object.keys(OPINION_LABELS) as (keyof PublicOpinion)[]).map((key) => (
-            <div key={key} className="opinion-mini-row">
-              <span className="opinion-mini-label">{OPINION_LABELS[key]}</span>
-              <div className="opinion-mini-track">
-                <div
-                  className="opinion-mini-fill"
-                  style={{ width: `${Math.min(100, publicOpinion[key])}%` }}
-                />
-              </div>
-              <span className="opinion-mini-value">{publicOpinion[key].toFixed(0)}%</span>
-            </div>
+        <div className="meter-label">Top Issues</div>
+        <div className="opinion-top-issues">
+          {topIssues.map(({ key, label, value }) => (
+            <span key={key} className="opinion-chip" title={`${label}: ${value.toFixed(0)}% public support`}>
+              {label} {value.toFixed(0)}%
+            </span>
           ))}
         </div>
       </div>

@@ -218,4 +218,13 @@ export const energyGridArc: ArcTemplate = {
     { doi: 'doi:10.1038/s41560-019-0457-x', title: 'Distributive justice in solar energy transition', relevance: 'Framework for equitable energy access in low-income communities' },
     { doi: 'doi:10.1016/j.erss.2021.102290', title: 'Energy sovereignty and the Dakota Access Pipeline', relevance: 'Indigenous and community models for energy self-determination' },
   ],
+
+  slotTaxByStage: {
+    dormant: 0,
+    foreshadow: 1,
+    escalation: 2,
+    crisis: 4,
+    reckoning: 3,
+    resolved: 0,
+  },
 };

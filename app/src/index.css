@@ -2468,3 +2468,258 @@ body {
 .maplibregl-ctrl-group svg {
   fill: #00ff41 !important;
 }
+
+/* ─── Block Detail Panel ──────────────────────────────────────────── */
+.block-detail-panel { overflow-y: auto; }
+.block-detail-panel__empty { color: var(--text-dim); font-size: 13px; }
+
+.block-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.block-flag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.block-section { margin-bottom: 12px; }
+.block-section--warning { border-left: 2px solid #ef4444; padding-left: 8px; }
+.block-section--gap { border-left: 2px solid #f59e0b; padding-left: 8px; }
+.block-section__title {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+
+.block-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.block-stat { display: flex; flex-direction: column; gap: 2px; }
+.block-stat__label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.block-stat__value { font-size: 14px; color: var(--text); font-family: var(--font-mono); }
+
+.block-epa-site { margin-bottom: 4px; }
+.block-epa-site__name { color: #ef4444; font-size: 13px; }
+.block-epa-site__meta { font-size: 11px; color: var(--text-dim); margin-left: 6px; }
+
+.block-transit-stop { font-size: 13px; color: var(--text); margin-bottom: 2px; }
+.block-community-asset { font-size: 13px; color: var(--text); margin-bottom: 2px; }
+.block-community-asset__type { color: var(--text-dim); }
+
+.block-data-gap { margin-bottom: 6px; }
+.block-data-gap__layer { font-size: 12px; color: #f59e0b; }
+.block-data-gap__advocacy {
+  font-size: 11px;
+  color: #22c55e;
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* ─── Suitability + Modifier Tags ─────────────────────────────────── */
+.suitability-bar { display: flex; align-items: center; gap: 6px; flex: 1; }
+.suitability-bar__track { flex: 1; height: 6px; background: var(--bg-card); border-radius: 3px; overflow: hidden; }
+.suitability-bar__fill { height: 100%; border-radius: 3px; transition: width 0.2s; }
+.suitability-bar__label { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); min-width: 24px; text-align: right; }
+
+.block-suitability-row { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.block-suitability-row:last-child { border-bottom: none; }
+.block-suitability-row__header { display: flex; align-items: center; gap: 8px; }
+.block-suitability-row__name { font-size: 13px; color: var(--text); min-width: 120px; }
+.block-suitability-row__mods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+.mod-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.mod-tag--good { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.mod-tag--bad { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.project-row-block-mods { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.project-suitability {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: var(--bg-card);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.panel-title__block { color: var(--text-dim); font-size: 14px; }
+
+/* ── Headline Map Pins Popup ── */
+
+.headline-popup .maplibregl-popup-content {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0;
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+.headline-popup .maplibregl-popup-close-button {
+  color: var(--text-dim);
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.headline-popup .maplibregl-popup-tip {
+  border-top-color: var(--bg-panel);
+}
+
+.headline-popup__inner {
+  padding: 10px 12px;
+}
+
+.headline-popup__header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00ff41;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.headline-popup__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.headline-popup__item {
+  font-size: 12px;
+  line-height: 1.4;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
+.headline-popup__item--sev1 { border-left-color: #60a5fa; }
+.headline-popup__item--sev2 { border-left-color: #fbbf24; }
+.headline-popup__item--sev3 { border-left-color: #f87171; }
+
+.headline-popup__item a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.headline-popup__item a:hover {
+  color: #00ff41;
+}
+
+.headline-popup__meta {
+  margin-top: 2px;
+}
+
+.headline-popup__arcs {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+/* ── Power Structure Panel ── */
+
+.power-structure-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.power-structure-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin: 10px 0 4px;
+}
+
+.power-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.power-card--mayor {
+  border-left: 3px solid #fbbf24;
+}
+
+.power-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.power-card__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-heading);
+}
+
+.power-card__role {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.power-card__title {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.power-card__resp {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.power-card__contact {
+  display: inline-block;
+  font-size: 11px;
+  color: #60a5fa;
+  margin-top: 4px;
+  text-decoration: none;
+}
+
+.power-card__contact:hover {
+  text-decoration: underline;
+}
+
+.power-card__arcs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.power-card__arc-tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 1px 5px;
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+  border-radius: 3px;
+  text-transform: capitalize;
+}
+
+.power-card__note {
+  font-size: 11px;
+  color: var(--color-warning);
+  margin-top: 6px;
+  line-height: 1.4;
+  font-style: italic;
+}

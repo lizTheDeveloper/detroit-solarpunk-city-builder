@@ -226,4 +226,13 @@ export const housingSpeculationArc: ArcTemplate = {
     { doi: 'doi:10.1177/0042098020951001', title: 'Speculative urbanism and the remaking of Detroit', relevance: 'Documents speculation patterns in Detroit specifically' },
     { doi: 'doi:10.1080/10511482.2020.1798487', title: 'Right to Counsel in eviction proceedings: Impact analysis', relevance: 'Evidence base for tenant representation effectiveness (90% retention rate)' },
   ],
+
+  slotTaxByStage: {
+    dormant: 0,
+    foreshadow: 1,
+    escalation: 3,
+    crisis: 4,
+    reckoning: 3,
+    resolved: 0,
+  },
 };

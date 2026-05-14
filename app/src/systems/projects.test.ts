@@ -31,7 +31,6 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     pendingProposals: [],
     activePolicies: [],
     publicOpinion: { foodSovereignty: 50, waterCommons: 50, landReform: 50, ecologicalRestoration: 50, cooperativeEconomics: 50 },
-    narrativeState: { actionsRemaining: 3, actionsPerTurn: 3, consecutiveTurns: {}, counterNarrativeCooldowns: {} },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},

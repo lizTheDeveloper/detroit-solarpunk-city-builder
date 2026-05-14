@@ -95,10 +95,14 @@ function handleRespondProposal(
 
   const remainingProposals = state.activeProposals.filter((p) => p.id !== action.proposalId);
 
+  if (!canAffordAction(state.calendarState, 'proposal_review')) return state;
+  const newCalendar = spendSlots(state.calendarState, 'proposal_review', proposal.leaderId);
+
   switch (action.response) {
     case 'accept': {
       const projectDef = projectDefs[proposal.projectDefinitionId];
       if (!projectDef) return state;
+      if (countAllActiveProjects(state) >= state.maxConcurrentProjects) return state;
 
       const neg = proposal.negotiation;
       const baseCostMult = neg ? neg.costMultiplier : 0.85;
@@ -121,6 +125,7 @@ function handleRespondProposal(
 
       return {
         ...state,
+        calendarState: newCalendar,
         activeProposals: remainingProposals,
         meters: {
           ...state.meters,
@@ -138,6 +143,7 @@ function handleRespondProposal(
           [leader.id]: {
             ...leader,
             trust: leader.trust + trustBonus,
+            consecutiveDeferrals: 0,
           },
         },
       };
@@ -146,6 +152,7 @@ function handleRespondProposal(
     case 'modify': {
       const projectDef = projectDefs[proposal.projectDefinitionId];
       if (!projectDef) return state;
+      if (countAllActiveProjects(state) >= state.maxConcurrentProjects) return state;
 
       const neg = proposal.negotiation;
       const baseCostMult = neg ? neg.costMultiplier : 1.0;
@@ -167,6 +174,7 @@ function handleRespondProposal(
 
       return {
         ...state,
+        calendarState: newCalendar,
         activeProposals: remainingProposals,
         meters: {
           ...state.meters,
@@ -184,38 +192,7 @@ function handleRespondProposal(
           [leader.id]: {
             ...leader,
             trust: leader.trust + 2,
-          },
-        },
-      };
-    }
-
-    case 'defer': {
-      // If this would be the 3rd consecutive deferral (already at 2), treat as reject
-      if (leader.consecutiveDeferrals >= 2) {
-        return {
-          ...state,
-          activeProposals: remainingProposals,
-          leaders: {
-            ...state.leaders,
-            [leader.id]: {
-              ...leader,
-              trust: leader.trust - 15,
-              consecutiveDeferrals: leader.consecutiveDeferrals + 1,
-            },
-          },
-        };
-      }
-
-      return {
-        ...state,
-        activeProposals: remainingProposals,
-        pendingProposals: [...state.pendingProposals, proposal],
-        leaders: {
-          ...state.leaders,
-          [leader.id]: {
-            ...leader,
-            trust: leader.trust - 5,
-            consecutiveDeferrals: leader.consecutiveDeferrals + 1,
+            consecutiveDeferrals: 0,
           },
         },
       };
@@ -224,12 +201,14 @@ function handleRespondProposal(
     case 'reject': {
       return {
         ...state,
+        calendarState: newCalendar,
         activeProposals: remainingProposals,
         leaders: {
           ...state.leaders,
           [leader.id]: {
             ...leader,
             trust: leader.trust - 15,
+            consecutiveDeferrals: 0,
           },
         },
       };
@@ -296,7 +275,7 @@ function handleCampaignAction(
   state: GameState,
   action: Extract<GameAction, { type: 'CAMPAIGN_ACTION' }>,
 ): GameState {
-  if (state.turn !== 15) return state;
+  if (state.turn < 42) return state;
 
   let willDelta = 0;
   let trustDelta = 0;
@@ -375,6 +354,7 @@ function handleDelegationHire(
   action: Extract<GameAction, { type: 'DELEGATION_HIRE' }>,
 ): GameState {
   if (!canAffordAction(state.calendarState, 'delegation_hire')) return state;
+  if (action.tier !== state.calendarState.delegationTier + 1) return state;
 
   const communityOwnedTiles = Object.values(state.tiles).filter(t => t.communityOwned).length;
   const hasChampion = Object.values(state.leaders).some(l => l.trust >= 80);

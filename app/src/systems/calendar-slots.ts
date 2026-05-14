@@ -24,6 +24,7 @@ export function initCalendarState(): CalendarState {
     burnoutBuffer: 15,
     burnoutBufferMax: 20,
     burnoutState: 'sustainable',
+    consecutiveRecoveryMonths: 0,
     interactionsThisMonth: {},
     lastInteractionMonth: {},
     monthNumber: 1,
@@ -96,8 +97,7 @@ export function spendSlots(
 }
 
 export function transitionMonth(state: CalendarState, crisisSlotTax: number): CalendarState {
-  // Overschedule penalty: lose 2 slots next month for each overschedule event
-  const overschedulePenalty = state.overscheduleAmount > 0 ? 2 : 0;
+  const overschedulePenalty = state.overscheduleAmount;
 
   // Delegation reduces fixed obligations
   const delegationReduction = getDelegationFixedReduction(state.delegationTier);
@@ -106,10 +106,8 @@ export function transitionMonth(state: CalendarState, crisisSlotTax: number): Ca
   const newFixed = Math.max(15, 38 - delegationReduction);
   const effectiveDiscretionary = state.totalSlots - newFixed - crisisSlotTax - overschedulePenalty - delegationManagement;
 
-  // Buffer drain from overschedule
-  const bufferDrain = state.overscheduleAmount;
-
-  const newBuffer = Math.max(0, Math.min(state.burnoutBufferMax, state.burnoutBuffer - bufferDrain));
+  // Buffer adjustment (overschedule drain + recovery) handled by calculateBufferAdjustment in prepareTurn
+  const newBuffer = state.burnoutBuffer;
 
   return {
     ...state,

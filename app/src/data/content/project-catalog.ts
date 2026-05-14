@@ -44,6 +44,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
       { byproductId: 'compost', bonusType: 'costReduction', bonusValue: 0.20 },
       { byproductId: 'clean_soil', bonusType: 'durationReduction', bonusValue: 1 },
       { byproductId: 'community_knowledge', bonusType: 'effectBoost', bonusValue: 0.25, effectField: 'foodSov' },
+      { byproductId: 'secure_land', bonusType: 'costReduction', bonusValue: 0.20 },
     ],
   },
 
@@ -103,6 +104,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
     consumes: [
       { byproductId: 'recycled_materials', bonusType: 'costReduction', bonusValue: 0.20 },
       { byproductId: 'stormwater_capacity', bonusType: 'effectBoost', bonusValue: 0.20, effectField: 'tileEco' },
+      { byproductId: 'secure_land', bonusType: 'costReduction', bonusValue: 0.20 },
     ],
   },
 
@@ -134,6 +136,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
     consumes: [
       { byproductId: 'native_seed_stock', bonusType: 'costReduction', bonusValue: 0.25 },
       { byproductId: 'compost', bonusType: 'durationReduction', bonusValue: 1 },
+      { byproductId: 'secure_land', bonusType: 'costReduction', bonusValue: 0.20 },
     ],
   },
 
@@ -280,6 +283,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
     consumes: [
       { byproductId: 'compost', bonusType: 'effectBoost', bonusValue: 0.20, effectField: 'foodSov' },
       { byproductId: 'clean_energy', bonusType: 'costReduction', bonusValue: 0.15 },
+      { byproductId: 'secure_land', bonusType: 'costReduction', bonusValue: 0.15 },
     ],
   },
 
@@ -306,6 +310,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
     terrainRequired: null,
     produces: [
       { byproductId: 'community_knowledge', lifetime: 'ongoing', amount: 1.0 },
+      { byproductId: 'secure_land', lifetime: 'ongoing', amount: 1.0 },
     ],
     consumes: [
       { byproductId: 'community_knowledge', bonusType: 'durationReduction', bonusValue: 1 },
@@ -342,6 +347,7 @@ export const PROJECT_CATALOG: Record<string, ProjectDefinition> = {
     consumes: [
       { byproductId: 'stormwater_capacity', bonusType: 'effectBoost', bonusValue: 0.25, effectField: 'tileEco' },
       { byproductId: 'biomass', bonusType: 'costReduction', bonusValue: 0.20 },
+      { byproductId: 'secure_land', bonusType: 'costReduction', bonusValue: 0.15 },
     ],
   },
 

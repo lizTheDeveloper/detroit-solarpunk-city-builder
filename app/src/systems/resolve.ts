@@ -1,7 +1,7 @@
 import type { GameState, MeterDelta, TurnSummary } from '../state/types';
 import { applyMeterFeedback, clampMeters, calculateMaxProjects } from './meters';
 import { advanceProjects, decayGentrification } from './projects';
-import { generateProposals } from './proposals';
+import { generateProposals, tickProposalPressure, applyExpirationPenalties } from './proposals';
 import { PROJECT_CATALOG } from '../data/content/project-catalog';
 import { POLICY_CATALOG } from '../data/content/policy-catalog';
 import { applyPolicyDrain } from './policies';
@@ -9,8 +9,7 @@ import {
   applyOpinionDrift,
   generateCounterNarrative,
   applyCounterNarrative,
-  resetNarrativeActions,
-} from './narrative';
+} from './opinion';
 import {
   applyLeaderTrustDecay,
   calculateLeaderTrustMeterBonus,
@@ -21,6 +20,7 @@ import {
   checkAntagonistActivation,
   escalateAntagonists,
   generateEvents,
+  generateCrisisForkEvent,
 } from './events';
 import { checkTippingPoints, applySeasonalEffects, generateClimateEvent } from './climate';
 import { getSeasonalMeterBonuses } from './seasons';
@@ -28,6 +28,10 @@ import { generateTimeCredits } from './time-bank';
 import { applyProgressionEffects } from './progression';
 import { isElectionTurn, calculateElectionScore, applyElectionResult } from './reelection';
 import { progressRegionalCities, progressContinentalGoals, checkWinCondition, checkLossCondition, initializeRegionalCities, initializeContinentalGoals } from './regional';
+import { transitionMonth } from './calendar-slots';
+import { evaluateBurnoutTransition, checkForgottenCommitment, selectForgottenCommitments, calculateBufferAdjustment } from './burnout';
+import { applyMonthlyDecay } from './relationship-decay';
+import { tickContacts } from './strategic-contacts';
 import { applyReclamationEffects, checkReclamationLoss } from './reclamation';
 import { applyMeshNetworkEffects } from './mesh-network';
 import { getSeason, isSeasonTransition } from './calendar';
@@ -90,8 +94,7 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 
     // Generate climate event only on season transitions (every 3 months)
     const prevMonth = current.month;
-    const seasonTransition = isSeasonTransition(prevMonth === 1 ? 12 : prevMonth - 1, prevMonth)
-      || state.turn === 1; // Always allow on first turn
+    const seasonTransition = isSeasonTransition(prevMonth === 1 ? 12 : prevMonth - 1, prevMonth);
     if (seasonTransition) {
       const climateEvent = generateClimateEvent(current, current.season, rng);
       if (climateEvent) {
@@ -106,8 +109,7 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
   // Step 3: Seasonal effects — only fire on season transitions
   {
     const prevMonth = current.month === 1 ? 12 : current.month - 1;
-    const seasonTransition = isSeasonTransition(prevMonth, current.month)
-      || state.turn === 1; // Always apply on first turn
+    const seasonTransition = isSeasonTransition(prevMonth, current.month);
     if (seasonTransition) {
       const { state: seasonalState, deltas: seasonalDeltas } = applySeasonalEffects(current, rng);
       current = seasonalState;
@@ -214,6 +216,20 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
           if (effect.action === 'add') condSet.add(effect.condition);
           else condSet.delete(effect.condition);
           current = { ...current, dependencyWeb: { ...current.dependencyWeb, conditions: Array.from(condSet) } };
+        } else if (effect.type === 'spawnEvent') {
+          for (const template of Object.values(arcTemplateMap)) {
+            const fork = template.crisisForks.find(f => f.id === effect.eventId);
+            if (fork) {
+              const arc = current.activeArcs.find(a => a.arcId === template.id);
+              if (arc) {
+                const spawnedEvent = generateCrisisForkEvent(arc, template, current);
+                if (spawnedEvent) {
+                  current = { ...current, eventQueue: [...current.eventQueue, spawnedEvent] };
+                }
+              }
+              break;
+            }
+          }
         }
       }
     }
@@ -251,12 +267,24 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
     } else {
       current = { ...current, activeArcs: updatedArcs };
     }
+
+    // Generate crisis fork events for arcs at escalation or crisis
+    for (const arc of current.activeArcs) {
+      if (arc.currentStage === 'escalation' || arc.currentStage === 'crisis') {
+        const template = arcTemplateMap[arc.arcId];
+        if (!template) continue;
+        const forkEvent = generateCrisisForkEvent(arc, template, current);
+        if (forkEvent) {
+          current = { ...current, eventQueue: [...current.eventQueue, forkEvent] };
+        }
+      }
+    }
   }
 
   // Step 6: Narrative drift — opinion drift + counter-narrative
   {
     // Apply opinion drift
-    const driftedOpinion = applyOpinionDrift(current.publicOpinion, current.narrativeState);
+    const driftedOpinion = applyOpinionDrift(current.publicOpinion);
     current = {
       ...current,
       publicOpinion: driftedOpinion,
@@ -284,8 +312,7 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
   // Step 7b: Seasonal meter bonuses — permaculture timing (only on season transitions)
   {
     const prevMonth = current.month === 1 ? 12 : current.month - 1;
-    const seasonTransition = isSeasonTransition(prevMonth, current.month)
-      || state.turn === 1;
+    const seasonTransition = isSeasonTransition(prevMonth, current.month);
     if (seasonTransition) {
       const seasonBonuses = getSeasonalMeterBonuses(current.season);
       if (seasonBonuses.politicalWillRegen) {
@@ -570,8 +597,103 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 // ---------------------------------------------------------------------------
 
 export function prepareTurn(state: GameState, rng: () => number = Math.random): GameState {
-  // Reset narrative actions for the new turn
-  let current = resetNarrativeActions(state);
+  let current = state;
+
+  // Calendar month transition (skip on turn 1 — initGame calls prepareTurn before play begins)
+  {
+    // Calculate crisis slot tax from active arcs
+    let crisisTax = 0;
+    for (const arc of current.activeArcs) {
+      if (arc.currentStage === 'escalation') crisisTax += 2;
+      else if (arc.currentStage === 'crisis') crisisTax += 3;
+      else if (arc.currentStage === 'reckoning') crisisTax += 4;
+      else if (arc.currentStage === 'foreshadow') crisisTax += 1;
+    }
+
+    const newCalendar = current.turn <= 1
+      ? { ...current.calendarState, crisisSlotTax: crisisTax }
+      : transitionMonth(current.calendarState, crisisTax);
+
+    // Apply burnout buffer adjustment (passive drain, recovery activities)
+    const interactions = current.calendarState.interactionsThisMonth;
+    const tookRestDay = (interactions['__rest_day'] ?? 0) > 0;
+    const metMentor = (interactions['__mentor'] ?? 0) > 0;
+    const attendedCelebration = (interactions['__celebration'] ?? 0) > 0;
+    const hadSupport = (interactions['__support'] ?? 0) > 0;
+    const bufferDelta = calculateBufferAdjustment(
+      newCalendar.burnoutBuffer,
+      newCalendar.burnoutBufferMax,
+      current.calendarState.overscheduleAmount,
+      tookRestDay,
+      metMentor,
+      attendedCelebration,
+      hadSupport,
+      current.calendarState.crisisSlotTax,
+    );
+    const adjustedBuffer = newCalendar.burnoutBuffer + bufferDelta;
+
+    // Track consecutive months where buffer is above recovery threshold
+    const bufferPercent = adjustedBuffer / newCalendar.burnoutBufferMax;
+    const recoveryThreshold = newCalendar.burnoutState === 'sustainable' ? 0.6 : 0.5;
+    const prevRecoveryMonths = current.calendarState.consecutiveRecoveryMonths;
+    const consecutiveRecoveryMonths = bufferPercent >= recoveryThreshold
+      ? prevRecoveryMonths + 1
+      : 0;
+
+    const burnoutState = evaluateBurnoutTransition(
+      newCalendar.burnoutState,
+      adjustedBuffer,
+      newCalendar.burnoutBufferMax,
+      consecutiveRecoveryMonths,
+    );
+
+    // Forgotten commitments (if burned out)
+    const totalInteractions = Object.values(current.calendarState.interactionsThisMonth)
+      .reduce((sum, n) => sum + n, 0);
+    const forgotten = checkForgottenCommitment(current.calendarState.burnoutState, totalInteractions);
+
+    let updatedLeaders = current.leaders;
+    if (forgotten.forgotten && forgotten.count > 0) {
+      const forgottenNpcs = selectForgottenCommitments(
+        current.calendarState.interactionsThisMonth,
+        forgotten.count,
+      );
+      updatedLeaders = { ...current.leaders };
+      for (const npcId of forgottenNpcs) {
+        if (updatedLeaders[npcId]) {
+          updatedLeaders = {
+            ...updatedLeaders,
+            [npcId]: {
+              ...updatedLeaders[npcId],
+              trust: updatedLeaders[npcId].trust - 8,
+            },
+          };
+        }
+      }
+    }
+
+    // Relationship decay
+    const npcList = Object.values(current.leaders).map(l => ({ id: l.id, trust: l.trust }));
+    const { updatedTrust } = applyMonthlyDecay(newCalendar, npcList);
+    for (const [npcId, newTrust] of Object.entries(updatedTrust)) {
+      if (updatedLeaders[npcId]) {
+        updatedLeaders = {
+          ...updatedLeaders,
+          [npcId]: { ...updatedLeaders[npcId], trust: newTrust },
+        };
+      }
+    }
+
+    // Tick strategic contacts
+    const updatedContacts = tickContacts(current.strategicContacts ?? []);
+
+    current = {
+      ...current,
+      calendarState: { ...newCalendar, burnoutState, burnoutBuffer: adjustedBuffer, consecutiveRecoveryMonths },
+      leaders: updatedLeaders,
+      strategicContacts: updatedContacts,
+    };
+  }
 
   // Generate events for the turn
   const newEvents = generateEvents(current, rng);
@@ -580,15 +702,25 @@ export function prepareTurn(state: GameState, rng: () => number = Math.random): 
     eventQueue: [...current.eventQueue, ...newEvents],
   };
 
-  // Generate proposals from eligible leaders
-  const newProposals = generateProposals(current);
+  // Tick pressure on existing proposals, expire overdue ones
+  const { active: survivingProposals, expired, pressureEvents } =
+    tickProposalPressure(current.activeProposals, current.turn, current.leaders);
 
-  // Move pending proposals to active and merge with newly generated
-  const activeProposals = [...current.pendingProposals, ...newProposals];
+  let leaders = current.leaders;
+  if (expired.length > 0) {
+    leaders = applyExpirationPenalties(leaders, expired);
+  }
+
+  // Generate new proposals from eligible leaders
+  const newProposals = generateProposals({ ...current, activeProposals: survivingProposals, leaders });
+
+  const activeProposals = [...survivingProposals, ...newProposals];
 
   return {
     ...current,
+    leaders,
     activeProposals,
     pendingProposals: [],
+    eventQueue: [...current.eventQueue, ...pressureEvents],
   };
 }

@@ -12,6 +12,7 @@ import { calculateSynergies } from './synergies';
 import { getSeasonalDurationBonus } from './seasons';
 import { calculateByproductBonuses } from './byproducts';
 import { getReclamationCapacityBonus } from './reclamation';
+import { calculateBlockModifiers } from './block-modifiers';
 
 const STAGE_ORDER: Stage[] = ['awakening', 'transition', 'restoration', 'beyond'];
 
@@ -110,6 +111,13 @@ export function canStartProject(
     };
   }
 
+  if (tile.completedProjects.includes(projectId)) {
+    return {
+      allowed: false,
+      reason: `${def.name} is already built on this tile`,
+    };
+  }
+
   // Community-led trust requirement
   if (mode === 'community-led' && state.meters.communityTrust < 30) {
     return {
@@ -134,18 +142,23 @@ export function startProject(
   tileId: string,
   projectId: string,
   mode: ProjectMode,
+  blockId?: string,
 ): GameState {
   const def = PROJECT_CATALOG[projectId];
   const synergies = calculateSynergies(state, tileId, projectId);
   const byproductBonuses = calculateByproductBonuses(state, tileId, projectId);
+  const blockMods = calculateBlockModifiers(
+    blockId ? state.blockDataMap?.[blockId] : undefined,
+    def,
+  );
 
-  // Byproduct cost multiplier stacks with synergy cost multiplier
-  const baseCostWithBonuses = def.baseCost * synergies.costMultiplier * byproductBonuses.costMultiplier;
+  // Byproduct cost multiplier stacks with synergy and block cost multipliers
+  const baseCostWithBonuses = def.baseCost * synergies.costMultiplier * byproductBonuses.costMultiplier * blockMods.costMultiplier;
   const cost = effectiveCost(baseCostWithBonuses, mode);
 
-  // Byproduct duration reduction stacks with synergy duration multiplier
+  // Byproduct duration reduction stacks with synergy and block duration multipliers
   const seasonReduction = getSeasonalDurationBonus(state.season, def.category);
-  const baseDurationWithSynergy = Math.max(1, Math.round(def.baseDuration * synergies.durationMultiplier));
+  const baseDurationWithSynergy = Math.max(1, Math.round(def.baseDuration * synergies.durationMultiplier * blockMods.durationMultiplier));
   const baseDurationWithBonuses = Math.max(1, baseDurationWithSynergy - byproductBonuses.durationReduction + seasonReduction);
   const duration = effectiveDuration(baseDurationWithBonuses, mode);
 
@@ -156,6 +169,7 @@ export function startProject(
     progress: 0,
     duration,
     cost,
+    blockId,
   };
 
   const tile = state.tiles[tileId];
@@ -234,6 +248,12 @@ export function advanceProjects(state: GameState): { state: GameState; deltas: M
           project.definitionId,
         );
 
+        // Calculate block-level modifiers
+        const blockMods = calculateBlockModifiers(
+          project.blockId ? state.blockDataMap?.[project.blockId] : undefined,
+          def,
+        );
+
         // Mark one-shot byproducts as consumed
         for (const activeBp of byproductBonuses.activeByproducts) {
           if (activeBp.lifetime === 'one-shot') {
@@ -254,8 +274,9 @@ export function advanceProjects(state: GameState): { state: GameState; deltas: M
         // Apply tileEco — also contributes to global meter (greening neighborhoods greens the city)
         const tileEcoBoost = getEffectBoost('tileEco');
         const boostedTileEco = def.effects.tileEco * (1 + tileEcoBoost);
-        tile.ecologicalHealth += boostedTileEco + synergyEco;
-        const totalEco = boostedTileEco + synergyEco;
+        tile.ecologicalHealth += boostedTileEco + synergyEco + blockMods.ecoBonus;
+        tile.contamination = Math.min(100, tile.contamination + blockMods.contaminationPenalty);
+        const totalEco = boostedTileEco + synergyEco + blockMods.ecoBonus;
         if (totalEco !== 0) {
           const globalEcoGain = totalEco * 0.25;
           newMeters.ecologicalHealth += globalEcoGain;
@@ -291,7 +312,7 @@ export function advanceProjects(state: GameState): { state: GameState; deltas: M
         // At trust 80+, gains halved. The community already trusts you — new wins matter less.
         const trustMultiplier = project.mode === 'direct-action' ? 2.0 : project.mode === 'community-led' ? 1.2 : 0.5;
         const directActionBonus = project.mode === 'direct-action' ? 6 : 0;
-        const rawTrustGain = def.effects.trust * trustMultiplier + directActionBonus;
+        const rawTrustGain = def.effects.trust * trustMultiplier + directActionBonus + blockMods.trustBonus;
         const diminishingFactor = newMeters.communityTrust > 70
           ? 1.0 - (newMeters.communityTrust - 70) * 0.02
           : 1.0;
@@ -305,10 +326,10 @@ export function advanceProjects(state: GameState): { state: GameState; deltas: M
           });
         }
 
-        // Apply annual revenue (with byproduct boost)
-        if (def.effects.annualRevenue > 0) {
+        // Apply annual revenue (with byproduct + block boost)
+        if (def.effects.annualRevenue > 0 || blockMods.revenueBonus > 0) {
           const revenueBoost = getEffectBoost('annualRevenue');
-          const boostedRevenue = def.effects.annualRevenue * (1 + revenueBoost);
+          const boostedRevenue = def.effects.annualRevenue * (1 + revenueBoost) + blockMods.revenueBonus;
           newMeters.budget += boostedRevenue;
           deltas.push({
             meter: 'budget',

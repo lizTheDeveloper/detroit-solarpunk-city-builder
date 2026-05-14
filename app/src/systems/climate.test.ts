@@ -78,12 +78,6 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       ecologicalRestoration: 50,
       cooperativeEconomics: 50,
     },
-    narrativeState: {
-      actionsRemaining: 2,
-      actionsPerTurn: 2,
-      consecutiveTurns: {},
-      counterNarrativeCooldowns: {},
-    },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},

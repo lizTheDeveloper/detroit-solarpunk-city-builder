@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGame } from '@/state/store';
 import { saveGame, loadGame, listSaves, deleteSave } from '@/systems/persistence';
 import type { SaveMetadata } from '@/systems/persistence';
+import { trackSaveGame } from '@/systems/analytics';
 
 interface SaveLoadPanelProps {
   onLoad: (slot: string) => void;
@@ -20,6 +21,7 @@ export default function SaveLoadPanel({ onLoad }: SaveLoadPanelProps) {
   function handleSave() {
     const slot = saveSlot.trim() || `manual_${Date.now()}`;
     saveGame(state, slot);
+    trackSaveGame(slot);
     setMessage(`Saved to "${slot}"`);
     setSaveSlot('');
     refreshSaves();
@@ -27,6 +29,7 @@ export default function SaveLoadPanel({ onLoad }: SaveLoadPanelProps) {
 
   function handleQuickSave() {
     saveGame(state, 'quicksave');
+    trackSaveGame('quicksave');
     setMessage('Quick saved!');
     refreshSaves();
   }

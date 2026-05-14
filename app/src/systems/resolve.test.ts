@@ -596,38 +596,57 @@ describe('prepareTurn', () => {
     expect(result.activeProposals[0].leaderId).toBe('grace');
   });
 
-  it('moves pendingProposals to activeProposals', () => {
-    const pending: Proposal = {
+  it('ticks pressure on existing active proposals', () => {
+    const existing: Proposal = {
       id: 'grace_1',
       leaderId: 'grace',
       projectDefinitionId: 'food_forest',
       tileId: 'brightmoor',
-      reason: 'Deferred last turn.',
+      reason: 'Proposed last turn.',
       turnProposed: 1,
+      expirationTurn: 5,
+      pressureLevel: 0,
     };
     const state = makeState({
       turn: 2,
-      pendingProposals: [pending],
+      activeProposals: [existing],
       leaders: {
-        grace: makeLeader({ trust: -5 }), // ineligible, won't generate new
+        grace: makeLeader({ trust: -5 }),
       },
     });
     const result = prepareTurn(state, noFireRng);
-    expect(result.activeProposals).toContainEqual(pending);
+    const carried = result.activeProposals.find(p => p.id === 'grace_1');
+    expect(carried).toBeDefined();
+    expect(carried!.pressureLevel).toBe(1);
   });
 
-  it('clears pendingProposals after moving', () => {
-    const pending: Proposal = {
+  it('expires proposals past their deadline with trust penalty', () => {
+    const expired: Proposal = {
       id: 'grace_1',
       leaderId: 'grace',
       projectDefinitionId: 'food_forest',
       tileId: 'brightmoor',
-      reason: 'Deferred last turn.',
+      reason: 'Proposed long ago.',
       turnProposed: 1,
+      expirationTurn: 2,
+      pressureLevel: 2,
     };
     const state = makeState({
       turn: 2,
-      pendingProposals: [pending],
+      activeProposals: [expired],
+      leaders: {
+        grace: makeLeader({ trust: 30 }),
+      },
+    });
+    const result = prepareTurn(state, noFireRng);
+    expect(result.activeProposals.find(p => p.id === 'grace_1')).toBeUndefined();
+    expect(result.leaders.grace.trust).toBeLessThan(30);
+  });
+
+  it('clears pendingProposals', () => {
+    const state = makeState({
+      turn: 2,
+      pendingProposals: [],
       leaders: {
         grace: makeLeader({ trust: -5 }),
       },

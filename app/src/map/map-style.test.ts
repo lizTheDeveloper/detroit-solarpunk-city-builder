@@ -30,4 +30,12 @@ describe('createDarkTerminalStyle', () => {
     const source = style.sources['openmaptiles'] as any;
     expect(source.url).toBe('https://my-tiles.example.com');
   });
+
+  it('uses tile URLs array when provided', () => {
+    const tiles = ['https://tiles.example.com/{z}/{x}/{y}.pbf'];
+    const style = createDarkTerminalStyle(tiles);
+    const source = style.sources['openmaptiles'] as any;
+    expect(source.tiles).toEqual(tiles);
+    expect(source.url).toBeUndefined();
+  });
 });

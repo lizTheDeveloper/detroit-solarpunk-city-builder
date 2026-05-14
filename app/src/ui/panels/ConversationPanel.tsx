@@ -18,6 +18,7 @@ interface ConversationPanelProps {
   interactionType: string;
   onDismiss: () => void;
   initialMessage?: string;
+  proposalId?: string;
 }
 
 function getCharacterName(characterId: string): string {
@@ -54,14 +55,46 @@ function getLLMSettings(): { model: string; enabled: boolean } {
   return { model: 'qwen/qwen3-32b', enabled: true };
 }
 
-function parseTrustDelta(text: string): { cleanText: string; trustDelta: number } {
-  const match = text.match(/\[TRUST:\s*([+-]?\d+)\]/i);
-  if (match) {
-    const delta = parseInt(match[1], 10);
-    const cleanText = text.replace(/\[TRUST:\s*[+-]?\d+\]/gi, '').trim();
-    return { cleanText, trustDelta: Math.max(-10, Math.min(10, delta)) };
+interface ParsedResponse {
+  cleanText: string;
+  trustDelta: number;
+  costMultiplier?: number;
+  leaderContribution?: number;
+  durationModifier?: number;
+}
+
+function parseResponse(text: string): ParsedResponse {
+  let cleanText = text;
+  let trustDelta = 0;
+  let costMultiplier: number | undefined;
+  let leaderContribution: number | undefined;
+  let durationModifier: number | undefined;
+
+  const trustMatch = cleanText.match(/\[TRUST:\s*([+-]?\d+)\]/i);
+  if (trustMatch) {
+    trustDelta = Math.max(-10, Math.min(10, parseInt(trustMatch[1], 10)));
+    cleanText = cleanText.replace(/\[TRUST:\s*[+-]?\d+\]/gi, '');
   }
-  return { cleanText: text, trustDelta: 0 };
+
+  const costMatch = cleanText.match(/\[COST:\s*([0-9.]+)\]/i);
+  if (costMatch) {
+    costMultiplier = Math.max(0.3, Math.min(1.0, parseFloat(costMatch[1])));
+    cleanText = cleanText.replace(/\[COST:\s*[0-9.]+\]/gi, '');
+  }
+
+  const contribMatch = cleanText.match(/\[CONTRIBUTE:\s*([0-9.]+)\]/i);
+  if (contribMatch) {
+    leaderContribution = Math.max(0, parseFloat(contribMatch[1]));
+    cleanText = cleanText.replace(/\[CONTRIBUTE:\s*[0-9.]+\]/gi, '');
+  }
+
+  const durMatch = cleanText.match(/\[DURATION:\s*([+-]?\d+)\]/i);
+  if (durMatch) {
+    durationModifier = Math.max(-4, Math.min(6, parseInt(durMatch[1], 10)));
+    cleanText = cleanText.replace(/\[DURATION:\s*[+-]?\d+\]/gi, '');
+  }
+
+  return { cleanText: cleanText.trim(), trustDelta, costMultiplier, leaderContribution, durationModifier };
 }
 
 const TRUST_INSTRUCTION = `
@@ -74,15 +107,25 @@ N is an integer from -5 to +5 reflecting how this exchange affects your trust in
 - -1 to -2: dismissive, generic politician talk, ignoring your concerns
 - -3 to -5: insulting, threatening, making promises you know are empty, ignoring your community
 
-Be honest. Don't be easily flattered. You've heard politicians talk before.
-If they're trying to negotiate a project you proposed, you can be flexible on details but firm on principles.
-If they ask you to change your proposal, consider it genuinely — but push back if it compromises your community's needs.`;
+Be honest. Don't be easily flattered. You've heard politicians talk before.`;
+
+const NEGOTIATION_INSTRUCTION = `
+
+You proposed a project. The mayor wants to discuss terms. You can negotiate.
+If you agree to change terms, output these tags on a new line after your dialogue (only the ones that change):
+- [COST: X] where X is a multiplier (0.5 = half price, 0.8 = 20% discount). Only offer discounts if the mayor makes a compelling case or offers something in return.
+- [CONTRIBUTE: X] where X is the budget amount (in game units, e.g. 0.1 = $100K) your community can contribute. Your community has limited funds — only offer this for projects you deeply care about or if the mayor agrees to your priorities elsewhere.
+- [DURATION: +N or -N] where N is turns added or removed. Cheaper projects take longer. Rushing costs more.
+
+Don't offer everything at once. Make the mayor work for it. Push back on unreasonable asks. If they're dismissive, refuse to negotiate further.
+You care about your community first. A bad deal is worse than no deal.`;
 
 export default function ConversationPanel({
   characterId,
   interactionType,
   onDismiss,
   initialMessage,
+  proposalId,
 }: ConversationPanelProps) {
   const { state, dispatch } = useGame();
   const [messages, setMessages] = useState<ConversationMessage[]>(() => {
@@ -162,7 +205,7 @@ export default function ConversationPanel({
       exampleLines: [...characterData.exampleLines],
     }).then((response) => {
       if (cancelled) return;
-      const { cleanText } = parseTrustDelta(response.content);
+      const { cleanText } = parseResponse(response.content);
       setMessages((prev) => {
         if (prev.length > 0) return prev;
         return [{ id: 'msg-0', sender: 'character', text: cleanText }];
@@ -223,26 +266,53 @@ export default function ConversationPanel({
       conversationHistory: history,
     };
 
+    const proposal = proposalId ? state.activeProposals.find((p) => p.id === proposalId) : undefined;
+    const PROJECT_CATALOG_IMPORT = await import('@/data/content/project-catalog').then((m) => m.PROJECT_CATALOG);
+    const projectDef = proposal ? PROJECT_CATALOG_IMPORT[proposal.projectDefinitionId] : undefined;
+
+    let extraInstructions = TRUST_INSTRUCTION;
+    if (proposal && projectDef) {
+      context.gameContext.projectName = projectDef.name;
+      extraInstructions += NEGOTIATION_INSTRUCTION;
+      extraInstructions += `\n\nYour proposed project: "${projectDef.name}" costs $${(projectDef.baseCost * 1000).toFixed(0)}K, takes ${projectDef.baseDuration} turns.`;
+      context.gameContext.recentEvents = [
+        `NEGOTIATION CONTEXT: You proposed "${projectDef.name}" (base cost $${(projectDef.baseCost * 1000).toFixed(0)}K, ${projectDef.baseDuration} turns). Remember to output [TRUST: N] and any negotiation tags [COST: X] [CONTRIBUTE: X] [DURATION: +/-N] after your dialogue.`,
+      ];
+    }
+
     const augmentedCharData = {
       ...characterData,
       exampleLines: [...characterData.exampleLines],
-      personality: characterData.personality + TRUST_INSTRUCTION,
+      personality: characterData.personality + extraInstructions,
     };
 
     try {
       const response = await llmService.generateResponse(context, augmentedCharData);
-      const { cleanText, trustDelta } = parseTrustDelta(response.content);
+      const parsed = parseResponse(response.content);
 
-      if (trustDelta !== 0) {
-        dispatch({ type: 'CONVERSATION_OUTCOME', characterId, trustDelta });
-        setTotalTrustChange((prev) => prev + trustDelta);
+      if (parsed.trustDelta !== 0) {
+        dispatch({ type: 'CONVERSATION_OUTCOME', characterId, trustDelta: parsed.trustDelta });
+        setTotalTrustChange((prev) => prev + parsed.trustDelta);
+      }
+
+      if (proposalId && (parsed.costMultiplier != null || parsed.leaderContribution != null || parsed.durationModifier != null)) {
+        const existing = proposal?.negotiation;
+        dispatch({
+          type: 'NEGOTIATE_PROPOSAL',
+          proposalId,
+          negotiation: {
+            costMultiplier: parsed.costMultiplier ?? existing?.costMultiplier ?? 0.85,
+            leaderContribution: parsed.leaderContribution ?? existing?.leaderContribution ?? 0,
+            durationModifier: parsed.durationModifier ?? existing?.durationModifier ?? 0,
+          },
+        });
       }
 
       setMessages((prev) => [...prev, {
         id: `msg-${prev.length}`,
         sender: 'character',
-        text: cleanText,
-        trustDelta,
+        text: parsed.cleanText,
+        trustDelta: parsed.trustDelta,
       }]);
     } catch {
       setMessages((prev) => [...prev, {

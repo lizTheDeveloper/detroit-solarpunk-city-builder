@@ -30,7 +30,8 @@ export type ConsequenceEffect =
   | { type: 'meterDelta'; meter: string; amount: number }
   | { type: 'tileDamage'; tileId: string | null; damage: number }
   | { type: 'spawnEvent'; eventId: string }
-  | { type: 'conditionChange'; condition: string; action: 'add' | 'remove' };
+  | { type: 'conditionChange'; condition: string; action: 'add' | 'remove' }
+  | { type: 'slotTax'; slots: number; reason: string };
 
 /**
  * A consequence scheduled to fire at a future turn. Can be cancelled

@@ -39,6 +39,7 @@ export interface ConversationContext {
     recentEvents: string[];
     neighborhoodName?: string;
     projectName?: string;
+    burnoutState?: string;
   };
   conversationHistory: ConversationExchange[];
 }
@@ -174,6 +175,28 @@ export function buildUserMessage(context: ConversationContext): string {
     lines.push(`Recent events: ${gc.recentEvents.join('; ')}`);
   }
 
+  // Burnout context (if calendar state available)
+  if (gc.burnoutState) {
+    lines.push('');
+    switch (gc.burnoutState) {
+      case 'overextended':
+        lines.push('[MAYOR STATUS: The mayor seems tired and rushed. They have been overcommitting their schedule.]');
+        lines.push('[NPC BEHAVIOR: You may comment on the mayor looking tired. Be slightly less patient.]');
+        break;
+      case 'burnout':
+        lines.push('[MAYOR STATUS: The mayor is visibly burned out — forgetting commitments, struggling to focus, exhausted.]');
+        lines.push('[NPC BEHAVIOR: Express concern or frustration depending on your relationship. The mayor is not at their best — their arguments lack conviction.]');
+        break;
+      case 'collapse':
+        lines.push('[MAYOR STATUS: The mayor has collapsed from overwork. They should not be here.]');
+        lines.push('[NPC BEHAVIOR: Insist they rest. Refuse to conduct business. Show genuine alarm.]');
+        break;
+      default:
+        // sustainable — no special context
+        break;
+    }
+  }
+
   lines.push('');
   lines.push('[INTERACTION]');
   lines.push(INTERACTION_DESCRIPTIONS[context.interactionType] || 'The player is interacting with you.');
@@ -237,6 +260,9 @@ export function createLRUCache(maxSize: number): LRUCache {
 
 export function hashContext(context: ConversationContext): string {
   const gc = context.gameContext;
+  const lastMsg = context.conversationHistory.length > 0
+    ? context.conversationHistory[context.conversationHistory.length - 1].content.slice(0, 80)
+    : '';
   return [
     context.characterId,
     context.interactionType,
@@ -245,6 +271,8 @@ export function hashContext(context: ConversationContext): string {
     gc.relationshipScore,
     gc.budget,
     gc.stage,
+    context.conversationHistory.length,
+    lastMsg,
   ].join('|');
 }
 
@@ -343,15 +371,17 @@ export function createLLMService(config: LLMConfig, chatFn: ChatCompletionFn): L
         };
       }
 
-      // 3. Check cache
+      // 3. Check cache (skip for multi-turn conversations)
       const cacheKey = hashContext(context);
-      const cachedContent = cache.get(cacheKey);
-      if (cachedContent !== undefined) {
-        return {
-          content: cachedContent,
-          cached: true,
-          fallback: false,
-        };
+      if (context.conversationHistory.length === 0) {
+        const cachedContent = cache.get(cacheKey);
+        if (cachedContent !== undefined) {
+          return {
+            content: cachedContent,
+            cached: true,
+            fallback: false,
+          };
+        }
       }
 
       // 4. Build prompts

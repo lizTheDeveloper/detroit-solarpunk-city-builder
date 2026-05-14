@@ -26,8 +26,8 @@ describe('createNewGame', () => {
       expect(state.year).toBe(1);
     });
 
-    it('starts in events phase', () => {
-      expect(state.phase).toBe('events');
+    it('starts in player-actions phase', () => {
+      expect(state.phase).toBe('player-actions');
     });
 
     it('starts in awakening stage', () => {
@@ -86,8 +86,8 @@ describe('createNewGame', () => {
   });
 
   describe('starter tiles', () => {
-    it('has exactly 8 tiles', () => {
-      expect(Object.keys(state.tiles)).toHaveLength(8);
+    it('has 19 tiles (8 original + 11 expansion)', () => {
+      expect(Object.keys(state.tiles)).toHaveLength(19);
     });
 
     it('has brightmoor, corktown, eastern_market', () => {
@@ -119,8 +119,10 @@ describe('createNewGame', () => {
         ]);
       });
 
-      it('has no adjacent tiles (isolated)', () => {
-        expect(state.tiles['brightmoor'].adjacentTileIds).toEqual([]);
+      it('is adjacent to grandmont_rosedale, rouge_park, warrendale', () => {
+        expect(state.tiles['brightmoor'].adjacentTileIds).toContain('grandmont_rosedale');
+        expect(state.tiles['brightmoor'].adjacentTileIds).toContain('rouge_park');
+        expect(state.tiles['brightmoor'].adjacentTileIds).toContain('warrendale');
       });
 
       it('starts with empty projects', () => {
@@ -204,8 +206,8 @@ describe('createNewGame', () => {
   });
 
   describe('community leaders', () => {
-    it('has exactly 8 leaders', () => {
-      expect(Object.keys(state.leaders)).toHaveLength(8);
+    it('has 13 leaders (8 original + 5 expansion)', () => {
+      expect(Object.keys(state.leaders)).toHaveLength(13);
     });
 
     it('has grace, kez, darius', () => {

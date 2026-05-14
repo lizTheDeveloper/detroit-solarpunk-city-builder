@@ -55,7 +55,7 @@ export type ProjectCategory = 'ecology' | 'infrastructure' | 'community' | 'rest
 
 export type GrowthCategory = 'growth' | 'de-growth' | 'neither';
 
-export type ProposalResponse = 'accept' | 'modify' | 'defer' | 'reject';
+export type ProposalResponse = 'accept' | 'modify' | 'reject';
 
 export type PoliticalLeaning = 'progressive' | 'moderate' | 'moderate-conservative' | 'conservative';
 
@@ -163,6 +163,16 @@ export interface CouncilMember {
   tileIds: string[];
 }
 
+export interface AntagonistArcState {
+  phase: 1 | 2 | 3 | 4;
+  phaseEventsFired: number;
+  confrontations: number;
+  ignores: number;
+  coOpted: boolean;
+  resolutionType: 'reluctant_ally' | 'election_threat' | 'cynicism_engine' | null;
+  sterlingConnectionRevealed: boolean;
+}
+
 export interface Antagonist {
   id: string;
   name: string;
@@ -173,6 +183,7 @@ export interface Antagonist {
   active: boolean;
   lastEscalationTurn: number;
   tileTargets: string[];
+  arcState?: AntagonistArcState;
 }
 
 export interface PolicyDefinition {
@@ -237,6 +248,7 @@ export interface CalendarState {
   burnoutBuffer: number;        // 0-20, starts at 15
   burnoutBufferMax: number;     // 20
   burnoutState: BurnoutState;
+  consecutiveRecoveryMonths: number;
   interactionsThisMonth: Record<string, number>; // npcId → count
   lastInteractionMonth: Record<string, number>;  // npcId → last month number
   monthNumber: number;
@@ -281,6 +293,8 @@ export interface GameEvent {
   cooldownTurns: number;
   targetTileId: string | null;
   targetCharacterId: string | null;
+  arcId?: string;
+  crisisForkId?: string;
 }
 
 export interface EventChoice {
@@ -360,6 +374,8 @@ export interface Proposal {
   tileId: string;
   reason: string;
   turnProposed: number;
+  expirationTurn: number;
+  pressureLevel: number;
   negotiation?: ProposalNegotiation;
 }
 
@@ -431,6 +447,8 @@ export interface GameState {
     selectedBlockId: string | null;
     viewState: { longitude: number; latitude: number; zoom: number };
   };
+  // Block-level data keyed by blockId (populated from CityPackage)
+  blockDataMap: Record<string, import('../map/block-layer').BlockData>;
 }
 
 export type GameAction =

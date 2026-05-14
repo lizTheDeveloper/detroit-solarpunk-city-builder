@@ -3,6 +3,7 @@ import { loadHeadlines, getHeadlineStats } from './storage.ts';
 import { loadAllArcStates } from './arc-state.ts';
 import { getPipelineHealth } from './index.ts';
 import { getDataDir } from './index.ts';
+import { searchByArc, searchByTopic, addPaper, type PaperRecord } from './research-corpus.ts';
 
 /**
  * Handle pipeline API routes. Returns true if the route was handled.
@@ -17,6 +18,9 @@ export function handlePipelineRoute(req: IncomingMessage, res: ServerResponse): 
       return true;
     case '/api/arc-state':
       handleArcState(res);
+      return true;
+    case '/api/papers':
+      handlePapers(req, urlObj, res);
       return true;
     case '/api/health/pipeline':
       handleHealth(res);
@@ -73,6 +77,49 @@ function handleHealth(res: ServerResponse) {
 
   sendJson(res, response, {
     'Cache-Control': 'no-cache',
+  });
+}
+
+function handlePapers(req: IncomingMessage, urlObj: URL, res: ServerResponse) {
+  if (req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const paper: PaperRecord = JSON.parse(body);
+        if (!paper.doi || !paper.title) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'doi and title are required' }));
+          return;
+        }
+        addPaper(paper);
+        sendJson(res, { ok: true, doi: paper.doi });
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+      }
+    });
+    return;
+  }
+
+  const params = urlObj.searchParams;
+  const arc = params.get('arc');
+  const topic = params.get('topic');
+  const limit = parseInt(params.get('limit') || '5', 10);
+
+  let results;
+  if (arc) {
+    results = searchByArc(arc);
+  } else if (topic) {
+    results = searchByTopic(topic, limit);
+  } else {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Provide arc or topic query parameter' }));
+    return;
+  }
+
+  sendJson(res, results, {
+    'Cache-Control': 'public, max-age=3600',
   });
 }
 

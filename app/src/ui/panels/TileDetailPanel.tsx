@@ -5,6 +5,7 @@ import { getRelationshipLevel } from '@/systems/relationships';
 import type { Tile, Proposal, ProposalResponse, CalendarActionType } from '@/state/types';
 import { formatCost } from '@/ui/format';
 import { InlineActions, type InlineAction } from '@/ui/components/InlineActions';
+import PowerStructurePanel from './PowerStructurePanel';
 
 interface TileDetailPanelProps {
   tileId: string;
@@ -52,17 +53,26 @@ function TileProposalCard({ proposal, onConversation }: { proposal: Proposal; on
     if (onConversation) {
       const interactionType = response === 'accept' ? 'proposal_accepted'
         : response === 'reject' ? 'proposal_rejected'
-        : response === 'defer' ? 'proposal_deferred'
         : 'proposal_modified';
       onConversation(proposal.leaderId, interactionType, proposal.id);
     }
   }
 
+  const turnsLeft = proposal.expirationTurn - state.turn;
+  const pressureColor = proposal.pressureLevel >= 3 ? '#ef4444'
+    : proposal.pressureLevel >= 2 ? '#f97316'
+    : proposal.pressureLevel >= 1 ? '#eab308'
+    : '#22c55e';
+
   return (
     <div className="tile-proposal-card">
+      <div className="proposal-pressure-bar" style={{ background: pressureColor, height: 3, borderRadius: 2, marginBottom: 4 }} />
       <div className="tile-proposal-header">
         <span className="tile-proposal-leader">{leader.name}</span>
         <span className={`leader-level-badge leader-level-badge--${level}`}>{level}</span>
+        <span className="proposal-timer" style={{ color: pressureColor, fontSize: '0.85em' }}>
+          {turnsLeft > 0 ? `${turnsLeft} turns left` : 'Expiring'}
+        </span>
       </div>
       <div className="tile-proposal-project">
         <strong>{def.name}</strong>
@@ -77,11 +87,14 @@ function TileProposalCard({ proposal, onConversation }: { proposal: Proposal; on
         {def.effects.contaminationReduction > 0 && <span className="effect-tag">Contam -{def.effects.contaminationReduction}%</span>}
       </div>
       <div className="tile-proposal-actions">
-        <button className="btn btn-sm btn-discuss" onClick={() => onConversation?.(proposal.leaderId, 'direct_engagement', proposal.id)} type="button">Discuss</button>
+        <button className="btn btn-sm btn-discuss" onClick={() => {
+          if (!canAffordAction(state.calendarState, 'deep_conversation')) return;
+          dispatch({ type: 'CALENDAR_ACTION', actionType: 'deep_conversation' as CalendarActionType, targetId: proposal.leaderId, tileId: proposal.tileId });
+          onConversation?.(proposal.leaderId, 'direct_engagement', proposal.id);
+        }} disabled={!canAffordAction(state.calendarState, 'deep_conversation')} type="button">Discuss ({SLOT_COSTS.deep_conversation} slots)</button>
         <button className="btn btn-sm btn-accept" onClick={() => handleResponse('accept')} disabled={!canAffordAccept} type="button">
           Fund ({formatCost(netAcceptCost)})
         </button>
-        <button className="btn btn-sm btn-defer" onClick={() => handleResponse('defer')} type="button">Defer</button>
         <button className="btn btn-sm btn-reject" onClick={() => handleResponse('reject')} type="button">Reject</button>
       </div>
     </div>
@@ -120,6 +133,7 @@ export default function TileDetailPanel({ tileId, onStartProjectClick, onConvers
     dispatch({
       type: 'CALENDAR_ACTION',
       actionType: action.actionType as CalendarActionType,
+      targetId: action.targetId,
       tileId: action.tileId,
     });
   }
@@ -214,6 +228,8 @@ export default function TileDetailPanel({ tileId, onStartProjectClick, onConvers
           </div>
         </div>
       )}
+
+      <PowerStructurePanel neighborhoodId={tileId} />
 
       <button className="btn btn-primary start-project-btn" onClick={onStartProjectClick} type="button">
         Start Project

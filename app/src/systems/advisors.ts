@@ -142,13 +142,13 @@ export const ADVISOR_CONDITIONS: AdvisorCondition[] = [
       "Food access hasn't improved. A year in and people are still driving forty minutes for fresh greens. We could have a food forest half-grown by now. Feeding ourselves to free ourselves — but only if we start.",
   },
   {
-    id: 'no-narrative-used',
+    id: 'no-slots-used',
     priority: 8,
     characterId: 'darius',
     characterName: 'Darius Kemp',
     condition: (state) => {
       if (state.turn <= 6) return false;
-      return state.narrativeState.actionsRemaining === state.narrativeState.actionsPerTurn;
+      return state.calendarState.slotsSpent === 0;
     },
     message: (_state) =>
       "You haven't used your voice this month. The mayor's office has a platform. Use it. A rally, a mural unveiling, a press conference — something to remind people there's a vision here, not just paperwork.",

@@ -217,6 +217,6 @@ describe('Undo System', () => {
     expect(recovered!.leaders).toEqual(originalState.leaders);
     expect(recovered!.councilMembers).toEqual(originalState.councilMembers);
     expect(recovered!.antagonists).toEqual(originalState.antagonists);
-    expect(recovered!.narrativeState).toEqual(originalState.narrativeState);
+    expect(recovered!.calendarState).toEqual(originalState.calendarState);
   });
 });

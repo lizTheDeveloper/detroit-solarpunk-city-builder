@@ -224,4 +224,13 @@ export const waterPfasArc: ArcTemplate = {
     { doi: 'doi:10.1016/j.watres.2020.116425', title: 'Activated carbon for PFAS removal: A review', relevance: 'Technical basis for community-scale filtration feasibility' },
     { doi: 'doi:10.1289/EHP10092', title: 'PFAS Exposure and Health Outcomes in Communities Near Contamination Sites', relevance: 'Health impact data for affected Detroit zip codes' },
   ],
+
+  slotTaxByStage: {
+    dormant: 0,
+    foreshadow: 1,
+    escalation: 3,
+    crisis: 5,
+    reckoning: 4,
+    resolved: 0,
+  },
 };

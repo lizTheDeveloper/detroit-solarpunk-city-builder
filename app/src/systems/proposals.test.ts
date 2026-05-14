@@ -4,6 +4,8 @@ import {
   applyProposalResponse,
   isLeaderAdvocate,
   getAdvocateCount,
+  tickProposalPressure,
+  applyExpirationPenalties,
 } from './proposals';
 import type {
   GameState,
@@ -100,7 +102,6 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     pendingProposals: [],
     activePolicies: [],
     publicOpinion: { foodSovereignty: 50, waterCommons: 50, landReform: 50, ecologicalRestoration: 50, cooperativeEconomics: 50 },
-    narrativeState: { actionsRemaining: 3, actionsPerTurn: 3, consecutiveTurns: {}, counterNarrativeCooldowns: {} },
     coalitions: [],
     eventQueue: [],
     eventCooldowns: {},
@@ -287,6 +288,8 @@ describe('applyProposalResponse', () => {
       tileId: 'brightmoor',
       reason: 'We need to grow our own food.',
       turnProposed: 5,
+      expirationTurn: 8,
+      pressureLevel: 0,
     };
     return makeGameState({
       activeProposals: [proposal],
@@ -382,40 +385,6 @@ describe('applyProposalResponse', () => {
     });
   });
 
-  describe('defer', () => {
-    it('decreases leader trust by 5', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      expect(result.leaders.grace.trust).toBe(25); // 30 - 5
-    });
-
-    it('moves proposal from activeProposals to pendingProposals', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      expect(result.activeProposals).toHaveLength(0);
-      expect(result.pendingProposals).toHaveLength(1);
-      expect(result.pendingProposals[0].id).toBe('grace_5');
-    });
-
-    it('increments consecutiveDeferrals', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      expect(result.leaders.grace.consecutiveDeferrals).toBe(1);
-    });
-
-    it('does NOT start a project', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      expect(result.tiles.brightmoor.activeProjects).toHaveLength(0);
-    });
-
-    it('does NOT deduct from budget', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      expect(result.meters.budget).toBe(10.0);
-    });
-  });
-
   describe('reject', () => {
     it('decreases leader trust by 15', () => {
       const state = stateWithProposal();
@@ -429,43 +398,10 @@ describe('applyProposalResponse', () => {
       expect(result.activeProposals).toHaveLength(0);
     });
 
-    it('does NOT move proposal to pendingProposals', () => {
-      const state = stateWithProposal();
-      const result = applyProposalResponse(state, 'grace_5', 'reject');
-      expect(result.pendingProposals).toHaveLength(0);
-    });
-
     it('resets consecutiveDeferrals to 0', () => {
       const state = stateWithProposal();
       state.leaders.grace.consecutiveDeferrals = 2;
       const result = applyProposalResponse(state, 'grace_5', 'reject');
-      expect(result.leaders.grace.consecutiveDeferrals).toBe(0);
-    });
-  });
-
-  describe('three consecutive deferrals converts to reject', () => {
-    it('third deferral applies -15 trust and removes proposal', () => {
-      const proposal: Proposal = {
-        id: 'grace_5',
-        leaderId: 'grace',
-        projectDefinitionId: 'food_forest',
-        tileId: 'brightmoor',
-        reason: 'We need to grow our own food.',
-        turnProposed: 5,
-      };
-      const state = makeGameState({
-        activeProposals: [proposal],
-        leaders: {
-          grace: makeLeader({ consecutiveDeferrals: 2, trust: 50 }),
-        },
-      });
-      const result = applyProposalResponse(state, 'grace_5', 'defer');
-      // Third consecutive deferral: should treat as reject, trust -15 (not -5)
-      expect(result.leaders.grace.trust).toBe(35); // 50 - 15
-      // Proposal is removed, not moved to pending
-      expect(result.activeProposals).toHaveLength(0);
-      expect(result.pendingProposals).toHaveLength(0);
-      // consecutiveDeferrals reset
       expect(result.leaders.grace.consecutiveDeferrals).toBe(0);
     });
   });
@@ -479,6 +415,8 @@ describe('applyProposalResponse', () => {
         tileId: 'brightmoor',
         reason: 'We need to grow our own food.',
         turnProposed: 5,
+        expirationTurn: 8,
+        pressureLevel: 0,
       };
       const state = makeGameState({
         activeProposals: [proposal],
@@ -496,6 +434,8 @@ describe('applyProposalResponse', () => {
         tileId: 'brightmoor',
         reason: 'We need to grow our own food.',
         turnProposed: 5,
+        expirationTurn: 8,
+        pressureLevel: 0,
       };
       const state = makeGameState({
         activeProposals: [proposal],
@@ -587,5 +527,99 @@ describe('getAdvocateCount', () => {
 
   it('returns 0 for empty record', () => {
     expect(getAdvocateCount({})).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: tickProposalPressure
+// ---------------------------------------------------------------------------
+
+describe('tickProposalPressure', () => {
+  function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
+    return {
+      id: 'grace_5',
+      leaderId: 'grace',
+      projectDefinitionId: 'food_forest',
+      tileId: 'brightmoor',
+      reason: 'We need to grow our own food.',
+      turnProposed: 5,
+      expirationTurn: 8,
+      pressureLevel: 0,
+      ...overrides,
+    };
+  }
+
+  it('increments pressureLevel on active proposals', () => {
+    const proposals = [makeProposal({ pressureLevel: 0 })];
+    const leaders = { grace: makeLeader() };
+    const { active } = tickProposalPressure(proposals, 6, leaders);
+    expect(active[0].pressureLevel).toBe(1);
+  });
+
+  it('expires proposals at or past expirationTurn', () => {
+    const proposals = [makeProposal({ expirationTurn: 6 })];
+    const leaders = { grace: makeLeader() };
+    const { active, expired } = tickProposalPressure(proposals, 6, leaders);
+    expect(active).toHaveLength(0);
+    expect(expired).toHaveLength(1);
+  });
+
+  it('generates pressure event at level 3', () => {
+    const proposals = [makeProposal({ pressureLevel: 2 })];
+    const leaders = { grace: makeLeader() };
+    const { pressureEvents } = tickProposalPressure(proposals, 6, leaders);
+    expect(pressureEvents).toHaveLength(1);
+    expect(pressureEvents[0].category).toBe('community');
+  });
+
+  it('does not generate pressure event below level 3', () => {
+    const proposals = [makeProposal({ pressureLevel: 1 })];
+    const leaders = { grace: makeLeader() };
+    const { pressureEvents } = tickProposalPressure(proposals, 6, leaders);
+    expect(pressureEvents).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: applyExpirationPenalties
+// ---------------------------------------------------------------------------
+
+describe('applyExpirationPenalties', () => {
+  function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
+    return {
+      id: 'grace_5',
+      leaderId: 'grace',
+      projectDefinitionId: 'food_forest',
+      tileId: 'brightmoor',
+      reason: 'We need to grow our own food.',
+      turnProposed: 5,
+      expirationTurn: 8,
+      pressureLevel: 0,
+      ...overrides,
+    };
+  }
+
+  it('applies -12 penalty for partner-level leaders (trust >= 40)', () => {
+    const leaders = { grace: makeLeader({ trust: 50 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    expect(result.grace.trust).toBe(38);
+  });
+
+  it('applies -8 penalty for neutral leaders (trust >= 0)', () => {
+    const leaders = { grace: makeLeader({ trust: 20 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    expect(result.grace.trust).toBe(12);
+  });
+
+  it('applies -3 penalty for hostile leaders (trust < 0)', () => {
+    const leaders = { grace: makeLeader({ trust: -10 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    expect(result.grace.trust).toBe(-13);
+  });
+
+  it('clamps trust to -100', () => {
+    const leaders = { grace: makeLeader({ trust: -99 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    expect(result.grace.trust).toBe(-100);
   });
 });

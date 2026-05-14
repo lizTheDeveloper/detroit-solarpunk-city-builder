@@ -79,4 +79,5 @@ export interface ArcTemplate {
   antagonists: Antagonist[];
   crisisForks: CrisisFork[];
   papers: ArcPaper[];
+  slotTaxByStage: Record<string, number>;  // stage name → slots consumed per month
 }

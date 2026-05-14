@@ -73,7 +73,7 @@ describe('calculateSpeedVsJustice', () => {
   it('tension is high (>30) when eco is high but gentrification is high', () => {
     // speed_score = (80 + 60) / 2 = 70
     // justice_score = 100 - 70 = 30
-    // tension = |70 - 30| = 40
+    // raw tension = |70 - 30| = 40, ramp = 10/10 = 1.0, tension = 40
     const state = makeTestState({
       meters: {
         communityTrust: 50,
@@ -84,7 +84,12 @@ describe('calculateSpeedVsJustice', () => {
         climatePressure: 30,
       },
       tiles: {
-        a: makeTile({ id: 'a', gentrificationPressure: 70 }),
+        a: makeTile({
+          id: 'a',
+          gentrificationPressure: 70,
+          completedProjects: ['solar_grid', 'solar_grid', 'solar_grid', 'solar_grid', 'solar_grid',
+            'maker_space', 'maker_space', 'maker_space', 'maker_space', 'maker_space'],
+        }),
       },
     });
 
@@ -96,7 +101,7 @@ describe('calculateSpeedVsJustice', () => {
   it('level is low when tension < 15', () => {
     // speed_score = (30 + 20) / 2 = 25
     // justice_score = 100 - 80 = 20
-    // tension = |25 - 20| = 5
+    // raw tension = |25 - 20| = 5, ramp = 10/10 = 1.0, tension = 5
     const state = makeTestState({
       meters: {
         communityTrust: 50,
@@ -107,7 +112,12 @@ describe('calculateSpeedVsJustice', () => {
         climatePressure: 30,
       },
       tiles: {
-        a: makeTile({ id: 'a', gentrificationPressure: 80 }),
+        a: makeTile({
+          id: 'a',
+          gentrificationPressure: 80,
+          completedProjects: ['solar_grid', 'solar_grid', 'solar_grid', 'solar_grid', 'solar_grid',
+            'maker_space', 'maker_space', 'maker_space', 'maker_space', 'maker_space'],
+        }),
       },
     });
 
@@ -119,7 +129,7 @@ describe('calculateSpeedVsJustice', () => {
   it('level is medium when tension is between 15 and 30', () => {
     // speed_score = (60 + 40) / 2 = 50
     // justice_score = 100 - 25 = 75
-    // tension = |50 - 75| = 25
+    // raw tension = |50 - 75| = 25, ramp = 10/10 = 1.0, tension = 25
     const state = makeTestState({
       meters: {
         communityTrust: 50,
@@ -130,7 +140,12 @@ describe('calculateSpeedVsJustice', () => {
         climatePressure: 30,
       },
       tiles: {
-        a: makeTile({ id: 'a', gentrificationPressure: 25 }),
+        a: makeTile({
+          id: 'a',
+          gentrificationPressure: 25,
+          completedProjects: ['solar_grid', 'solar_grid', 'solar_grid', 'solar_grid', 'solar_grid',
+            'maker_space', 'maker_space', 'maker_space', 'maker_space', 'maker_space'],
+        }),
       },
     });
 
@@ -338,7 +353,7 @@ describe('getTensionSummary', () => {
   it('overall health is critical when speed-justice tension > 30', () => {
     // speed_score = (80 + 60) / 2 = 70
     // justice_score = 100 - 70 = 30
-    // tension = 40 (> 30)
+    // raw tension = 40, ramp = 10/10 = 1.0, tension = 40 (> 30)
     const state = makeTestState({
       meters: {
         communityTrust: 50,
@@ -352,8 +367,9 @@ describe('getTensionSummary', () => {
         a: makeTile({
           id: 'a',
           gentrificationPressure: 70,
-          completedProjects: ['solar_grid', 'food_forest'],
-          communityPowerTokens: 1,
+          completedProjects: ['solar_grid', 'solar_grid', 'solar_grid', 'solar_grid', 'solar_grid',
+            'food_forest', 'food_forest', 'food_forest', 'food_forest', 'food_forest'],
+          communityPowerTokens: 5,
         }),
       },
     });
@@ -440,7 +456,7 @@ describe('getTensionSummary', () => {
   it('overall health is concerning when not healthy and not critical', () => {
     // speed_score = (40 + 30) / 2 = 35
     // justice_score = 100 - 50 = 50
-    // tension = 15 (exactly on the border: not < 15, so not healthy)
+    // raw tension = |35 - 50| = 15, ramp = 10/10 = 1.0, tension = 15
     // growth ratio = 0.5 (balanced)
     // topdown ratio = 0.5 (mixed)
     const state = makeTestState({
@@ -456,8 +472,9 @@ describe('getTensionSummary', () => {
         a: makeTile({
           id: 'a',
           gentrificationPressure: 50,
-          completedProjects: ['solar_grid', 'food_forest'],
-          communityPowerTokens: 1,
+          completedProjects: ['solar_grid', 'solar_grid', 'solar_grid', 'solar_grid', 'solar_grid',
+            'food_forest', 'food_forest', 'food_forest', 'food_forest', 'food_forest'],
+          communityPowerTokens: 5,
         }),
       },
     });

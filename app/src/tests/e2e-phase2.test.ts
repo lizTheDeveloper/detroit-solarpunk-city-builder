@@ -23,7 +23,7 @@ import { gameReducer } from '../state/reducer';
 import { resolveTurn, prepareTurn } from '../systems/resolve';
 import { conductCouncilVote } from '../systems/council';
 import { calculateReElectionScore } from '../systems/relationships';
-import { calculateCompoundingBonus, applyNarrativeAction, applyOpinionDrift } from '../systems/narrative';
+import { applyOpinionDrift } from '../systems/opinion';
 import { calculateTotalPolicyDrain } from '../systems/policies';
 import { checkAntagonistActivation, escalateAntagonists } from '../systems/events';
 import { COUNCIL_MEMBERS } from '../data/content/council-members';
@@ -148,9 +148,9 @@ describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
     expect(state.activePolicies[0].definitionId).toBe('urban_agriculture_zoning');
   });
 
-  it('lobbying consumes a narrative action', () => {
+  it('lobbying consumes a calendar slot', () => {
     let state = createFullState();
-    const actionsBefore = state.narrativeState.actionsRemaining;
+    const slotsBefore = state.calendarState.slotsSpent;
 
     state = gameReducer(state, {
       type: 'LOBBY_COUNCIL',
@@ -159,7 +159,8 @@ describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
       argumentAlignment: 'high',
     });
 
-    expect(state.narrativeState.actionsRemaining).toBe(actionsBefore - 1);
+    // quick_check_in costs 1 slot
+    expect(state.calendarState.slotsSpent).toBe(slotsBefore + 1);
   });
 });
 
@@ -464,98 +465,11 @@ describe('Scenario 4: Coalition formation and meter bonus', () => {
 });
 
 // ============================================================
-// Scenario 5: Narrative compounding on a topic
+// Scenario 6: Opinion drift
 // ============================================================
 
-describe('Scenario 5: Narrative compounding on a topic', () => {
-  it('compounding bonus grows: 0%, 5%, 10%, 15% for 4 consecutive actions', () => {
-    // Verify the formula directly
-    expect(calculateCompoundingBonus(0)).toBeCloseTo(0, 6);       // 0 * 0.05 = 0%
-    expect(calculateCompoundingBonus(1)).toBeCloseTo(0.05, 6);   // 1 * 0.05 = 5%
-    expect(calculateCompoundingBonus(2)).toBeCloseTo(0.10, 6);   // 2 * 0.05 = 10%
-    expect(calculateCompoundingBonus(3)).toBeCloseTo(0.15, 6);   // 3 * 0.05 = 15%
-  });
-
-  it('compounding bonus caps at 25%', () => {
-    expect(calculateCompoundingBonus(5)).toBe(0.25);
-    expect(calculateCompoundingBonus(10)).toBe(0.25);
-  });
-
-  it('4 consecutive media_campaign actions on same topic get progressively larger effects', () => {
-    let state = createFullState({
-      narrativeState: {
-        actionsRemaining: 10, // give plenty of actions
-        actionsPerTurn: 10,
-        consecutiveTurns: {},
-        counterNarrativeCooldowns: {},
-      },
-    });
-
-    const willValues: number[] = [];
-    const baseTopic = 'foodSovereignty';
-
-    // Track Will after each action
-    for (let i = 0; i < 4; i++) {
-      const willBefore = state.meters.politicalWill;
-
-      const result = applyNarrativeAction(state, 'media_campaign', baseTopic, 'general');
-      state = result.state;
-
-      const willGain = state.meters.politicalWill - willBefore;
-      willValues.push(willGain);
-    }
-
-    // media_campaign base willGain = 0.33 (monthly, was 1.0 quarterly)
-    // Action 1: 0.33 * (1 + 0.00) = 0.33
-    // Action 2: 0.33 * (1 + 0.05) = 0.3465
-    // Action 3: 0.33 * (1 + 0.10) = 0.363
-    // Action 4: 0.33 * (1 + 0.15) = 0.3795
-    expect(willValues[0]).toBeCloseTo(0.33, 4);
-    expect(willValues[1]).toBeCloseTo(0.3465, 4);
-    expect(willValues[2]).toBeCloseTo(0.363, 4);
-    expect(willValues[3]).toBeCloseTo(0.3795, 4);
-
-    // Each action is progressively larger
-    for (let i = 1; i < willValues.length; i++) {
-      expect(willValues[i]).toBeGreaterThan(willValues[i - 1]);
-    }
-  });
-
-  it('consecutive turn counter increments with each action on the same topic', () => {
-    let state = createFullState({
-      narrativeState: {
-        actionsRemaining: 5,
-        actionsPerTurn: 5,
-        consecutiveTurns: {},
-        counterNarrativeCooldowns: {},
-      },
-    });
-
-    const topic = 'waterCommons';
-
-    // First action: counter goes from 0 to 1
-    let result = applyNarrativeAction(state, 'media_campaign', topic, 'general');
-    state = result.state;
-    expect(state.narrativeState.consecutiveTurns[topic]).toBe(1);
-
-    // Second action: counter goes from 1 to 2
-    result = applyNarrativeAction(state, 'media_campaign', topic, 'general');
-    state = result.state;
-    expect(state.narrativeState.consecutiveTurns[topic]).toBe(2);
-
-    // Third action: counter goes from 2 to 3
-    result = applyNarrativeAction(state, 'media_campaign', topic, 'general');
-    state = result.state;
-    expect(state.narrativeState.consecutiveTurns[topic]).toBe(3);
-  });
-});
-
-// ============================================================
-// Scenario 6: Opinion drift when topic neglected
-// ============================================================
-
-describe('Scenario 6: Opinion drift when topic neglected', () => {
-  it('opinion drifts down by 0.67 per turn when no narrative actions taken on topic', () => {
+describe('Scenario 6: Opinion drift', () => {
+  it('opinion drifts down by 0.67 per turn', () => {
     let state = createFullState();
 
     // Set foodSovereignty opinion to 30%
@@ -567,9 +481,8 @@ describe('Scenario 6: Opinion drift when topic neglected', () => {
       },
     };
 
-    // No narrative actions on foodSovereignty (consecutiveTurns empty)
     // Apply drift once
-    const drifted = applyOpinionDrift(state.publicOpinion, state.narrativeState);
+    const drifted = applyOpinionDrift(state.publicOpinion);
 
     // foodSovereignty: 30 - 0.67 = 29.33
     expect(drifted.foodSovereignty).toBeCloseTo(29.33, 1);
@@ -587,7 +500,7 @@ describe('Scenario 6: Opinion drift when topic neglected', () => {
       },
     };
 
-    // Run several turns with no narrative actions (using full resolve pipeline)
+    // Run several turns (using full resolve pipeline)
     for (let i = 0; i < 5; i++) {
       state = endTurnDeterministic(state);
       state = prepareTurnDeterministic(state);
@@ -611,31 +524,10 @@ describe('Scenario 6: Opinion drift when topic neglected', () => {
       },
     };
 
-    const drifted = applyOpinionDrift(state.publicOpinion, state.narrativeState);
+    const drifted = applyOpinionDrift(state.publicOpinion);
 
     // Should not go below 15 (floor value)
     expect(drifted.foodSovereignty).toBe(15);
-  });
-
-  it('opinion does not drift on topics with narrative actions taken', () => {
-    let state = createFullState();
-
-    state = {
-      ...state,
-      publicOpinion: {
-        ...state.publicOpinion,
-        foodSovereignty: 30,
-      },
-      narrativeState: {
-        ...state.narrativeState,
-        consecutiveTurns: { foodSovereignty: 1 }, // action was taken
-      },
-    };
-
-    const drifted = applyOpinionDrift(state.publicOpinion, state.narrativeState);
-
-    // foodSovereignty should NOT drift because action was taken
-    expect(drifted.foodSovereignty).toBe(30);
   });
 });
 
@@ -1083,13 +975,12 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
       // Prepare turn (suppresses random events)
       state = prepareTurnDeterministic(state);
 
-      // Take a narrative action if available
-      if (state.narrativeState.actionsRemaining > 0) {
+      // Take a calendar action if slots remain
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
         state = gameReducer(state, {
-          type: 'NARRATIVE_ACTION',
+          type: 'CALENDAR_ACTION',
           actionType: 'community_meeting',
-          target: 'brightmoor',
-          topic: 'foodSovereignty',
+          tileId: 'brightmoor',
         });
       }
 
@@ -1110,13 +1001,12 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     for (let i = 0; i < 16; i++) {
       state = prepareTurnDeterministic(state);
 
-      // Take a narrative action
-      if (state.narrativeState.actionsRemaining > 0) {
+      // Take a calendar action
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
         state = gameReducer(state, {
-          type: 'NARRATIVE_ACTION',
+          type: 'CALENDAR_ACTION',
           actionType: 'community_meeting',
-          target: 'brightmoor',
-          topic: 'foodSovereignty',
+          tileId: 'brightmoor',
         });
       }
 
@@ -1143,13 +1033,12 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     for (let i = 0; i < 16; i++) {
       state = prepareTurnDeterministic(state);
 
-      // Take narrative actions to support trust
-      if (state.narrativeState.actionsRemaining > 0) {
+      // Take calendar actions to support trust
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
         state = gameReducer(state, {
-          type: 'NARRATIVE_ACTION',
+          type: 'CALENDAR_ACTION',
           actionType: 'community_meeting',
-          target: 'brightmoor',
-          topic: 'foodSovereignty',
+          tileId: 'brightmoor',
         });
       }
 
@@ -1177,13 +1066,11 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     for (let i = 0; i < 16; i++) {
       state = prepareTurnDeterministic(state);
 
-      // Take narrative actions for Will
-      if (state.narrativeState.actionsRemaining > 0) {
+      // Take calendar actions for engagement
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
         state = gameReducer(state, {
-          type: 'NARRATIVE_ACTION',
-          actionType: 'media_campaign',
-          target: 'general',
-          topic: 'foodSovereignty',
+          type: 'CALENDAR_ACTION',
+          actionType: 'quick_check_in',
         });
       }
 
@@ -1244,7 +1131,7 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
 
     // Turn 2: Lobby council
     state = prepareTurnDeterministic(state);
-    if (state.narrativeState.actionsRemaining > 0) {
+    if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
       state = gameReducer(state, {
         type: 'LOBBY_COUNCIL',
         memberId: 'victor_marek',
@@ -1254,28 +1141,26 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     }
     state = endTurnDeterministic(state);
 
-    // Turn 3: Narrative action
+    // Turn 3: Calendar action
     state = prepareTurnDeterministic(state);
-    if (state.narrativeState.actionsRemaining > 0) {
+    if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
       state = gameReducer(state, {
-        type: 'NARRATIVE_ACTION',
-        actionType: 'education_program',
-        target: 'brightmoor',
-        topic: 'foodSovereignty',
+        type: 'CALENDAR_ACTION',
+        actionType: 'deep_conversation',
+        tileId: 'brightmoor',
       });
     }
     state = endTurnDeterministic(state);
 
-    // Turns 4-14: Alternate between narrative actions and accepting proposals
+    // Turns 4-14: Calendar actions and accepting proposals
     for (let turn = 4; turn <= 14; turn++) {
       state = prepareTurnDeterministic(state);
 
-      if (state.narrativeState.actionsRemaining > 0) {
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
         state = gameReducer(state, {
-          type: 'NARRATIVE_ACTION',
+          type: 'CALENDAR_ACTION',
           actionType: 'community_meeting',
-          target: 'brightmoor',
-          topic: 'foodSovereignty',
+          tileId: 'brightmoor',
         });
       }
 
