@@ -359,44 +359,54 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
     allDeltas.push(...meshDeltas);
   }
 
-  // Step 8: Budget replenishment — monthly (÷3 from quarterly rates)
-  // Detroit's $1.46B general fund = ~$122M/month. At 1000:1 scale = $0.122M/turn.
-  // Revenue sources: income tax 30%, casinos 19%, state sharing 18%, property 12%.
-  // Higher trust → more state revenue sharing + grant access.
-  // Higher eco → less emergency spending (climate damage costs Detroit $100M-$1.8B per event).
-  // Source: Detroit FY2024 budget, bankruptcy recovery revenue structure.
+  // Step 8: Monthly budget cycle — real Detroit general fund cash flow
+  // Revenue: ~$1,576M/yr = ~$131M/month (property tax, income tax, state sharing, etc.)
+  // Expenses: ~$1,576M/yr = ~$131M/month (police, fire, transit, public works, etc.)
+  // Net: ~$0/month at baseline (12th consecutive balanced budget).
+  // Trust affects state revenue sharing & grant access. Eco affects emergency costs.
+  // Source: Detroit FY2025-26 adopted budget via detroitmi.gov
   {
     if (state.turn > 1) {
       const eco = current.meters.ecologicalHealth;
       const trust = current.meters.communityTrust;
-      // Base monthly revenue: $0.06M + small bonuses (max ~$0.10M/turn) (was 0.18 quarterly)
-      // Reduced: budget should feel tight, forcing real tradeoffs
-      const baseReplenishment = 0.06 + Math.min(trust, 60) * 0.00033 + eco * 0.000167;
+
+      const baseMonthlyRevenue = 1576 / 12; // ~$131M
+      const baseMonthlyExpenses = 1576 / 12; // ~$131M
+
+      // Trust bonus: higher trust → better state revenue sharing + federal grants
+      // At 100 trust, up to +$5M/mo extra; at 0 trust, -$3M/mo penalty
+      const trustRevenueBonus = (trust - 40) * 0.1;
+
+      // Eco penalty: low eco health → emergency costs (flooding, contamination response)
+      // Below 30% eco, costs escalate. Detroit spends $100M-$1.8B per major climate event.
+      const ecoEmergencyCost = eco < 30 ? (30 - eco) * 0.3 : 0;
+
+      const monthlyRevenue = baseMonthlyRevenue + trustRevenueBonus;
+      const monthlyExpenses = baseMonthlyExpenses + ecoEmergencyCost;
 
       allDeltas.push({
         meter: 'budget',
-        amount: baseReplenishment,
+        amount: monthlyRevenue,
         source: 'monthly_revenue',
       });
 
-      // Revenue from completed projects (monthly, with diminishing returns)
-      // Real economics: more co-ops = more competition for the same local market.
-      // First $0.033/turn is full value, after that 50% effectiveness. (was 0.10 quarterly)
-      let rawProjectRevenue = 0;
+      allDeltas.push({
+        meter: 'budget',
+        amount: -monthlyExpenses,
+        source: 'city_operations',
+      });
+
+      // Revenue from completed projects (scales with city budget)
+      let projectRevenue = 0;
       for (const tileId of Object.keys(current.tiles)) {
         const tile = current.tiles[tileId];
         for (const projId of tile.completedProjects) {
           const def = PROJECT_CATALOG[projId];
           if (def && def.effects.annualRevenue > 0) {
-            rawProjectRevenue += def.effects.annualRevenue / 12;
+            projectRevenue += def.effects.annualRevenue / 12;
           }
         }
       }
-
-      const revenueFloor = 0.033;
-      const projectRevenue = rawProjectRevenue <= revenueFloor
-        ? rawProjectRevenue
-        : revenueFloor + (rawProjectRevenue - revenueFloor) * 0.5;
 
       if (projectRevenue > 0) {
         allDeltas.push({
@@ -406,14 +416,14 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         });
       }
 
-      // Maintenance costs for completed projects (monthly — ÷3 from quarterly)
+      // Maintenance costs for active/completed projects
       let maintenanceDrain = 0;
       for (const tileId of Object.keys(current.tiles)) {
         const tile = current.tiles[tileId];
         for (const projId of tile.completedProjects) {
           const def = PROJECT_CATALOG[projId];
           if (def && def.maintenanceCost > 0) {
-            maintenanceDrain += def.maintenanceCost / 3;
+            maintenanceDrain += def.maintenanceCost / 12;
           }
         }
       }
@@ -426,12 +436,12 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         });
       }
 
-      // Policy budget bonuses (monthly — /12 of annual)
+      // Policy budget bonuses (monthly)
       let policyBudgetBonus = 0;
       for (const ap of current.activePolicies) {
         const policyDef = POLICY_CATALOG[ap.definitionId];
         if (policyDef && policyDef.effects.budgetBonus > 0) {
-          policyBudgetBonus += policyDef.effects.budgetBonus / 12; // monthly
+          policyBudgetBonus += policyDef.effects.budgetBonus / 12;
         }
       }
 
@@ -443,11 +453,12 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         });
       }
 
+      const netChange = monthlyRevenue - monthlyExpenses + projectRevenue - maintenanceDrain + policyBudgetBonus;
       current = {
         ...current,
         meters: {
           ...current.meters,
-          budget: current.meters.budget + baseReplenishment + projectRevenue - maintenanceDrain + policyBudgetBonus,
+          budget: current.meters.budget + netChange,
         },
       };
     }
