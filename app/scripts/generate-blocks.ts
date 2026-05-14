@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const DETROIT_BBOX = '42.25,-83.30,42.45,-83.00';
+const DETROIT_BBOX = '42.25,-83.30,42.45,-82.90';
 
 const OVERPASS_QUERY = `
 [out:json][timeout:120];
@@ -79,12 +79,18 @@ function assignNeighborhood(
   neighborhoods: turf.FeatureCollection
 ): string | null {
   const pt = turf.point(blockCentroid);
+  let bestId: string | null = null;
+  let bestArea = Infinity;
   for (const hood of neighborhoods.features) {
     if (turf.booleanPointInPolygon(pt, hood as any)) {
-      return (hood.properties as any).id;
+      const area = turf.area(hood);
+      if (area < bestArea) {
+        bestArea = area;
+        bestId = (hood.properties as any).id;
+      }
     }
   }
-  return null;
+  return bestId;
 }
 
 async function main() {
