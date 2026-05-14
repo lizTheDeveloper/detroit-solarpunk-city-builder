@@ -43,13 +43,14 @@ import ConversationPanel from '@/ui/panels/ConversationPanel';
 import CoalitionPanel from '@/ui/panels/CoalitionPanel';
 import LLMSettingsPanel from '@/ui/panels/LLMSettingsPanel';
 import HeadlinesPanel from '@/ui/panels/HeadlinesPanel';
+import BudgetPanel from '@/ui/panels/BudgetPanel';
 import { CalendarBar } from '@/ui/components/CalendarBar';
 import { CalendarGrid } from '@/ui/components/CalendarGrid';
 import MapPanel from '@/map/MapPanel';
 import BlockDetailPanel from '@/ui/panels/BlockDetailPanel';
 import { useHeadlines } from '@/hooks/useHeadlines';
 
-type ContentTab = 'map' | 'tiles' | 'calendar' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
+type ContentTab = 'map' | 'tiles' | 'calendar' | 'budget' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
 
 type RightPanel =
   | { kind: 'none' }
@@ -215,6 +216,7 @@ export default function App() {
     { id: 'map', label: 'Map' },
     { id: 'tiles', label: 'Tiles' },
     { id: 'calendar', label: `Calendar (${slotsRemaining}/${cal.discretionarySlots})` },
+    { id: 'budget', label: 'Budget' },
     { id: 'dashboard', label: 'Briefing' },
     { id: 'council', label: 'Council' },
     { id: 'characters', label: 'Leaders' },
@@ -352,6 +354,7 @@ export default function App() {
               </div>
             )}
 
+            {activeTab === 'budget' && <BudgetPanel />}
             {activeTab === 'dashboard' && <Dashboard />}
             {activeTab === 'council' && <CouncilPanel />}
             {activeTab === 'characters' && <CharacterPanel onTalk={(charId) => { trackConversationStart(charId, 'direct_engagement'); setConversation({ characterId: charId, interactionType: 'direct_engagement', message: '' }); }} />}

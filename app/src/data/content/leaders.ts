@@ -171,4 +171,17 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
   },
+  andy: {
+    id: 'andy',
+    name: 'Andy Didorosi',
+    neighborhood: 'Corktown/Citywide',
+    tileIds: ['corktown', 'midtown', 'eastern_market', 'southwest_detroit'],
+    backstory:
+      'Founded the Detroit Bus Company because DDOT wasn\'t cutting it — bought a school bus, painted it, and started running routes the city wouldn\'t. Then Detroit Threat Management, Detroit Cutting Company, a hundred other projects that all follow the same logic: if the system won\'t do it, do it yourself and make it look cool. Operates out of a Corktown warehouse full of buses, CNC machines, and plans for things that don\'t exist yet. The city keeps trying to regulate him and he keeps being right.',
+    priorities: ['maker_space', 'solar_grid', 'greenway'],
+    trust: 15,
+    advocacyPower: 5,
+    proposalCooldown: 0,
+    consecutiveDeferrals: 0,
+  },
 };

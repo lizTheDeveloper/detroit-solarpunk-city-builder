@@ -59,7 +59,7 @@ export default function HeadlinesPanel() {
           )}
 
           {error && headlines.length === 0 && (
-            <p className="headlines-status">Wire offline</p>
+            <p className="headlines-status">No feed configured</p>
           )}
 
           {headlines.length > 0 && (

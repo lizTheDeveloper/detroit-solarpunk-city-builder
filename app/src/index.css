@@ -2793,3 +2793,221 @@ body {
   line-height: 1.4;
   font-style: italic;
 }
+
+/* Budget Panel */
+.budget-panel {
+  max-width: 900px;
+}
+
+.budget-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.budget-summary__item {
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.budget-summary__item--highlight {
+  border-width: 2px;
+}
+
+.budget-summary__item--surplus {
+  border-color: var(--color-positive);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.budget-summary__item--deficit {
+  border-color: var(--color-negative);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.budget-summary__label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.budget-summary__value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.budget-summary__value--positive {
+  color: var(--color-positive);
+}
+
+.budget-summary__value--negative {
+  color: var(--color-negative);
+}
+
+.budget-projects-note {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.05);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 4px;
+}
+
+.budget-section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.budget-projection {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.budget-projection__bars {
+  display: flex;
+  gap: 4px;
+  height: 80px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.budget-projection__month {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.budget-projection__bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 2px;
+}
+
+.budget-projection__bar-fill {
+  width: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+  min-height: 1px;
+  transition: height 0.3s;
+}
+
+.budget-projection__bar-fill--danger {
+  background: var(--color-negative);
+}
+
+.budget-projection__label {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+.budget-projection__summary {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.budget-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.budget-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.budget-category {
+  margin-bottom: 4px;
+}
+
+.budget-category__header {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-left: 3px solid;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 4px;
+}
+
+.budget-category__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.budget-category__total {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.budget-line {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px 4px 16px;
+  font-size: 12px;
+  gap: 8px;
+}
+
+.budget-line__name {
+  flex: 1;
+  color: var(--text);
+}
+
+.budget-line__monthly {
+  font-family: var(--mono);
+  color: var(--text-dim);
+  font-size: 11px;
+  min-width: 70px;
+  text-align: right;
+}
+
+.budget-line__annual {
+  font-family: var(--mono);
+  color: var(--text);
+  font-size: 11px;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* Surplus/deficit indicator in TopBar */
+.top-bar-surplus {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.top-bar-surplus--positive {
+  color: var(--color-positive);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.top-bar-surplus--negative {
+  color: var(--color-negative);
+  background: rgba(248, 113, 113, 0.1);
+}
