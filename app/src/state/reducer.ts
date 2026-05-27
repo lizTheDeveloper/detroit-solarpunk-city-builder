@@ -16,6 +16,7 @@ import { applyRestDay } from '../systems/burnout';
 import { applyDelegationToCalendar, canUnlockTier, DELEGATION_TIERS } from '../systems/delegation';
 import { advanceContact, canAdvanceContact } from '../systems/strategic-contacts';
 import { applyMentorMeeting, isMentorAvailable } from '../data/characters/mentors';
+import { CAMPAIGN_CONFIG, PROJECT_CONFIG, PROPOSAL_CONFIG } from '../config/game-config';
 
 function countAllActiveProjects(state: GameState): number {
   let count = 0;
@@ -41,8 +42,7 @@ function handleStartProject(
     return state;
   }
 
-  // Cost calculation
-  const costMultiplier = action.mode === 'community-led' ? 1.3 : 1.0;
+  const costMultiplier = action.mode === 'community-led' ? PROJECT_CONFIG.communityLedCostMultiplier : 1.0;
   const cost = projectDef.baseCost * costMultiplier;
 
   // Budget check
@@ -116,7 +116,7 @@ function handleRespondProposal(
         cost: grossCost,
       };
 
-      const trustBonus = neg ? (leaderContrib > 0 ? 8 : 5) : 5;
+      const trustBonus = neg && leaderContrib > 0 ? PROPOSAL_CONFIG.acceptWithContributionTrustBonus : PROPOSAL_CONFIG.acceptTrustBonus;
       const tile = state.tiles[proposal.tileId];
 
       return {
@@ -183,15 +183,14 @@ function handleRespondProposal(
           ...state.leaders,
           [leader.id]: {
             ...leader,
-            trust: leader.trust + 2,
+            trust: leader.trust + PROPOSAL_CONFIG.modifyTrustBonus,
           },
         },
       };
     }
 
     case 'defer': {
-      // If this would be the 3rd consecutive deferral (already at 2), treat as reject
-      if (leader.consecutiveDeferrals >= 2) {
+      if (leader.consecutiveDeferrals >= PROPOSAL_CONFIG.maxConsecutiveDeferrals) {
         return {
           ...state,
           activeProposals: remainingProposals,
@@ -199,7 +198,7 @@ function handleRespondProposal(
             ...state.leaders,
             [leader.id]: {
               ...leader,
-              trust: leader.trust - 15,
+              trust: leader.trust + PROPOSAL_CONFIG.deferralOverflowTrustPenalty,
               consecutiveDeferrals: leader.consecutiveDeferrals + 1,
             },
           },
@@ -214,7 +213,7 @@ function handleRespondProposal(
           ...state.leaders,
           [leader.id]: {
             ...leader,
-            trust: leader.trust - 5,
+            trust: leader.trust + PROPOSAL_CONFIG.deferTrustPenalty,
             consecutiveDeferrals: leader.consecutiveDeferrals + 1,
           },
         },
@@ -229,7 +228,7 @@ function handleRespondProposal(
           ...state.leaders,
           [leader.id]: {
             ...leader,
-            trust: leader.trust - 15,
+            trust: leader.trust + PROPOSAL_CONFIG.rejectTrustPenalty,
           },
         },
       };
@@ -296,31 +295,17 @@ function handleCampaignAction(
   state: GameState,
   action: Extract<GameAction, { type: 'CAMPAIGN_ACTION' }>,
 ): GameState {
-  if (state.turn !== 15) return state;
+  if (state.turn !== CAMPAIGN_CONFIG.electionTurn) return state;
 
-  let willDelta = 0;
-  let trustDelta = 0;
-
-  switch (action.actionType) {
-    case 'rally':
-      willDelta = 3;
-      trustDelta = 1;
-      break;
-    case 'promise':
-      willDelta = 2;
-      break;
-    case 'coalition_building':
-      trustDelta = 2;
-      willDelta = 1;
-      break;
-  }
+  const config = CAMPAIGN_CONFIG[action.actionType];
+  if (!config) return state;
 
   return {
     ...state,
     meters: {
       ...state.meters,
-      politicalWill: state.meters.politicalWill + willDelta,
-      communityTrust: state.meters.communityTrust + trustDelta,
+      politicalWill: state.meters.politicalWill + config.willDelta,
+      communityTrust: state.meters.communityTrust + config.trustDelta,
     },
   };
 }
