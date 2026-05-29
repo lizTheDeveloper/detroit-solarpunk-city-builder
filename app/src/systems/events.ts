@@ -1,11 +1,8 @@
 import type {
   GameState,
   GameEvent,
-  EventChoice,
-  EventCategory,
   MeterDelta,
   Antagonist,
-  Season,
 } from '../state/types';
 import { contentRegistry } from '../config/content-registry';
 import type { EventDef } from '../config/content-registry';

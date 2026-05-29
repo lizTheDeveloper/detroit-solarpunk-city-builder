@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { contentRegistry } from './content-registry';
 import type { EventDef } from './content-registry';
 
