@@ -36,6 +36,7 @@ import { processConsequences } from './delayed-consequences';
 import { checkTransition, incrementInactionTimer, resetInactionTimer, applyTransition, checkPreventionConditions } from './arc-progression';
 import { arcTemplateMap } from '../data/arcs';
 import { PROJECT_CONDITION_MAP } from '../data/project-conditions';
+import { transitionMonth } from './calendar-slots';
 
 // ---------------------------------------------------------------------------
 // Month/Season helpers
@@ -555,20 +556,16 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 // ---------------------------------------------------------------------------
 
 export function prepareTurn(state: GameState, rng: () => number = Math.random): GameState {
-  // Reset narrative actions for the new turn
   let current = resetNarrativeActions(state);
+  current = { ...current, calendarState: transitionMonth(current.calendarState, current.calendarState.crisisSlotTax) };
 
-  // Generate events for the turn
   const newEvents = generateEvents(current, rng);
   current = {
     ...current,
     eventQueue: [...current.eventQueue, ...newEvents],
   };
 
-  // Generate proposals from eligible leaders
   const newProposals = generateProposals(current);
-
-  // Move pending proposals to active and merge with newly generated
   const activeProposals = [...current.pendingProposals, ...newProposals];
 
   return {

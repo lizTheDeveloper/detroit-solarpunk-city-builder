@@ -17,6 +17,7 @@ import { applyDelegationToCalendar, canUnlockTier, DELEGATION_TIERS } from '../s
 import { advanceContact, canAdvanceContact } from '../systems/strategic-contacts';
 import { applyMentorMeeting, isMentorAvailable } from '../data/characters/mentors';
 import { CAMPAIGN_CONFIG, PROJECT_CONFIG, PROPOSAL_CONFIG } from '../config/game-config';
+import { applyNarrativeAction } from '../systems/narrative';
 
 function countAllActiveProjects(state: GameState): number {
   let count = 0;
@@ -264,19 +265,21 @@ function handleLobbyCouncil(
   state: GameState,
   action: Extract<GameAction, { type: 'LOBBY_COUNCIL' }>,
 ): GameState {
-  if (!canAffordAction(state.calendarState, 'quick_check_in')) return state;
+  if (state.narrativeState.actionsRemaining <= 0) return state;
 
   const member = state.councilMembers[action.memberId];
   if (!member) return state;
   const bonus = calculateLobbyingBonus(action.argumentAlignment);
-  const newCalendar = spendSlots(state.calendarState, 'quick_check_in', action.memberId);
 
   return {
     ...state,
-    calendarState: newCalendar,
     councilMembers: {
       ...state.councilMembers,
       [action.memberId]: { ...member, disposition: member.disposition + bonus },
+    },
+    narrativeState: {
+      ...state.narrativeState,
+      actionsRemaining: state.narrativeState.actionsRemaining - 1,
     },
   };
 }
@@ -515,6 +518,14 @@ export function gameReducer(
           viewState: action.viewState,
         },
       };
+    case 'NARRATIVE_ACTION': {
+      if (state.narrativeState.actionsRemaining <= 0) return state;
+      try {
+        return applyNarrativeAction(state, action.actionType, action.topic, action.target).state;
+      } catch {
+        return state;
+      }
+    }
     case 'END_TURN':
       return handleEndTurn(state);
     case 'PREPARE_TURN':

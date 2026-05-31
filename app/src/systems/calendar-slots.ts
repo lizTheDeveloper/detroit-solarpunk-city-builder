@@ -30,6 +30,7 @@ export function initCalendarState(): CalendarState {
     delegationTier: 0,
     crisisSlotTax: 0,
     neighborhoodTimeAllocation: {},
+    consecutiveRecoveryMonths: 0,
   };
 }
 

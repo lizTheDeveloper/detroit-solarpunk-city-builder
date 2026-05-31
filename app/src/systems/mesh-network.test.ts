@@ -59,7 +59,7 @@ function makeState(communityOwnedCount: number): GameState {
     activePolicies: [],
     eventQueue: [],
     eventCooldowns: {},
-    narrativeState: { opinionMomentum: 0, framingStrength: 0, counterNarrativeActive: false, actionsThisTurn: 0, maxActionsPerTurn: 2 },
+    narrativeState: { actionsRemaining: 2, actionsPerTurn: 2, consecutiveTurns: {}, counterNarrativeCooldowns: {} },
     publicOpinion: { approval: 50, mediaFrame: 'neutral', activeCampaigns: [] },
     turnHistory: [],
     turnSummary: null,

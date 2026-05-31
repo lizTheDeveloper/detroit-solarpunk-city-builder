@@ -28,7 +28,7 @@ import {
   getEffectivenessModifier,
   applyRestDay,
 } from '../systems/burnout';
-import { calculateYield, BASE_MULTIPLIERS } from '../systems/yields';
+import { calculateYield, BASE_MULTIPLIERS, type NpcType, type RelationshipQuality } from '../systems/yields';
 import {
   applyMonthlyDecay,
 } from '../systems/relationship-decay';
@@ -46,9 +46,9 @@ import type { CalendarState, BurnoutState } from '../state/types';
 
 interface NpcState {
   id: string;
-  type: string;         // community_leader, council_member, activist, funder, mentor
+  type: NpcType;
   trust: number;
-  depthLevel: string;   // neutral, supporter, trusted, champion, partner
+  depthLevel: RelationshipQuality;
   neighborhood: string; // tileId
 }
 
@@ -96,11 +96,11 @@ function makeNpcs(): NpcState[] {
     'brightmoor', 'corktown', 'mexicantown', 'southwest',
     'grandmont', 'islandview', 'banglatown', 'northend',
   ];
-  const types = [
+  const types: NpcType[] = [
     'community_leader', 'council_member', 'activist', 'funder',
     'community_leader', 'activist', 'mentor', 'community_leader',
   ];
-  return neighborhoods.map((n, i) => ({
+  return neighborhoods.map((n, i): NpcState => ({
     id: `npc_${n}`,
     type: types[i],
     trust: 30, // start at activeNetwork tier
@@ -110,7 +110,7 @@ function makeNpcs(): NpcState[] {
 }
 
 /** Get trust depth level from trust score */
-function depthFromTrust(trust: number): string {
+function depthFromTrust(trust: number): RelationshipQuality {
   if (trust >= 90) return 'partner';
   if (trust >= 70) return 'champion';
   if (trust >= 50) return 'trusted';
