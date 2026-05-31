@@ -5,6 +5,7 @@ import { generateProposals } from './proposals';
 import { PROJECT_CATALOG } from '../data/content/project-catalog';
 import { POLICY_CATALOG } from '../data/content/policy-catalog';
 import { applyPolicyDrain } from './policies';
+import { CLIMATE_CONFIG, BUDGET_CONFIG, PROJECT_CONFIG } from '../config/game-config';
 import {
   applyOpinionDrift,
   generateCounterNarrative,
@@ -35,6 +36,7 @@ import { processConsequences } from './delayed-consequences';
 import { checkTransition, incrementInactionTimer, resetInactionTimer, applyTransition, checkPreventionConditions } from './arc-progression';
 import { arcTemplateMap } from '../data/arcs';
 import { PROJECT_CONDITION_MAP } from '../data/project-conditions';
+import { transitionMonth } from './calendar-slots';
 
 // ---------------------------------------------------------------------------
 // Month/Season helpers
@@ -57,15 +59,10 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 
   let current: GameState = state;
 
-  // Step 1: Climate tick (monthly — ÷3 from quarterly rate)
-  // Real data: +3F since 1900 in Michigan, +3-6F projected by 2050.
-  // 2-inch+ extreme events up 128% over 50 years. Game spans ~16 years (192 monthly turns).
-  // Pressure should go from 30 → ~65 over a full game (35 points over 192 turns = ~0.18/turn base).
-  // Accelerates with year to model exponential warming trend.
-  // Source: GLISA climate maps, Michigan State Climate Summary 2022.
+  // Step 1: Climate tick — pressure rises each turn, accelerating with year
   {
-    const climateIncrease = 0.183 * (1 + (current.year - 1) * 0.05);
-    const newClimatePressure = Math.min(100, current.meters.climatePressure + climateIncrease);
+    const climateIncrease = CLIMATE_CONFIG.baseIncreasePerTurn * (1 + (current.year - 1) * CLIMATE_CONFIG.yearAccelerationFactor);
+    const newClimatePressure = Math.min(CLIMATE_CONFIG.maxPressure, current.meters.climatePressure + climateIncrease);
     allDeltas.push({
       meter: 'climatePressure',
       amount: climateIncrease,
@@ -332,19 +329,14 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
     allDeltas.push(...meshDeltas);
   }
 
-  // Step 8: Budget replenishment — monthly (÷3 from quarterly rates)
-  // Detroit's $1.46B general fund = ~$122M/month. At 1000:1 scale = $0.122M/turn.
-  // Revenue sources: income tax 30%, casinos 19%, state sharing 18%, property 12%.
-  // Higher trust → more state revenue sharing + grant access.
-  // Higher eco → less emergency spending (climate damage costs Detroit $100M-$1.8B per event).
-  // Source: Detroit FY2024 budget, bankruptcy recovery revenue structure.
+  // Step 8: Budget replenishment — trust and eco improve revenue
   {
     if (state.turn > 1) {
       const eco = current.meters.ecologicalHealth;
       const trust = current.meters.communityTrust;
-      // Base monthly revenue: $0.06M + small bonuses (max ~$0.10M/turn) (was 0.18 quarterly)
-      // Reduced: budget should feel tight, forcing real tradeoffs
-      const baseReplenishment = 0.06 + Math.min(trust, 60) * 0.00033 + eco * 0.000167;
+      const baseReplenishment = BUDGET_CONFIG.baseMonthlyRevenue
+        + Math.min(trust, BUDGET_CONFIG.maxTrustForRevenue) * BUDGET_CONFIG.trustRevenueCoefficient
+        + eco * BUDGET_CONFIG.ecoRevenueCoefficient;
 
       allDeltas.push({
         meter: 'budget',
@@ -352,24 +344,20 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         source: 'monthly_revenue',
       });
 
-      // Revenue from completed projects (monthly, with diminishing returns)
-      // Real economics: more co-ops = more competition for the same local market.
-      // First $0.033/turn is full value, after that 50% effectiveness. (was 0.10 quarterly)
       let rawProjectRevenue = 0;
       for (const tileId of Object.keys(current.tiles)) {
         const tile = current.tiles[tileId];
         for (const projId of tile.completedProjects) {
           const def = PROJECT_CATALOG[projId];
           if (def && def.effects.annualRevenue > 0) {
-            rawProjectRevenue += def.effects.annualRevenue / 12;
+            rawProjectRevenue += def.effects.annualRevenue / PROJECT_CONFIG.annualRevenueDivisor;
           }
         }
       }
 
-      const revenueFloor = 0.033;
-      const projectRevenue = rawProjectRevenue <= revenueFloor
+      const projectRevenue = rawProjectRevenue <= BUDGET_CONFIG.revenueFloor
         ? rawProjectRevenue
-        : revenueFloor + (rawProjectRevenue - revenueFloor) * 0.5;
+        : BUDGET_CONFIG.revenueFloor + (rawProjectRevenue - BUDGET_CONFIG.revenueFloor) * BUDGET_CONFIG.diminishingReturnsFactor;
 
       if (projectRevenue > 0) {
         allDeltas.push({
@@ -379,14 +367,13 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         });
       }
 
-      // Maintenance costs for completed projects (monthly — ÷3 from quarterly)
       let maintenanceDrain = 0;
       for (const tileId of Object.keys(current.tiles)) {
         const tile = current.tiles[tileId];
         for (const projId of tile.completedProjects) {
           const def = PROJECT_CATALOG[projId];
           if (def && def.maintenanceCost > 0) {
-            maintenanceDrain += def.maintenanceCost / 3;
+            maintenanceDrain += def.maintenanceCost / PROJECT_CONFIG.maintenanceDivisor;
           }
         }
       }
@@ -399,12 +386,11 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
         });
       }
 
-      // Policy budget bonuses (monthly — /12 of annual)
       let policyBudgetBonus = 0;
       for (const ap of current.activePolicies) {
         const policyDef = POLICY_CATALOG[ap.definitionId];
         if (policyDef && policyDef.effects.budgetBonus > 0) {
-          policyBudgetBonus += policyDef.effects.budgetBonus / 12; // monthly
+          policyBudgetBonus += policyDef.effects.budgetBonus / PROJECT_CONFIG.annualRevenueDivisor;
         }
       }
 
@@ -570,20 +556,16 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
 // ---------------------------------------------------------------------------
 
 export function prepareTurn(state: GameState, rng: () => number = Math.random): GameState {
-  // Reset narrative actions for the new turn
   let current = resetNarrativeActions(state);
+  current = { ...current, calendarState: transitionMonth(current.calendarState, current.calendarState.crisisSlotTax) };
 
-  // Generate events for the turn
   const newEvents = generateEvents(current, rng);
   current = {
     ...current,
     eventQueue: [...current.eventQueue, ...newEvents],
   };
 
-  // Generate proposals from eligible leaders
   const newProposals = generateProposals(current);
-
-  // Move pending proposals to active and merge with newly generated
   const activeProposals = [...current.pendingProposals, ...newProposals];
 
   return {

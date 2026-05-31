@@ -114,9 +114,17 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       delegationTier: 0,
       crisisSlotTax: 0,
       neighborhoodTimeAllocation: {},
+      consecutiveRecoveryMonths: 0,
     },
     strategicContacts: [],
     mentors: [],
+    narrativeState: {
+      actionsRemaining: 2,
+      actionsPerTurn: 2,
+      consecutiveTurns: {},
+      counterNarrativeCooldowns: {},
+    },
+    mapState: { selectedBlockId: null, viewState: { longitude: -83.0458, latitude: 42.3314, zoom: 12 } },
     ...overrides,
   } as GameState;
 }

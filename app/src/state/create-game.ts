@@ -1,5 +1,5 @@
 import type { GameState, Tile, CommunityLeader, PublicOpinion, TutorialState, AdvisorState } from './types';
-import { createInitialCalendarState } from './migration';
+import { createInitialCalendarState, createInitialNarrativeState } from './migration';
 import type { ActiveArc, SerializedDependencyWeb } from './crisis-types';
 import { COUNCIL_MEMBERS } from '../data/content/council-members';
 import { LEADER_DEFINITIONS } from '../data/content/leaders';
@@ -45,7 +45,8 @@ function makeLeader(
 
 export function createNewGame(): GameState {
   const communityTrust = 50;
-  const startMonth = new Date().getMonth() + 1; // 1-12
+  // Games always start in spring (April) so seasonal mechanics align with the awakening narrative.
+  const startMonth = 4;
 
   return {
     version: 2,
@@ -53,7 +54,7 @@ export function createNewGame(): GameState {
     month: startMonth,
     season: getSeason(startMonth),
     year: 1,
-    phase: 'player-actions',
+    phase: 'events',
     stage: 'awakening',
     path: null,
     // Starting meters calibrated to Detroit 2024 baseline.
@@ -240,6 +241,8 @@ export function createNewGame(): GameState {
     } as AdvisorState,
     // Calendar Slot System
     ...createInitialCalendarState(1),
+    // Narrative system
+    narrativeState: createInitialNarrativeState(communityTrust),
     // Map integration
     mapState: {
       selectedBlockId: null,

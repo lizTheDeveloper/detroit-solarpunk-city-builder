@@ -1,28 +1,18 @@
 import type {
   GameState,
   GameEvent,
-  EventChoice,
-  EventCategory,
   MeterDelta,
   Antagonist,
-  Season,
 } from '../state/types';
+import { contentRegistry } from '../config/content-registry';
+import type { EventDef } from '../config/content-registry';
+import { EVENT_CONFIG, CATEGORY_PRIORITY } from '../config/game-config';
+
+export type { EventDef };
 
 // ---------------------------------------------------------------------------
 // Event definitions: base probabilities, conditions, and choice templates
 // ---------------------------------------------------------------------------
-
-interface EventDef {
-  type: string;
-  category: EventCategory;
-  title: string;
-  description: string;
-  baseProbability: (season: Season) => number;
-  condition: (state: GameState) => boolean;
-  cooldownTurns: number;
-  needsTargetTile: boolean;
-  choices: (state: GameState) => EventChoice[];
-}
 
 const CLIMATE_EVENTS: EventDef[] = [
   {
@@ -518,17 +508,12 @@ const ALL_EVENT_DEFS: EventDef[] = [
   ...COMMUNITY_EVENTS,
 ];
 
+// Register built-in events with the content registry
+contentRegistry.registerEvents(ALL_EVENT_DEFS);
+
 // ---------------------------------------------------------------------------
 // Priority
 // ---------------------------------------------------------------------------
-
-const CATEGORY_PRIORITY: Record<EventCategory, number> = {
-  crisis: 4,
-  climate: 3,
-  antagonist: 3,
-  political: 2,
-  community: 1,
-};
 
 export function getEventPriority(event: GameEvent): number {
   return CATEGORY_PRIORITY[event.category] ?? 0;
@@ -541,28 +526,22 @@ export function getEventPriority(event: GameEvent): number {
 export function generateEvents(state: GameState, rng: () => number): GameEvent[] {
   const candidates: GameEvent[] = [];
   const tileIds = Object.keys(state.tiles);
+  const registeredDefs = contentRegistry.getEventDefs();
 
-  for (const def of ALL_EVENT_DEFS) {
-    // Check cooldown
+  for (const def of registeredDefs) {
     if ((state.eventCooldowns[def.type] ?? 0) > 0) continue;
-
-    // Check condition
     if (!def.condition(state)) continue;
 
-    // Compute probability
     let prob = def.baseProbability(state.season);
     if (prob <= 0) continue;
 
-    // Climate probability modifier
     if (def.category === 'climate') {
-      prob = prob * (1 + state.meters.climatePressure * 0.01);
+      prob = prob * (1 + state.meters.climatePressure * EVENT_CONFIG.climateProbabilityModifier);
     }
 
-    // Roll
     const roll = rng();
     if (roll >= prob) continue;
 
-    // Pick a target tile if needed
     let targetTileId: string | null = null;
     if (def.needsTargetTile && tileIds.length > 0) {
       const idx = Math.floor(rng() * tileIds.length);
@@ -585,24 +564,22 @@ export function generateEvents(state: GameState, rng: () => number): GameEvent[]
     candidates.push(event);
   }
 
-  // Sort by priority (highest first)
   candidates.sort((a, b) => getEventPriority(b) - getEventPriority(a));
 
-  // Apply per-turn caps
   const result: GameEvent[] = [];
   let crisisCount = 0;
   let climateCount = 0;
 
   for (const event of candidates) {
-    if (result.length >= 3) break;
+    if (result.length >= EVENT_CONFIG.maxEventsPerTurn) break;
 
     if (event.category === 'crisis') {
-      if (crisisCount >= 1) continue;
+      if (crisisCount >= EVENT_CONFIG.maxCrisisPerTurn) continue;
       crisisCount++;
     }
 
     if (event.category === 'climate') {
-      if (climateCount >= 1) continue;
+      if (climateCount >= EVENT_CONFIG.maxClimatePerTurn) continue;
       climateCount++;
     }
 
@@ -686,6 +663,32 @@ export function updateEventCooldowns(
 // checkAntagonistActivation
 // ---------------------------------------------------------------------------
 
+// Built-in antagonist activation rules — register with content registry
+const BUILTIN_ANTAGONIST_RULES: Array<{ id: string; shouldActivate: (state: GameState) => boolean }> = [
+  {
+    id: 'sterling_cross',
+    shouldActivate: (state) => Object.values(state.tiles).some(
+      (tile) => tile.terrain === 'vacant' && tile.completedProjects.length > 0,
+    ),
+  },
+  {
+    id: 'senator_voss',
+    shouldActivate: (state) => state.meters.communityTrust > 55,
+  },
+  {
+    id: 'marcus_webb',
+    shouldActivate: (state) => state.turn >= 1,
+  },
+  {
+    id: 'amanda_chen',
+    shouldActivate: (state) => state.stage === 'transition',
+  },
+];
+
+for (const rule of BUILTIN_ANTAGONIST_RULES) {
+  contentRegistry.registerAntagonistRule(rule);
+}
+
 export function checkAntagonistActivation(
   state: GameState,
 ): Record<string, Antagonist> {
@@ -697,32 +700,8 @@ export function checkAntagonistActivation(
       continue;
     }
 
-    let shouldActivate = false;
-
-    switch (id) {
-      case 'sterling_cross': {
-        // Activates when any tile with 'vacant' terrain has a completed project
-        shouldActivate = Object.values(state.tiles).some(
-          (tile) => tile.terrain === 'vacant' && tile.completedProjects.length > 0,
-        );
-        break;
-      }
-      case 'senator_voss': {
-        shouldActivate = state.meters.communityTrust > 55;
-        break;
-      }
-      case 'marcus_webb': {
-        // Should already be active from turn 1
-        shouldActivate = state.turn >= 1;
-        break;
-      }
-      case 'amanda_chen': {
-        shouldActivate = state.stage === 'transition';
-        break;
-      }
-      default:
-        break;
-    }
+    const rule = contentRegistry.getAntagonistRule(id);
+    const shouldActivate = rule ? rule.shouldActivate(state) : false;
 
     updated[id] = { ...ant, active: shouldActivate ? true : ant.active };
   }
@@ -768,189 +747,105 @@ export function escalateAntagonists(
   return { antagonists: updatedAntagonists, events };
 }
 
-function createAntagonistEvent(
-  id: string,
-  _ant: Antagonist,
-  state: GameState,
-): GameEvent | null {
-  const tileIds = Object.keys(state.tiles);
-  const vacantTiles = Object.values(state.tiles)
-    .filter((t) => t.terrain === 'vacant')
-    .map((t) => t.id);
-
-  switch (id) {
-    case 'sterling_cross':
+// Built-in antagonist event factories — register with content registry
+const BUILTIN_ANTAGONIST_EVENT_FACTORIES = [
+  {
+    id: 'sterling_cross',
+    createEvent: (_ant: Antagonist, state: GameState): GameEvent | null => {
+      const tileIds = Object.keys(state.tiles);
+      const vacantTiles = Object.values(state.tiles)
+        .filter((t) => t.terrain === 'vacant')
+        .map((t) => t.id);
       return {
-        id: `evt-antag-${id}-${state.turn}`,
-        type: `${id}_land_acquisition`,
-        category: 'antagonist',
+        id: `evt-antag-sterling_cross-${state.turn}`,
+        type: 'sterling_cross_land_acquisition',
+        category: 'antagonist' as const,
         title: 'Sterling Cross: Land Acquisition',
-        description:
-          'Sterling Cross is attempting to acquire vacant land for commercial development.',
+        description: 'Sterling Cross is attempting to acquire vacant land for commercial development.',
         turnGenerated: state.turn,
         cooldownTurns: 3,
         targetTileId: vacantTiles.length > 0 ? vacantTiles[0] : (tileIds[0] ?? null),
         targetCharacterId: null,
         choices: [
           {
-            id: 'block',
-            label: 'Block Acquisition',
+            id: 'block', label: 'Block Acquisition',
             description: 'Use political capital to block the purchase',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -5, source: 'sterling_cross_block' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
+            effects: { meterDeltas: [{ meter: 'politicalWill', amount: -5, source: 'sterling_cross_block' }], relationshipChanges: [], other: [] },
             requirements: { minWill: 20, minBudget: null, minTrust: null },
           },
           {
-            id: 'negotiate',
-            label: 'Negotiate Terms',
+            id: 'negotiate', label: 'Negotiate Terms',
             description: 'Try to get community benefit agreement',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -2, source: 'sterling_cross_negotiate' },
-              ],
-              relationshipChanges: [],
-              other: ['+3% gentrification on target'],
-            },
+            effects: { meterDeltas: [{ meter: 'politicalWill', amount: -2, source: 'sterling_cross_negotiate' }], relationshipChanges: [], other: ['+3% gentrification on target'] },
             requirements: null,
           },
         ],
       };
+    },
+  },
+  {
+    id: 'senator_voss',
+    createEvent: (_ant: Antagonist, state: GameState): GameEvent | null => ({
+      id: `evt-antag-senator_voss-${state.turn}`,
+      type: 'senator_voss_interference',
+      category: 'antagonist' as const,
+      title: 'Senator Voss: Political Interference',
+      description: 'Senator Voss is using political influence to undermine community initiatives.',
+      turnGenerated: state.turn, cooldownTurns: 3, targetTileId: null, targetCharacterId: null,
+      choices: [
+        { id: 'counter', label: 'Counter Campaign', description: 'Spend political will to counter the narrative',
+          effects: { meterDeltas: [{ meter: 'politicalWill', amount: -4, source: 'senator_voss_counter' }], relationshipChanges: [], other: [] }, requirements: null },
+        { id: 'ignore', label: 'Ignore', description: 'Focus on local work instead',
+          effects: { meterDeltas: [{ meter: 'politicalWill', amount: -2, source: 'senator_voss_ignore' }], relationshipChanges: [], other: [] }, requirements: null },
+      ],
+    }),
+  },
+  {
+    id: 'marcus_webb',
+    createEvent: (_ant: Antagonist, state: GameState): GameEvent | null => ({
+      id: `evt-antag-marcus_webb-${state.turn}`,
+      type: 'marcus_webb_counter_narrative',
+      category: 'antagonist' as const,
+      title: 'Marcus Webb: Counter-Narrative',
+      description: 'Marcus Webb is spreading a counter-narrative undermining community trust.',
+      turnGenerated: state.turn, cooldownTurns: 3, targetTileId: null, targetCharacterId: null,
+      choices: [
+        { id: 'rebut', label: 'Public Rebuttal', description: 'Address the narrative head-on',
+          effects: { meterDeltas: [{ meter: 'politicalWill', amount: -3, source: 'marcus_webb_rebut' }, { meter: 'communityTrust', amount: -1, source: 'marcus_webb_rebut' }], relationshipChanges: [], other: [] }, requirements: null },
+        { id: 'community_response', label: 'Community Response', description: 'Let community voices counter the narrative',
+          effects: { meterDeltas: [{ meter: 'politicalWill', amount: -1, source: 'marcus_webb_community' }, { meter: 'communityTrust', amount: -2, source: 'marcus_webb_community' }], relationshipChanges: [], other: [] }, requirements: null },
+      ],
+    }),
+  },
+  {
+    id: 'amanda_chen',
+    createEvent: (_ant: Antagonist, state: GameState): GameEvent | null => ({
+      id: `evt-antag-amanda_chen-${state.turn}`,
+      type: 'amanda_chen_ppp_offer',
+      category: 'antagonist' as const,
+      title: 'Amanda Chen: Public-Private Partnership',
+      description: 'Amanda Chen offers a public-private partnership that could bring short-term funding.',
+      turnGenerated: state.turn, cooldownTurns: 3, targetTileId: null, targetCharacterId: null,
+      choices: [
+        { id: 'accept', label: 'Accept Partnership', description: 'Take the funding, accept the strings',
+          effects: { meterDeltas: [{ meter: 'budget', amount: 0.5, source: 'amanda_chen_accept' }, { meter: 'communityTrust', amount: -3, source: 'amanda_chen_accept' }], relationshipChanges: [], other: [] }, requirements: null },
+        { id: 'decline', label: 'Decline Partnership', description: 'Maintain community independence',
+          effects: { meterDeltas: [{ meter: 'communityTrust', amount: 1, source: 'amanda_chen_decline' }], relationshipChanges: [], other: [] }, requirements: null },
+      ],
+    }),
+  },
+];
 
-    case 'senator_voss':
-      return {
-        id: `evt-antag-${id}-${state.turn}`,
-        type: `${id}_interference`,
-        category: 'antagonist',
-        title: 'Senator Voss: Political Interference',
-        description:
-          'Senator Voss is using political influence to undermine community initiatives.',
-        turnGenerated: state.turn,
-        cooldownTurns: 3,
-        targetTileId: null,
-        targetCharacterId: null,
-        choices: [
-          {
-            id: 'counter',
-            label: 'Counter Campaign',
-            description: 'Spend political will to counter the narrative',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -4, source: 'senator_voss_counter' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-          {
-            id: 'ignore',
-            label: 'Ignore',
-            description: 'Focus on local work instead',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -2, source: 'senator_voss_ignore' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-        ],
-      };
+for (const factory of BUILTIN_ANTAGONIST_EVENT_FACTORIES) {
+  contentRegistry.registerAntagonistEventFactory(factory);
+}
 
-    case 'marcus_webb':
-      return {
-        id: `evt-antag-${id}-${state.turn}`,
-        type: `${id}_counter_narrative`,
-        category: 'antagonist',
-        title: 'Marcus Webb: Counter-Narrative',
-        description:
-          'Marcus Webb is spreading a counter-narrative undermining community trust.',
-        turnGenerated: state.turn,
-        cooldownTurns: 3,
-        targetTileId: null,
-        targetCharacterId: null,
-        choices: [
-          {
-            id: 'rebut',
-            label: 'Public Rebuttal',
-            description: 'Address the narrative head-on',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -3, source: 'marcus_webb_rebut' },
-                { meter: 'communityTrust', amount: -1, source: 'marcus_webb_rebut' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-          {
-            id: 'community_response',
-            label: 'Community Response',
-            description: 'Let community voices counter the narrative',
-            effects: {
-              meterDeltas: [
-                { meter: 'politicalWill', amount: -1, source: 'marcus_webb_community' },
-                { meter: 'communityTrust', amount: -2, source: 'marcus_webb_community' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-        ],
-      };
-
-    case 'amanda_chen':
-      return {
-        id: `evt-antag-${id}-${state.turn}`,
-        type: `${id}_ppp_offer`,
-        category: 'antagonist',
-        title: 'Amanda Chen: Public-Private Partnership',
-        description:
-          'Amanda Chen offers a public-private partnership that could bring short-term funding.',
-        turnGenerated: state.turn,
-        cooldownTurns: 3,
-        targetTileId: null,
-        targetCharacterId: null,
-        choices: [
-          {
-            id: 'accept',
-            label: 'Accept Partnership',
-            description: 'Take the funding, accept the strings',
-            effects: {
-              meterDeltas: [
-                { meter: 'budget', amount: 0.5, source: 'amanda_chen_accept' },
-                { meter: 'communityTrust', amount: -3, source: 'amanda_chen_accept' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-          {
-            id: 'decline',
-            label: 'Decline Partnership',
-            description: 'Maintain community independence',
-            effects: {
-              meterDeltas: [
-                { meter: 'communityTrust', amount: 1, source: 'amanda_chen_decline' },
-              ],
-              relationshipChanges: [],
-              other: [],
-            },
-            requirements: null,
-          },
-        ],
-      };
-
-    default:
-      return null;
-  }
+function createAntagonistEvent(
+  id: string,
+  ant: Antagonist,
+  state: GameState,
+): GameEvent | null {
+  const factory = contentRegistry.getAntagonistEventFactory(id);
+  if (factory) return factory.createEvent(ant, state);
+  return null;
 }

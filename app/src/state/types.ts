@@ -63,6 +63,22 @@ export type TurnPhase = 'events' | 'player-actions' | 'resolve';
 
 export type EventCategory = 'climate' | 'political' | 'community' | 'crisis' | 'antagonist';
 
+export type NarrativeActionType =
+  | 'community_meeting'
+  | 'media_campaign'
+  | 'education_program'
+  | 'cultural_event'
+  | 'demonstration'
+  | 'direct_engagement'
+  | 'lobbying';
+
+export interface NarrativeState {
+  actionsRemaining: number;
+  actionsPerTurn: number;
+  consecutiveTurns: Record<string, number>;
+  counterNarrativeCooldowns: Record<string, number>;
+}
+
 export type RelationshipLevel =
   | 'partner' | 'champion' | 'advocate' | 'neutral'
   | 'disillusioned' | 'opposition' | 'hostile';
@@ -243,6 +259,7 @@ export interface CalendarState {
   delegationTier: number;       // 0-4
   crisisSlotTax: number;        // sum of active arc taxes
   neighborhoodTimeAllocation: Record<string, number[]>; // tileId → slots per month (48 entries)
+  consecutiveRecoveryMonths: number;
 }
 
 export type StrategicContactStage = 'undiscovered' | 'discovery' | 'introduction' | 'cooldown' | 'follow_up' | 'established' | 'deepening' | 'closed';
@@ -426,6 +443,8 @@ export interface GameState {
   calendarState: CalendarState;
   strategicContacts: StrategicContact[];
   mentors: MentorCharacter[];
+  // Narrative system
+  narrativeState: NarrativeState;
   // Map integration
   mapState: {
     selectedBlockId: string | null;
@@ -453,7 +472,8 @@ export type GameAction =
   | { type: 'STRATEGIC_CONTACT_ADVANCE'; contactId: string }
   | { type: 'MENTOR_MEETING'; mentorId: string }
   | { type: 'MAP_SELECT_BLOCK'; blockId: string; neighborhoodId: string }
-  | { type: 'MAP_SET_VIEW'; viewState: { longitude: number; latitude: number; zoom: number } };
+  | { type: 'MAP_SET_VIEW'; viewState: { longitude: number; latitude: number; zoom: number } }
+  | { type: 'NARRATIVE_ACTION'; actionType: NarrativeActionType; topic: string; target: string };
 
 // Beyond the Map types
 export type CityRelationship = 'neutral' | 'cooperative' | 'allied';

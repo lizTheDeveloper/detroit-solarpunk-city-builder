@@ -18,6 +18,7 @@ interface ConversationPanelProps {
   interactionType: string;
   onDismiss: () => void;
   initialMessage?: string;
+  proposalId?: string;
 }
 
 function getCharacterName(characterId: string): string {
