@@ -35,14 +35,31 @@ All new code lives under `app/scripts/bench/` (shared core) with two entry scrip
 ### Shared core — `app/scripts/bench/`
 
 - **`runner.ts`** — `playGame(agent: DecisionAgent, opts): Promise<GameResult>`.
-  Owns the canonical loop, mirroring the proven sequence in `playtest-bot.ts` but extracted and
-  cleaned:
+  Owns the canonical loop. Built against the **reducer contract** (not copied from the old
+  scripts — those are used only as a reference for valid action shapes, since "ran without
+  crashing" ≠ "correct for measurement"):
   1. `createNewGame()` + apply `LEADER_DEFINITIONS` + `generateProposals`.
-  2. Per turn: build a `TurnView`, call `agent.decide(view)`, apply each returned action through
-     `gameReducer` (skipping no-op actions), auto-defer any unaddressed proposals, generate &
-     auto-resolve events, `END_TURN`, regenerate proposals.
+  2. Per turn: build a `TurnView`, `await agent.decide(view)`, apply each returned action through
+     `gameReducer` (recording which actually changed state), let unaddressed proposals **expire
+     naturally** (no fake "defer" — `ProposalResponse` is only accept/modify/reject), generate
+     events with the seeded RNG, resolve each event via `agent.chooseEvent(...)`, `END_TURN`,
+     regenerate proposals.
   3. Stop on `winCondition`, `lossCondition`, or `maxTurns` (default 48).
   No hand-mirrored math — every state change goes through the real systems.
+
+  **Determinism (load-bearing).** The runner makes each game reproducible from a single integer
+  seed so that (a) the archetype-determinism test holds and (b) every model in the LLM benchmark
+  faces the *same* matched scenarios (paired comparison — luck doesn't swamp the decision signal).
+  Mechanism, with **no production code changes**: for the duration of one game the runner installs
+  a seeded PRNG (`mulberry32(seed)`) as `Math.random` (restored in `finally`) and passes the same
+  generator explicitly to `generateEvents(state, rng)` (which has no default). The global install
+  is the catch-all for every internal `Math.random` leak (`resolve.ts` tile-damage targeting,
+  `burnout`, `delegation`, coalition-id strings) without threading an `rng` param through
+  production. **Consequence: games run sequentially** — concurrent games would share the global
+  `Math.random` and reintroduce nondeterminism. (Monte-Carlo is pure TS and fast; the LLM bench is
+  latency-bound on the model, not on parallelism, and Gemini CLI is serial anyway.) The
+  determinism test asserts identical **meter trajectories**, not identical entity IDs (coalition
+  ids embed a timestamp and are expected to differ).
 
 - **`view.ts`** — builds `TurnView`: a structured (non-text) snapshot of legal actions
   (active proposals with cost/duration/leader/tile, enactable policies with thresholds,
@@ -50,7 +67,21 @@ All new code lives under `app/scripts/bench/` (shared core) with two entry scrip
   outlook. Archetypes consume the structured form directly; LLM agents get a text rendering
   derived from the same view (single source of truth for the action space).
 
-- **`agent.ts`** — `interface DecisionAgent { readonly id: string; decide(view: TurnView): Promise<GameAction[]> }`.
+- **`agent.ts`** — the decision interface:
+  ```ts
+  interface DecisionAgent {
+    readonly id: string;
+    decide(view: TurnView): Promise<GameAction[]>;        // main-phase actions
+    chooseEvent(event: GameEvent, view: TurnView): Promise<string>; // returns choiceId
+  }
+  ```
+  `chooseEvent` makes event response a real strategy lever instead of a hidden constant.
+  **Archetypes implement it** (e.g. eco-first picks the eco-favorable choice) so events are an
+  exercised dimension in the Monte-Carlo. **LLM agents** use a fixed policy (first choice) in v1
+  to avoid multiplying slow, timeout-prone model calls (one extra call per event per turn) — this
+  is a **stated, documented limitation** of the LLM benchmark, not an accident, and is recorded in
+  `leaderboard.md`. The two scripts are separate benchmarks (archetypes vs models), never compared
+  head-to-head, so the asymmetry is sound.
 
 - **`metrics.ts`** — `summarize(result): GameMetrics`:
   - **Outcome:** `win | loss | survived`, loss/win condition string, turns survived.
@@ -62,8 +93,10 @@ All new code lives under `app/scripts/bench/` (shared core) with two entry scrip
   - **Per-meter trajectories:** read **all meters generically** (`Object.keys(state.meters)`),
     not a hard-coded list — full series + final/min/max/volatility (stddev) per meter. This
     auto-adapts when `meters.discretionary` (the planned budget fix, see Related work) lands.
-  - **Strategy fingerprint:** proposal accept/reject/defer/modify counts, policies enacted,
-    narrative/calendar action-type histogram, neighborhood equity (Gini of completed projects
+  - **Strategy fingerprint:** proposal disposition — **accept / modify / reject** (the real
+    `ProposalResponse` values) plus **ignored-expired** (proposals that went unaddressed and were
+    replaced) — there is no "defer", so we don't fabricate one; policies enacted; calendar
+    action-type histogram; event-choice histogram; neighborhood equity (Gini of completed projects
     across tiles).
 
 - **`report.ts`** — distribution helpers (mean/median/p5/p25/p75/p95/stddev) and a markdown
@@ -87,8 +120,9 @@ All new code lives under `app/scripts/bench/` (shared core) with two entry scrip
   Adding a model later = one adapter + one registry entry.
 - **`LlmAgent`** wraps a `ModelAdapter`, renders the `TurnView` to text, calls the model, and
   parses the response into `GameAction[]` (reusing/borrowing the existing parser logic).
-- Runs K games per model (default 3). Gemini CLI is serial (~30 s/turn), so K is intentionally
-  small; Groq models may run with light concurrency.
+- Runs K games per model (default 3), **sequentially**, on a **shared seed set** so every model
+  faces the same K scenarios (paired comparison). Gemini CLI is serial (~30 s/turn), so K is
+  intentionally small.
 
 ## Outputs
 
@@ -128,7 +162,7 @@ that fund is **out of scope here** — this change is measurement only.
 
 ## Non-goals (YAGNI)
 
-- No parallelization beyond simple concurrency for Groq calls.
+- No parallelization — games run sequentially to preserve per-game seed determinism (see Runner).
 - No database, web dashboard, or CI gating on benchmark scores (the benchmark is an analysis tool,
   not a pass/fail gate; only the slim budget-invariants test stays in CI).
 - No new game-design tuning in this change — measurement only.
