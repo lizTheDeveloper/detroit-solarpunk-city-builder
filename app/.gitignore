@@ -29,3 +29,6 @@ public/data/detroit-neighborhoods.geojson
 
 # Live news pipeline data (runtime-generated, not committed)
 server/pipeline/data/
+
+# Benchmark harness output (generated)
+scripts/bench/results/
