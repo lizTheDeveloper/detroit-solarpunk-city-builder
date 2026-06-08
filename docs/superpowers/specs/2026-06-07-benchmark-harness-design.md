@@ -104,11 +104,23 @@ All new code lives under `app/scripts/bench/` (shared core) with two entry scrip
 
 ### Script 1 — `app/scripts/monte-carlo.ts` (deterministic)
 
-- **`bench/archetypes.ts`** — six pure-heuristic agents over `TurnView`, each driven by a seeded
-  RNG (no LLM): `balanced`, `aggressive-growth`, `justice-first`, `eco-first`, `neglectful`,
-  `random`.
-- Runs N seeded games per archetype (default 500). Fast (pure TS). Output: per-archetype
-  distributions across **all** metrics + win/loss/survival rates.
+- **This is a calendar game.** The core decision each turn is allocating ~22 scarce discretionary
+  slots across 19 neighborhoods over time; cumulative per-neighborhood time drives the
+  `calendarEquity` term that decides re-election (and overscheduling drains a burnout buffer that
+  cuts effectiveness). Archetypes that leave slots idle are not playing it. Every active archetype
+  in **`bench/archetypes.ts`** therefore runs a **greedy calendar planner**: spend the full slot
+  budget on the least-served neighborhoods (equity equalizes over the game), invest costlier
+  `community_meeting`s by priority, manage burnout with `rest_day`s. The `TurnView` exposes per-tile
+  cumulative time, burnout state, and slot costs to enable this; LLM agents get the same calendar
+  info in their prompt.
+- **Roster** (pure heuristics over `TurnView`; random uses the seeded global RNG): `equity-organizer`
+  (pure-breadth check-ins — the equity-optimal play), `trust-builder` (public events + meetings),
+  `eco-first` (meetings on low-eco tiles), `justice-first` (meetings on gentrifying tiles + rejects
+  displacing proposals), `overscheduler` (over-books → burnout, to measure that downside),
+  `neglectful` (does nothing — baseline), `random`.
+- Runs N seeded games per archetype (default 200). Fast (pure TS, ~700 games in ~4s). Output:
+  per-archetype distributions across **all** metrics + win/loss/survival rates + election-score
+  decomposition.
 
 ### Script 2 — `app/scripts/bench-llm.ts` (multi-model)
 
@@ -159,6 +171,24 @@ attention/calendar-slots half shipped. This benchmark is the measurement instrum
 because it reads meters generically and captures the election-score breakdown, it will quantify
 the budget problem now and the improvement once the discretionary fund lands. Building or tuning
 that fund is **out of scope here** — this change is measurement only.
+
+## Findings (first run, 100 runs/archetype × 48 turns, 2026-06-08)
+
+- **The calendar is winnable, and it is the game.** When archetypes leave slots idle they lose
+  100% on a `calendarEquity` penalty (−45 to −54). When `equity-organizer` covers all 19
+  neighborhoods every turn with cheap check-ins, that term flips to the **+5 equity bonus** and it
+  survives **100%** of games. This is the headline: play the calendar well and the equity problem
+  disappears.
+- **Residual edge of disengagement is small and precisely located.** `neglectful` (do nothing)
+  still edges `equity-organizer` 62.0 vs 59.6 — but the gap is NOT calendar equity. The breakdown
+  shows it is `antagonistPenalty` (−16 engaged vs −12 idle: acting escalates opposition) plus
+  `politicalWill` (engaged play runs will down). A small tuning of antagonist escalation or
+  will dynamics for engaged mayors would flip this.
+- **Budget/gentrification never bind:** `displacementPenalty` is 0 across all archetypes (the
+  budget/gentrification systems don't move under reasonable play) — reinforcing the discretionary-
+  budget gap above.
+
+These are *measurements*, not inferences; the per-game JSONL logs back each one.
 
 ## Non-goals (YAGNI)
 
