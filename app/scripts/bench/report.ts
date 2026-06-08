@@ -32,6 +32,8 @@ export interface AgentSummary {
     accept: number; reject: number; modify: number; ignoredExpired: number;
     policiesEnacted: number; neighborhoodGini: number;
   };
+  /** Mean of each election-score component — surfaces WHY runs win/lose. */
+  meanElectionBreakdown: Record<string, number>;
   lossConditions: Record<string, number>;
 }
 
@@ -55,6 +57,10 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
       if (m.outcome === 'loss' && m.condition) lossConditions[m.condition] = (lossConditions[m.condition] ?? 0) + 1;
     }
 
+    const breakdownKeys = Object.keys(ms[0].electionBreakdown);
+    const meanElectionBreakdown: Record<string, number> = {};
+    for (const k of breakdownKeys) meanElectionBreakdown[k] = mean(ms.map((m) => m.electionBreakdown[k] ?? 0));
+
     rows.push({
       agentId,
       runs: n,
@@ -75,6 +81,7 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
         policiesEnacted: mean(ms.map((m) => m.fingerprint.policiesEnacted)),
         neighborhoodGini: mean(ms.map((m) => m.fingerprint.neighborhoodGini)),
       },
+      meanElectionBreakdown,
       lossConditions,
     });
   }
@@ -97,6 +104,18 @@ export function renderLeaderboard(title: string, rows: AgentSummary[], notes: st
       `| ${fp.neighborhoodGini.toFixed(2)} | ${fp.accept.toFixed(1)}/${fp.reject.toFixed(1)}/${fp.ignoredExpired.toFixed(1)} |`,
     );
   });
+  // Election-score decomposition — shows WHICH term drives the ranking, so the
+  // total can't be misread (e.g. one penalty dominating vs. a broad spread).
+  const bkeys = rows.length ? Object.keys(rows[0].meanElectionBreakdown) : [];
+  if (bkeys.length) {
+    out.push('', '## Election-score breakdown (mean per archetype)', '');
+    out.push(`| Agent | ${bkeys.join(' | ')} |`);
+    out.push(`|---|${bkeys.map(() => '---').join('|')}|`);
+    for (const r of rows) {
+      out.push(`| ${r.agentId} | ${bkeys.map((k) => r.meanElectionBreakdown[k].toFixed(1)).join(' | ')} |`);
+    }
+  }
+
   // Loss-condition breakdown
   out.push('', '## Loss conditions', '');
   for (const r of rows) {
