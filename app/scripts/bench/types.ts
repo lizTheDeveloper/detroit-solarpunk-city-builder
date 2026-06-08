@@ -20,8 +20,12 @@ export interface TurnView {
   /** Calendar actions currently affordable given remaining discretionary slots. */
   calendar: CalendarOption[];
   slotsRemaining: number;
-  /** Neighborhoods, for calendar targeting and equity. */
-  tiles: Array<{ id: string; name: string; gentrification: number; eco: number }>;
+  /** Slot cost per calendar action type the agents may use. */
+  slotCosts: Record<string, number>;
+  /** Burnout state — overscheduling drains the buffer; low buffer cuts effectiveness. */
+  burnout: { buffer: number; max: number; state: string };
+  /** Neighborhoods, with CUMULATIVE calendar time spent on each (the equity signal). */
+  tiles: Array<{ id: string; name: string; gentrification: number; eco: number; timeAllocated: number }>;
   /** True when the next 1-2 turns are an election (decision pressure). */
   electionSoon: boolean;
 }

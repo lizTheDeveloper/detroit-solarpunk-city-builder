@@ -9,7 +9,7 @@ import { playGame } from '../../scripts/bench/runner.ts';
 import { summarize, gini } from '../../scripts/bench/metrics.ts';
 import { ARCHETYPES } from '../../scripts/bench/archetypes.ts';
 
-const balanced = ARCHETYPES.find((a) => a.id === 'balanced')!;
+const agent = ARCHETYPES.find((a) => a.id === 'equity-organizer')!;
 
 function trajectory(result: Awaited<ReturnType<typeof playGame>>): string {
   return JSON.stringify(result.turns.map((t) => t.metersAfter));
@@ -17,27 +17,27 @@ function trajectory(result: Awaited<ReturnType<typeof playGame>>): string {
 
 describe('runner determinism', () => {
   it('same agent + same seed → identical meter trajectory', async () => {
-    const a = await playGame(balanced, 4242, { maxTurns: 16 });
-    const b = await playGame(balanced, 4242, { maxTurns: 16 });
+    const a = await playGame(agent, 4242, { maxTurns: 16 });
+    const b = await playGame(agent, 4242, { maxTurns: 16 });
     expect(trajectory(a)).toBe(trajectory(b));
   });
 
   it('different seeds → generally different trajectories', async () => {
-    const a = await playGame(balanced, 1, { maxTurns: 16 });
-    const b = await playGame(balanced, 2, { maxTurns: 16 });
+    const a = await playGame(agent, 1, { maxTurns: 16 });
+    const b = await playGame(agent, 2, { maxTurns: 16 });
     expect(trajectory(a)).not.toBe(trajectory(b));
   });
 
   it('restores global Math.random after a run', async () => {
     const before = Math.random;
-    await playGame(balanced, 7, { maxTurns: 4 });
+    await playGame(agent, 7, { maxTurns: 4 });
     expect(Math.random).toBe(before);
   });
 });
 
 describe('metrics', () => {
   it('summarize produces all meters + an outcome + a score', async () => {
-    const result = await playGame(balanced, 99, { maxTurns: 16 });
+    const result = await playGame(agent, 99, { maxTurns: 16 });
     const m = summarize(result);
     expect(['win', 'loss', 'survived']).toContain(m.outcome);
     expect(typeof m.electionScore).toBe('number');

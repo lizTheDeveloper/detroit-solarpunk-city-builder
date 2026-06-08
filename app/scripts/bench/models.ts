@@ -66,9 +66,12 @@ export const MODEL_REGISTRY: Record<string, ModelAdapter> = {
 
 // ── Prompt rendering + parsing ──────────────────────────────────────────────
 
-const SYSTEM = `You are the mayor in a Detroit solarpunk city-builder. Play strategically:
-build community trust, ecological health, and food sovereignty; watch gentrification
-and the re-election every 16 turns. Respond ONLY with actions, one per line. No prose.`;
+const SYSTEM = `You are the mayor in a Detroit solarpunk city-builder. THIS IS A CALENDAR GAME:
+each turn you have a limited number of discretionary slots to spend on your neighborhoods,
+and your re-election depends heavily on spreading your time EQUITABLY across ALL of them —
+neighborhoods you neglect cost you. Spend most of your slots each turn (don't leave them idle),
+cover under-served neighborhoods, and don't overschedule into burnout. Also build trust, eco,
+and food sovereignty and watch gentrification. Respond ONLY with actions, one per line. No prose.`;
 
 function renderPrompt(view: TurnView): string {
   const m = view.meters;
@@ -87,11 +90,14 @@ function renderPrompt(view: TurnView): string {
   if (enactable.length > 0) {
     lines.push(`\nPOLICIES (enact: <id>): ${enactable.map((p) => p.id).join(', ')}`);
   }
-  if (view.calendar.some((c) => c.actionType === 'community_meeting') && view.tiles.length > 0) {
-    lines.push(`\nCALENDAR (${view.slotsRemaining} slots): "calendar: community_meeting <neighborhood>"`);
-    lines.push('Neighborhoods: ' + view.tiles.map((t) => t.id).join(', '));
+  if (view.tiles.length > 0) {
+    lines.push(`\nCALENDAR — ${view.slotsRemaining} slots this turn | burnout buffer ${view.burnout.buffer.toFixed(0)}/${view.burnout.max} (${view.burnout.state})`);
+    lines.push('Actions: "calendar: community_meeting <hood>" (2 slots, +trust/+eco) | "calendar: quick_check_in <hood>" (1 slot) | "calendar: public_event <hood>" (3 slots, +trust/+will) | "calendar: rest_day" (1 slot, recover burnout)');
+    // Show neighborhoods sorted by least cumulative time first (the ones to cover).
+    const sorted = [...view.tiles].sort((a, b) => a.timeAllocated - b.timeAllocated);
+    lines.push('Neighborhoods (least-visited first → cover these): ' + sorted.map((t) => `${t.id}[t=${t.timeAllocated}]`).join(', '));
   }
-  lines.push('\nList your actions, then END_TURN.');
+  lines.push('\nSpend your slots, then END_TURN.');
   return lines.join('\n');
 }
 
@@ -107,10 +113,15 @@ function parseActions(response: string, view: TurnView): GameAction[] {
       if (pv) actions.push({ type: 'RESPOND_PROPOSAL', proposalId: pv.proposal.id, response: prop[1] as 'accept' | 'reject' | 'modify' });
       continue;
     }
-    const cal = line.match(/calendar:\s*community_meeting\s+(\w+)/);
+    if (/calendar:\s*rest_day/.test(line)) {
+      actions.push({ type: 'CALENDAR_REST_DAY' });
+      continue;
+    }
+    const cal = line.match(/calendar:\s*(community_meeting|quick_check_in|public_event)\s+([\w-]+)/);
     if (cal) {
-      const tile = view.tiles.find((t) => t.id.includes(cal[1]) || t.name.toLowerCase().includes(cal[1]));
-      if (tile) actions.push({ type: 'CALENDAR_ACTION', actionType: 'community_meeting', tileId: tile.id });
+      const actionType = cal[1] as 'community_meeting' | 'quick_check_in' | 'public_event';
+      const tile = view.tiles.find((t) => t.id.includes(cal[2]) || t.name.toLowerCase().includes(cal[2]));
+      if (tile) actions.push({ type: 'CALENDAR_ACTION', actionType, tileId: tile.id });
       continue;
     }
     const pol = line.match(/^enact:?\s+([\w-]+)/);

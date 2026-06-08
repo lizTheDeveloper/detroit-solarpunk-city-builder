@@ -62,6 +62,9 @@ export function buildView(state: GameState): TurnView {
     (a) => SLOT_COSTS[a] <= slotsRemaining,
   ).map((a) => ({ actionType: a, slotCost: SLOT_COSTS[a] }));
 
+  const alloc = state.calendarState.neighborhoodTimeAllocation;
+  const timeFor = (id: string) => (alloc[id] ?? []).reduce((s, n) => s + n, 0);
+
   return {
     turn: state.turn,
     season: state.season,
@@ -72,11 +75,18 @@ export function buildView(state: GameState): TurnView {
     policies,
     calendar,
     slotsRemaining,
+    slotCosts: { ...SLOT_COSTS },
+    burnout: {
+      buffer: state.calendarState.burnoutBuffer,
+      max: state.calendarState.burnoutBufferMax,
+      state: state.calendarState.burnoutState,
+    },
     tiles: Object.values(state.tiles).map((t) => ({
       id: t.id,
       name: t.name,
       gentrification: t.gentrificationPressure,
       eco: t.ecologicalHealth,
+      timeAllocated: timeFor(t.id),
     })),
     electionSoon: isElectionTurn(state.turn + 1) || isElectionTurn(state.turn + 2),
   };
