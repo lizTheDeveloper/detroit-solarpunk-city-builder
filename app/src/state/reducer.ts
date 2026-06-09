@@ -338,6 +338,26 @@ function handleCalendarAction(
     };
   }
 
+  if (action.tileId) {
+    const CALENDAR_VISIT_TRUST_GAIN = 2.5;
+    let newLeaders = updated.leaders;
+    let newCal = updated.calendarState;
+    for (const leader of Object.values(updated.leaders)) {
+      if (!leader.tileIds.includes(action.tileId)) continue;
+      if (newCal.leaderTrustGrantedThisMonth[leader.id]) continue;
+      newLeaders = {
+        ...newLeaders,
+        [leader.id]: { ...leader, trust: Math.min(100, leader.trust + CALENDAR_VISIT_TRUST_GAIN) },
+      };
+      newCal = {
+        ...newCal,
+        leaderTrustGrantedThisMonth: { ...newCal.leaderTrustGrantedThisMonth, [leader.id]: true },
+        lastInteractionMonth: { ...newCal.lastInteractionMonth, [leader.id]: newCal.monthNumber },
+      };
+    }
+    updated = { ...updated, leaders: newLeaders, calendarState: newCal };
+  }
+
   return updated;
 }
 

@@ -149,6 +149,7 @@ export interface CommunityLeader {
   advocacyPower: number;
   proposalCooldown: number;
   consecutiveDeferrals: number;
+  urgencyWindow?: number;
 }
 
 export interface CouncilMember {
@@ -255,6 +256,7 @@ export interface CalendarState {
   delegationTier: number;       // 0-4
   crisisSlotTax: number;        // sum of active arc taxes
   neighborhoodTimeAllocation: Record<string, number[]>; // tileId → slots per month (48 entries)
+  leaderTrustGrantedThisMonth: Record<string, boolean>; // leaderId → already gained trust this month
 }
 
 export type StrategicContactStage = 'undiscovered' | 'discovery' | 'introduction' | 'cooldown' | 'follow_up' | 'established' | 'deepening' | 'closed';
