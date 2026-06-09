@@ -9,7 +9,7 @@
 import { createNewGame } from '../../src/state/create-game.ts';
 import { gameReducer } from '../../src/state/reducer.ts';
 import { generateProposals } from '../../src/systems/proposals.ts';
-import { generateEvents } from '../../src/systems/events.ts';
+import { prepareTurn } from '../../src/systems/resolve.ts';
 import { PROJECT_CATALOG } from '../../src/data/content/project-catalog.ts';
 import { LEADER_DEFINITIONS } from '../../src/data/content/leaders.ts';
 import type { GameState } from '../../src/state/types.ts';
@@ -42,6 +42,10 @@ export async function playGame(
     const turns: TurnRecord[] = [];
 
     for (let i = 0; i < maxTurns; i++) {
+      // Prepare the turn through production systems — calendar slot reset,
+      // burnout adjustment, relationship decay, event + proposal generation.
+      state = prepareTurn(state, rng);
+
       const view = buildView(state);
       const metersBefore = { ...state.meters };
       const proposalIdsAtStart = new Set(state.activeProposals.map((p) => p.id));
@@ -74,11 +78,7 @@ export async function playGame(
         if (!respondedProposalIds.has(id)) disposition.ignoredExpired++;
       }
 
-      // Events: generate with the seeded rng, let the agent choose each response.
-      const events = generateEvents(current, rng);
-      if (events.length > 0) {
-        current = { ...current, eventQueue: [...current.eventQueue, ...events] };
-      }
+      // Events: respond to events queued by prepareTurn above.
       const eventRecords: TurnRecord['events'] = [];
       for (const event of current.eventQueue) {
         if (event.choices.length === 0) continue;
@@ -88,9 +88,9 @@ export async function playGame(
         current = next;
       }
 
-      // End the turn through the real resolver, then regenerate proposals.
+      // End the turn through the real resolver (prepareTurn handles proposals next iteration).
       const afterEnd = gameReducer(current, { type: 'END_TURN' }, PROJECT_CATALOG);
-      state = { ...afterEnd, activeProposals: generateProposals(afterEnd) };
+      state = afterEnd;
 
       turns.push({
         turn: view.turn,
