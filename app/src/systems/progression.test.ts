@@ -186,7 +186,7 @@ describe('checkStageTransition', () => {
 });
 
 describe('detectSpecializationPath', () => {
-  it('detects ecology when eco is highest and food > 30%', () => {
+  it('detects ecology when 5+ ecology/restoration projects completed and food > 30%', () => {
     const state = makeTestState({
       meters: {
         communityTrust: 40,
@@ -195,6 +195,10 @@ describe('detectSpecializationPath', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+      },
+      tiles: {
+        t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
+        t2: { id: 't2', name: 'T2', completedProjects: ['native_planting', 'wetland_restoration'], activeProjects: [], ecologicalHealth: 20, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
       },
     });
     expect(detectSpecializationPath(state)).toBe('ecology');
@@ -340,6 +344,10 @@ describe('applyProgressionEffects', () => {
         budget: 3,
         climatePressure: 25,
       },
+      tiles: {
+        t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
+        t2: { id: 't2', name: 'T2', completedProjects: ['native_planting', 'wetland_restoration'], activeProjects: [], ecologicalHealth: 20, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
+      },
     });
     const result = applyProgressionEffects(state);
     expect(result.path).toBe('ecology');
@@ -355,6 +363,10 @@ describe('applyProgressionEffects', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+      },
+      tiles: {
+        t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
+        t2: { id: 't2', name: 'T2', completedProjects: ['native_planting', 'wetland_restoration'], activeProjects: [], ecologicalHealth: 20, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
       },
     });
     const result = applyProgressionEffects(state);

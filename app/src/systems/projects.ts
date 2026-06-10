@@ -278,7 +278,7 @@ export function advanceProjects(state: GameState): { state: GameState; deltas: M
         tile.contamination = Math.min(100, tile.contamination + blockMods.contaminationPenalty);
         const totalEco = boostedTileEco + synergyEco + blockMods.ecoBonus;
         if (totalEco !== 0) {
-          const globalEcoGain = totalEco * 0.25;
+          const globalEcoGain = totalEco * 0.30;
           newMeters.ecologicalHealth += globalEcoGain;
           const source = synergyEco > 0 || tileEcoBoost > 0
             ? `${def.name} (+synergy/byproduct)`

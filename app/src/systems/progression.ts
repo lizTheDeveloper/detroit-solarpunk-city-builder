@@ -1,4 +1,5 @@
 import type { GameState, Stage, SpecializationPath, CommunityLeader } from '../state/types';
+import { PROJECT_CATALOG } from '../data/content/project-catalog';
 
 export interface PathBonuses {
   projectCostModifier: Record<string, number>; // category -> multiplier
@@ -79,22 +80,32 @@ export function detectSpecializationPath(state: GameState): SpecializationPath {
   const { ecologicalHealth, foodSovereignty, communityTrust, politicalWill } = state.meters;
   const policiesEnacted = state.activePolicies.length;
 
-  // Calculate relative gains (using absolute values as proxy for emphasis)
-  const ecoGain = ecologicalHealth;
   const trustGain = communityTrust;
   const foodGain = foodSovereignty;
 
   // Policy path: 3+ policies enacted AND political will > 40%
   const isPolicyPath = policiesEnacted >= 3 && politicalWill > 40;
 
-  // Ecology path: eco is highest % gain AND food > 30%
-  const isEcologyPath = ecoGain >= trustGain && ecoGain >= foodGain && foodSovereignty > 30;
+  // Ecology path: 3+ completed ecology/restoration projects AND food > 30%.
+  // Measures actual player investment in ecological restoration rather than
+  // meter magnitude (trust rises passively from leader relationships and would
+  // always outrank eco under the old absolute-value check).
+  let ecoProjectCount = 0;
+  for (const tile of Object.values(state.tiles)) {
+    for (const projId of tile.completedProjects) {
+      const def = PROJECT_CATALOG[projId];
+      if (def && (def.category === 'ecology' || def.category === 'restoration')) {
+        ecoProjectCount++;
+      }
+    }
+  }
+  const isEcologyPath = ecoProjectCount >= 5 && foodSovereignty > 30;
 
   // Community path: trust is highest % gain AND 3+ leaders at trust >= 40
   const leadersWithHighTrust = Object.values(state.leaders).filter(
     (leader: CommunityLeader) => leader.trust >= 40,
   ).length;
-  const isCommunityPath = trustGain >= ecoGain && trustGain >= foodGain && leadersWithHighTrust >= 3;
+  const isCommunityPath = trustGain >= ecologicalHealth && trustGain >= foodGain && leadersWithHighTrust >= 3;
 
   // Priority: check all conditions, return first match
   // If multiple match, use priority order: ecology > community > policy

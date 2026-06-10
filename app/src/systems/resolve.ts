@@ -352,6 +352,29 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
     current = checkReclamationLoss(current);
   }
 
+  // Step 7d2: Completed ecology/restoration projects compound ecological value over time.
+  // A mature food forest sequesters more carbon each year; a rain garden filters more
+  // water as plants establish; wetlands attract returning species. Rate: tileEco × 0.02/turn.
+  {
+    let ongoingEco = 0;
+    for (const tileId of Object.keys(current.tiles)) {
+      const tile = current.tiles[tileId];
+      for (const projId of tile.completedProjects) {
+        const def = PROJECT_CATALOG[projId];
+        if (def && (def.category === 'ecology' || def.category === 'restoration')) {
+          ongoingEco += def.effects.tileEco * 0.005;
+        }
+      }
+    }
+    if (ongoingEco > 0) {
+      current = {
+        ...current,
+        meters: { ...current.meters, ecologicalHealth: current.meters.ecologicalHealth + ongoingEco },
+      };
+      allDeltas.push({ meter: 'ecologicalHealth', amount: ongoingEco, source: 'ecological_compounding' });
+    }
+  }
+
   // Step 7e: Mesh network — community-owned tiles form communication infra
   {
     const { state: meshState, deltas: meshDeltas } = applyMeshNetworkEffects(current);
@@ -468,6 +491,44 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
   // Step 10: Progression — stage transitions and path bonuses
   {
     current = applyProgressionEffects(current);
+  }
+
+  // Step 10b: Auto-coalition formation — leaders who trust each other enough and
+  // share priorities naturally start organizing together. Group advocates (trust ≥ 40)
+  // by their first-priority project category; when 3+ align, a coalition emerges.
+  {
+    const activeCoalitions = current.coalitions.filter(c => c.active);
+    if (activeCoalitions.length < 2) {
+      const existingTopics = new Set(activeCoalitions.map(c => c.topic));
+      const advocates = Object.values(current.leaders).filter(l => l.trust >= 40);
+      const byCategory: Record<string, string[]> = {};
+      for (const leader of advocates) {
+        const firstPriority = leader.priorities[0];
+        if (!firstPriority) continue;
+        const def = PROJECT_CATALOG[firstPriority];
+        if (!def) continue;
+        const cat = def.category;
+        if (existingTopics.has(cat)) continue;
+        (byCategory[cat] ??= []).push(leader.id);
+      }
+      for (const [cat, memberIds] of Object.entries(byCategory)) {
+        if (memberIds.length >= 3 && activeCoalitions.length < 2) {
+          const members = memberIds.slice(0, 5);
+          current = {
+            ...current,
+            coalitions: [...current.coalitions, {
+              id: `coalition-auto-${cat}-t${current.turn}`,
+              name: `${cat.charAt(0).toUpperCase() + cat.slice(1)} Coalition`,
+              memberIds: members,
+              topic: cat,
+              active: true,
+              formedTurn: current.turn,
+            }],
+          };
+          break;
+        }
+      }
+    }
   }
 
   // Post-steps: leader trust decay, meter bonuses from relationships, event cooldowns, antagonists
