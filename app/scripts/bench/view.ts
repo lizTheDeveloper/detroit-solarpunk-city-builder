@@ -9,6 +9,7 @@ import type { GameState } from '../../src/state/types.ts';
 import { PROJECT_CATALOG } from '../../src/data/content/project-catalog.ts';
 import { POLICY_CATALOG } from '../../src/data/content/policy-catalog.ts';
 import { SLOT_COSTS, getAvailableSlots } from '../../src/systems/calendar-slots.ts';
+import { canEnactPolicy } from '../../src/systems/policies.ts';
 import { isElectionTurn } from '../../src/systems/reelection.ts';
 import type { TurnView, ProposalView, PolicyView, CalendarOption } from './types.ts';
 
@@ -41,14 +42,17 @@ export function buildView(state: GameState): TurnView {
     };
   });
 
-  const will = state.meters.politicalWill;
   const policies: PolicyView[] = Object.entries(POLICY_CATALOG)
     .filter(([id]) => !state.activePolicies.some((ap) => ap.definitionId === id))
     .map(([id, def]) => ({
       id,
       name: def.name,
       willThresholdPct: def.baseThreshold * 100,
-      enactable: will >= def.baseThreshold * 100,
+      // Use the reducer's real eligibility check (will ≥ effectiveThreshold +
+      // enactmentCost, topic-opinion adjusted), with council approval matching
+      // the ENACT_POLICY reducer path — so the view never over-reports what can
+      // actually be enacted. councilApproved=true mirrors handleEnactPolicy.
+      enactable: canEnactPolicy(state, id, POLICY_CATALOG, true).allowed,
       effects: {
         trust: def.effects.trustBonus,
         eco: def.effects.ecoBonus,
