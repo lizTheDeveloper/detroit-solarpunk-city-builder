@@ -18,7 +18,7 @@ Each round: pick highest-value item → implement → verify (tests + benchmark)
 - [x] R3 — Richer reporting: Will + Pol columns (win mechanism legible)
 - [ ] R4 — LLM prompt: coach political-will building; re-run to test if gpt-oss can win
 - [x] R5 — Claude (Anthropic) adapter added (haiku-4.5 + sonnet-4.6), verified
-- [ ] R6 — Statistical power: more games, report confidence intervals
+- [x] R6 — Statistical power: Wilson win-rate CI + score CI in report
 - [ ] R7 — Diagnose qwen relationship-conversion failure (writeup)
 - [ ] R8 — Publishable benchmark write-up (original north star)
 - [ ] T — File balance proposals as tickets (Solaris): antagonist-vs-trust (Option B), MUL-6993 overshoot
@@ -75,3 +75,9 @@ claude-haiku-4.5: **100% win** (3/3, all reach `beyond`), score 83–86, will 99
 (reframes R7: coalitions come FREE from broad high-trust play, not from concentration). Capability
 ranking so far (current harness): claude-haiku ✅100% win, gpt-oss-120b ✅100% win, qwen3-32b ❌0%
 (stalls at restoration, no coalition). Sonnet not run (pricier — awaiting user OK).
+
+### R6 — 95% confidence intervals (2026-06-14 ~06:25) ✅
+Added a "Statistical confidence (95%)" section: score mean ±95% CI (normal approx) and win rate as
+a **Wilson interval** — so small-N reads honestly (3/3 wins → ~[44%,100%]; 30/30 → [89%,100%];
+deterministic neglectful → 0% [0%,11%], score CI 0). Added helpers wilson95/ci95 + 3 unit tests
+(now 12/12). Makes the benchmark publishable-grade. File: report.ts, bench-harness.test.ts.

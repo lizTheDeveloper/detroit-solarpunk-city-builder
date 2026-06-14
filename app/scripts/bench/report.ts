@@ -19,6 +19,22 @@ export function stddev(xs: number[]): number {
   return Math.sqrt(xs.reduce((a, v) => a + (v - m) ** 2, 0) / xs.length);
 }
 
+/** 95% CI half-width for a mean (normal approx; rough for very small n). */
+export function ci95(xs: number[]): number {
+  if (xs.length < 2) return 0;
+  return 1.96 * (stddev(xs) / Math.sqrt(xs.length));
+}
+
+/** Wilson 95% score interval for a proportion k/n — honest for small n
+ *  (e.g. 3/3 wins → ~[0.44, 1.0], not a misleading 100% ± 0). */
+export function wilson95(k: number, n: number): [number, number] {
+  if (n === 0) return [0, 0];
+  const z = 1.96, p = k / n, d = 1 + (z * z) / n;
+  const center = (p + (z * z) / (2 * n)) / d;
+  const margin = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
+  return [Math.max(0, center - margin), Math.min(1, center + margin)];
+}
+
 export interface AgentSummary {
   agentId: string;
   runs: number;
@@ -27,6 +43,10 @@ export interface AgentSummary {
   survivedRate: number;
   meanTurnsSurvived: number;
   electionScore: { mean: number; p5: number; p50: number; p95: number; std: number };
+  /** 95% CI half-width on the score mean. */
+  scoreCI95: number;
+  /** Wilson 95% CI on the win rate (honest for small n). */
+  winRateCI95: [number, number];
   meanFinalMeters: Record<string, number>;
   meanFingerprint: {
     accept: number; reject: number; modify: number; ignoredExpired: number;
@@ -80,6 +100,8 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
         mean: mean(scores), p5: percentile(scores, 0.05), p50: percentile(scores, 0.5),
         p95: percentile(scores, 0.95), std: stddev(scores),
       },
+      scoreCI95: ci95(scores),
+      winRateCI95: wilson95(ms.filter((m) => m.outcome === 'win').length, n),
       meanFinalMeters,
       meanFingerprint: {
         accept: mean(ms.map((m) => m.fingerprint.proposals.accept)),
@@ -118,6 +140,20 @@ export function renderLeaderboard(title: string, rows: AgentSummary[], notes: st
       `| ${fp.neighborhoodGini.toFixed(2)} | ${fp.accept.toFixed(1)}/${fp.reject.toFixed(1)}/${fp.ignoredExpired.toFixed(1)} |`,
     );
   });
+  // Statistical confidence (95%) — keeps small-N results honest. Win rate uses a
+  // Wilson interval, so 3/3 wins reads as ~[44%, 100%], not a misleading 100%±0.
+  out.push('', '## Statistical confidence (95%)', '');
+  out.push('| Agent | Runs | Score (mean, 95% CI) | Win rate (Wilson 95% CI) |');
+  out.push('|---|---|---|---|');
+  for (const r of rows) {
+    const [lo, hi] = r.winRateCI95;
+    out.push(
+      `| ${r.agentId} | ${r.runs} | ${r.electionScore.mean.toFixed(1)} ` +
+      `[${(r.electionScore.mean - r.scoreCI95).toFixed(1)}, ${(r.electionScore.mean + r.scoreCI95).toFixed(1)}] ` +
+      `| ${(r.winRate * 100).toFixed(0)}% [${(lo * 100).toFixed(0)}%, ${(hi * 100).toFixed(0)}%] |`,
+    );
+  }
+
   // Election-score decomposition — shows WHICH term drives the ranking, so the
   // total can't be misread (e.g. one penalty dominating vs. a broad spread).
   const bkeys = rows.length ? Object.keys(rows[0].meanElectionBreakdown) : [];

@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { playGame } from '../../scripts/bench/runner.ts';
 import { summarize, gini } from '../../scripts/bench/metrics.ts';
+import { wilson95, ci95 } from '../../scripts/bench/report.ts';
 import { ARCHETYPES } from '../../scripts/bench/archetypes.ts';
 
 const agent = ARCHETYPES.find((a) => a.id === 'equity-organizer')!;
@@ -53,5 +54,26 @@ describe('metrics', () => {
     expect(gini([5, 5, 5, 5])).toBeCloseTo(0, 5);
     expect(gini([0, 0, 0, 10])).toBeCloseTo(0.75, 2); // (n-1)/n for n=4
     expect(gini([])).toBe(0);
+  });
+});
+
+describe('confidence intervals', () => {
+  it('wilson95: 3/3 wins is NOT a certain 100% (small-n honesty)', () => {
+    const [lo, hi] = wilson95(3, 3);
+    expect(lo).toBeLessThan(0.5); // ~0.44 — wide for n=3
+    expect(hi).toBe(1);
+    expect(wilson95(0, 0)).toEqual([0, 0]);
+  });
+
+  it('wilson95: large n tightens the interval', () => {
+    const [lo, hi] = wilson95(30, 30);
+    expect(lo).toBeGreaterThan(0.85); // ~0.89
+    expect(hi).toBe(1);
+  });
+
+  it('ci95: zero variance → zero half-width; needs n>=2', () => {
+    expect(ci95([62, 62, 62])).toBe(0);
+    expect(ci95([1])).toBe(0);
+    expect(ci95([0, 10])).toBeGreaterThan(0);
   });
 });
