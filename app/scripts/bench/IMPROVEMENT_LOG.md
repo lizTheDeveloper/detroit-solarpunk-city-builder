@@ -20,7 +20,7 @@ Each round: pick highest-value item → implement → verify (tests + benchmark)
 - [x] R5 — Claude (Anthropic) adapter added (haiku-4.5 + sonnet-4.6), verified
 - [x] R6 — Statistical power: Wilson win-rate CI + score CI in report
 - [ ] R7 — Diagnose qwen relationship-conversion failure (writeup)
-- [ ] R8 — Publishable benchmark write-up (original north star)
+- [x] R8 — Publishable benchmark writeup (BENCHMARK.md)
 - [ ] T — File balance proposals as tickets (Solaris): antagonist-vs-trust (Option B), MUL-6993 overshoot
 
 ## Rounds
@@ -81,3 +81,10 @@ Added a "Statistical confidence (95%)" section: score mean ±95% CI (normal appr
 a **Wilson interval** — so small-N reads honestly (3/3 wins → ~[44%,100%]; 30/30 → [89%,100%];
 deterministic neglectful → 0% [0%,11%], score CI 0). Added helpers wilson95/ci95 + 3 unit tests
 (now 12/12). Makes the benchmark publishable-grade. File: report.ts, bench-harness.test.ts.
+
+### R8 — Publishable benchmark writeup (2026-06-14 ~06:35) ✅
+Wrote app/scripts/bench/BENCHMARK.md from canonical runs (archetypes N=100 @96t:
+mc-2026-06-14T13-24-14; LLMs N=5 @96t: llm-2026-06-14T13-24-28). Covers what/why, methodology,
+results (archetype difficulty curve + LLM ranking gpt-oss≈haiku 100% ≫ qwen 20% with Wilson CIs),
+the will→policy→coalition→beyond win-path, the event-agency milestone, coalition-vs-equity tension,
+harness-validity lessons, limitations, and repro commands. Backlog R1-R8 complete.
