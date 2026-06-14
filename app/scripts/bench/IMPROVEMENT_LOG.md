@@ -15,7 +15,7 @@ Each round: pick highest-value item → implement → verify (tests + benchmark)
 ## Backlog (rough priority)
 - [x] R1 — Metrics: track `stageReached` + `winTurn` (diagnostic richness)
 - [ ] R2 — LLM event-choice agency (remove fixed-first-choice limitation)
-- [ ] R3 — Richer reporting: will trajectory, policy fingerprint, per-model win-rate, stage dist
+- [x] R3 — Richer reporting: Will + Pol columns (win mechanism legible)
 - [ ] R4 — LLM prompt: coach political-will building; re-run to test if gpt-oss can win
 - [ ] R5 — Add Claude (Anthropic) adapter per board directive (if key/proxy available); keep Groq
 - [ ] R6 — Statistical power: more games, report confidence intervals
@@ -40,3 +40,9 @@ will and CAUSING the policy-gate failure. With agency, gpt-oss-120b: 0%→**100%
 beyond), policies 3→7, final will ~32→87. qwen3-32b improved 58→66 (restoration) but still 0 win.
 Resolves the earlier "gpt-oss is one lever from winning" — the lever was event handling, not a prompt.
 Tests 9/9, typecheck clean. Files: types.ts, view.ts, models.ts.
+
+### R3 — Will + Pol leaderboard columns (2026-06-14 ~03:05) ✅
+Added political-will (final) and policies-enacted columns to the leaderboard, right where the win
+story lives. At a glance: winners have Will 89–100 + 8 policies; lower-will agents (justice-first
+Will 24, trust-builder Will 34) enact fewer policies and win less. Tests 9/9, typecheck clean.
+File: report.ts.

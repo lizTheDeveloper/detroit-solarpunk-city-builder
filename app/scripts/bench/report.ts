@@ -102,8 +102,8 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
 export function renderLeaderboard(title: string, rows: AgentSummary[], notes: string[] = []): string {
   const out: string[] = [`# ${title}`, ''];
   if (notes.length) { out.push(...notes.map((n) => `> ${n}`), ''); }
-  out.push('| Rank | Agent | Runs | Score (mean ±std) | Win% | Loss% | WinTurn | Stage | Trust | Eco | Food | Gini | Accept/Reject/Ignored |');
-  out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  out.push('| Rank | Agent | Runs | Score (mean ±std) | Win% | Loss% | WinTurn | Stage | Trust | Eco | Food | Will | Pol | Gini | Accept/Reject/Ignored |');
+  out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   rows.forEach((r, i) => {
     const fm = r.meanFinalMeters;
     const fp = r.meanFingerprint;
@@ -114,6 +114,7 @@ export function renderLeaderboard(title: string, rows: AgentSummary[], notes: st
       `| ${i + 1} | ${r.agentId} | ${r.runs} | ${r.electionScore.mean.toFixed(1)} ±${r.electionScore.std.toFixed(1)} ` +
       `| ${(r.winRate * 100).toFixed(0)}% | ${(r.lossRate * 100).toFixed(0)}% | ${r.meanWinTurn != null ? r.meanWinTurn.toFixed(0) : '—'} | ${stageCell} ` +
       `| ${(fm.communityTrust ?? 0).toFixed(0)} | ${(fm.ecologicalHealth ?? 0).toFixed(0)} | ${(fm.foodSovereignty ?? 0).toFixed(0)} ` +
+      `| ${(fm.politicalWill ?? 0).toFixed(0)} | ${fp.policiesEnacted.toFixed(1)} ` +
       `| ${fp.neighborhoodGini.toFixed(2)} | ${fp.accept.toFixed(1)}/${fp.reject.toFixed(1)}/${fp.ignoredExpired.toFixed(1)} |`,
     );
   });
