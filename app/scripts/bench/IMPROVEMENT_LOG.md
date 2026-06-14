@@ -46,3 +46,16 @@ Added political-will (final) and policies-enacted columns to the leaderboard, ri
 story lives. At a glance: winners have Will 89–100 + 8 policies; lower-will agents (justice-first
 Will 24, trust-builder Will 34) enact fewer policies and win less. Tests 9/9, typecheck clean.
 File: report.ts.
+
+### R7 — Diagnose qwen plateau (2026-06-14 ~04:25) ⚠️ negative result, reverted
+Diagnosis (solid): qwen fails ONLY the coalition gate for `beyond` — it maxes eco/food/trust and
+enacts ≥4 policies, but **coalitions=0** in every game (need ≥1). Coalitions form when 3+ leaders
+of the SAME project-category reach trust 40 (resolve.ts Step 10b). qwen under-concentrates visits,
+so too few same-category leaders cross 40.
+Attempted fix (REVERTED): surfaced leaders+trust+category in the view and prompted the model to
+"concentrate visits" toward a coalition. **Backfired hard** — gpt-oss 100%→0% win (reelection,
+score ~32): concentrating visits breaks the EQUITY coverage that keeps you elected. **Finding: the
+coalition path and the equity path are in direct tension.** Pushing toward coalitions sacrifices
+reelection. This is a game-DESIGN tension (route to Solaris, don't freelance), and explains why
+qwen's plateau isn't prompt-fixable without breaking equity. Reverted types/view/models to HEAD.
+R4 (will-coaching) — SUPERSEDED by R2 (event agency already solved the will gate).
