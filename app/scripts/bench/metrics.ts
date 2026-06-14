@@ -81,6 +81,8 @@ export function summarize(result: GameResult): GameMetrics {
     outcome: final.winCondition ? 'win' : final.lossCondition ? 'loss' : 'survived',
     condition: final.winCondition ?? final.lossCondition ?? null,
     turnsPlayed: result.turnsPlayed,
+    stageReached: final.stage,
+    winTurn: final.winCondition ? result.turnsPlayed : null,
     electionScore: election.score,
     electionBreakdown: { ...(election.breakdown as unknown as Record<string, number>) },
     meters,

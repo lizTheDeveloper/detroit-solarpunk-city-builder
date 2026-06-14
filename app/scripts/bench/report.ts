@@ -35,6 +35,10 @@ export interface AgentSummary {
   /** Mean of each election-score component — surfaces WHY runs win/lose. */
   meanElectionBreakdown: Record<string, number>;
   lossConditions: Record<string, number>;
+  /** Distribution of final progression stage (e.g. {restoration: 3, beyond: 7}). */
+  stageReached: Record<string, number>;
+  /** Mean turn a win occurred (over winning games only), or null if no wins. */
+  meanWinTurn: number | null;
 }
 
 export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
@@ -61,6 +65,10 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
     const meanElectionBreakdown: Record<string, number> = {};
     for (const k of breakdownKeys) meanElectionBreakdown[k] = mean(ms.map((m) => m.electionBreakdown[k] ?? 0));
 
+    const stageReached: Record<string, number> = {};
+    for (const m of ms) stageReached[m.stageReached] = (stageReached[m.stageReached] ?? 0) + 1;
+    const winTurns = ms.filter((m) => m.winTurn != null).map((m) => m.winTurn as number);
+
     rows.push({
       agentId,
       runs: n,
@@ -83,6 +91,8 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
       },
       meanElectionBreakdown,
       lossConditions,
+      stageReached,
+      meanWinTurn: winTurns.length ? mean(winTurns) : null,
     });
   }
   rows.sort((a, b) => b.electionScore.mean - a.electionScore.mean);
@@ -92,14 +102,17 @@ export function aggregate(metrics: GameMetrics[]): AgentSummary[] {
 export function renderLeaderboard(title: string, rows: AgentSummary[], notes: string[] = []): string {
   const out: string[] = [`# ${title}`, ''];
   if (notes.length) { out.push(...notes.map((n) => `> ${n}`), ''); }
-  out.push('| Rank | Agent | Runs | Score (mean ±std) | Win% | Loss% | Turns | Trust | Eco | Food | Gini | Accept/Reject/Ignored |');
-  out.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
+  out.push('| Rank | Agent | Runs | Score (mean ±std) | Win% | Loss% | WinTurn | Stage | Trust | Eco | Food | Gini | Accept/Reject/Ignored |');
+  out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   rows.forEach((r, i) => {
     const fm = r.meanFinalMeters;
     const fp = r.meanFingerprint;
+    // Most-common final stage, with its share.
+    const topStage = Object.entries(r.stageReached).sort((a, b) => b[1] - a[1])[0];
+    const stageCell = topStage ? `${topStage[0]} ${Math.round((topStage[1] / r.runs) * 100)}%` : '—';
     out.push(
       `| ${i + 1} | ${r.agentId} | ${r.runs} | ${r.electionScore.mean.toFixed(1)} ±${r.electionScore.std.toFixed(1)} ` +
-      `| ${(r.winRate * 100).toFixed(0)}% | ${(r.lossRate * 100).toFixed(0)}% | ${r.meanTurnsSurvived.toFixed(0)} ` +
+      `| ${(r.winRate * 100).toFixed(0)}% | ${(r.lossRate * 100).toFixed(0)}% | ${r.meanWinTurn != null ? r.meanWinTurn.toFixed(0) : '—'} | ${stageCell} ` +
       `| ${(fm.communityTrust ?? 0).toFixed(0)} | ${(fm.ecologicalHealth ?? 0).toFixed(0)} | ${(fm.foodSovereignty ?? 0).toFixed(0)} ` +
       `| ${fp.neighborhoodGini.toFixed(2)} | ${fp.accept.toFixed(1)}/${fp.reject.toFixed(1)}/${fp.ignoredExpired.toFixed(1)} |`,
     );

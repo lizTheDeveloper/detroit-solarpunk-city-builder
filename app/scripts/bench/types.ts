@@ -98,6 +98,10 @@ export interface GameMetrics {
   outcome: 'win' | 'loss' | 'survived';
   condition: string | null; // win/loss condition string
   turnsPlayed: number;
+  /** Progression stage reached by the final state (awakening→transition→restoration→beyond). */
+  stageReached: string;
+  /** Turn the game ended on a win, else null (lets us measure how fast wins arrive). */
+  winTurn: number | null;
   /** Canonical in-game mayor-quality score (calculateElectionScore), 0-50ish. */
   electionScore: number;
   electionBreakdown: Record<string, number>;
