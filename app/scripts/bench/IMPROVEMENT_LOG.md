@@ -17,7 +17,7 @@ Each round: pick highest-value item → implement → verify (tests + benchmark)
 - [ ] R2 — LLM event-choice agency (remove fixed-first-choice limitation)
 - [x] R3 — Richer reporting: Will + Pol columns (win mechanism legible)
 - [ ] R4 — LLM prompt: coach political-will building; re-run to test if gpt-oss can win
-- [ ] R5 — Add Claude (Anthropic) adapter per board directive (if key/proxy available); keep Groq
+- [x] R5 — Claude (Anthropic) adapter added (haiku-4.5 + sonnet-4.6), verified
 - [ ] R6 — Statistical power: more games, report confidence intervals
 - [ ] R7 — Diagnose qwen relationship-conversion failure (writeup)
 - [ ] R8 — Publishable benchmark write-up (original north star)
@@ -59,3 +59,12 @@ coalition path and the equity path are in direct tension.** Pushing toward coali
 reelection. This is a game-DESIGN tension (route to Solaris, don't freelance), and explains why
 qwen's plateau isn't prompt-fixable without breaking equity. Reverted types/view/models to HEAD.
 R4 (will-coaching) — SUPERSEDED by R2 (event agency already solved the will gate).
+
+### R5 — Claude (Anthropic) adapter (2026-06-14 ~05:20) ✅
+Added an anthropic-messages adapter + registered claude-haiku-4-5 and claude-sonnet-4-6 (key in
+gitignored app/.env, sourced from openclaw.json). Aligns with the board "Claude for playtesters"
+directive. Verified with a tiny haiku smoke (1 game/6 turns): 27 proposals, 3 policies, 65 calendar
+actions, 0 errors — parses cleanly. ⚠️ FLAG FOR USER: board "Claude only" vs old "Haiku too
+expensive" memory conflict; a full Claude benchmark run costs real Anthropic $$, so left to user
+authorization. Groq stays the default (free); Claude available on request. Tests 9/9, typecheck clean.
+File: models.ts (+ app/.env, untracked).

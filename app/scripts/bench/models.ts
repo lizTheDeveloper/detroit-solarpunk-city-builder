@@ -58,10 +58,40 @@ function groqAdapter(name: string, modelId: string): ModelAdapter {
   };
 }
 
+// ── Anthropic (Messages API) — per the board's "Claude for playtesters" directive ──
+function anthropicAdapter(name: string, modelId: string): ModelAdapter {
+  return {
+    name,
+    async complete(system, prompt) {
+      const key = process.env.ANTHROPIC_API_KEY;
+      if (!key) throw new Error('ANTHROPIC_API_KEY not set');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: modelId,
+          max_tokens: 1024,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const data = await res.json();
+      return (data.content?.[0]?.text ?? '').trim();
+    },
+  };
+}
+
 export const MODEL_REGISTRY: Record<string, ModelAdapter> = {
   'gemini-cli': geminiAdapter,
   'groq-gpt-oss-120b': groqAdapter('groq-gpt-oss-120b', 'openai/gpt-oss-120b'),
   'groq-qwen3-32b': groqAdapter('groq-qwen3-32b', 'qwen/qwen3-32b'),
+  'claude-haiku-4.5': anthropicAdapter('claude-haiku-4.5', 'claude-haiku-4-5-20251001'),
+  'claude-sonnet-4.6': anthropicAdapter('claude-sonnet-4.6', 'claude-sonnet-4-6'),
 };
 
 // ── Prompt rendering + parsing ──────────────────────────────────────────────
