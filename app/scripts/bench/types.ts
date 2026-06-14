@@ -26,8 +26,17 @@ export interface TurnView {
   burnout: { buffer: number; max: number; state: string };
   /** Neighborhoods, with CUMULATIVE calendar time spent on each (the equity signal). */
   tiles: Array<{ id: string; name: string; gentrification: number; eco: number; timeAllocated: number }>;
+  /** Pending events this turn, with their choices — so LLM agents can decide them
+   *  in the single per-turn call instead of defaulting to the first choice. */
+  events: EventView[];
   /** True when the next 1-2 turns are an election (decision pressure). */
   electionSoon: boolean;
+}
+
+export interface EventView {
+  id: string;
+  title: string;
+  choices: Array<{ id: string; label: string; deltas: string }>;
 }
 
 export interface ProposalView {

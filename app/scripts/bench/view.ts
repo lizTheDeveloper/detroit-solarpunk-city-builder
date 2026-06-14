@@ -11,7 +11,7 @@ import { POLICY_CATALOG } from '../../src/data/content/policy-catalog.ts';
 import { SLOT_COSTS, getAvailableSlots } from '../../src/systems/calendar-slots.ts';
 import { canEnactPolicy } from '../../src/systems/policies.ts';
 import { isElectionTurn } from '../../src/systems/reelection.ts';
-import type { TurnView, ProposalView, PolicyView, CalendarOption } from './types.ts';
+import type { TurnView, ProposalView, PolicyView, CalendarOption, EventView } from './types.ts';
 
 /** Calendar actions the benchmark agents are allowed to use (the simple,
  *  always-available ones — delegation/mentor/strategic need extra game state). */
@@ -69,6 +69,20 @@ export function buildView(state: GameState): TurnView {
   const alloc = state.calendarState.neighborhoodTimeAllocation;
   const timeFor = (id: string) => (alloc[id] ?? []).reduce((s, n) => s + n, 0);
 
+  const events: EventView[] = state.eventQueue
+    .filter((e) => e.choices.length > 0)
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      choices: e.choices.map((c) => ({
+        id: c.id,
+        label: c.label,
+        deltas: c.effects.meterDeltas
+          .map((d) => `${d.meter}${d.amount >= 0 ? '+' : ''}${d.amount}`)
+          .join(' '),
+      })),
+    }));
+
   return {
     turn: state.turn,
     season: state.season,
@@ -92,6 +106,7 @@ export function buildView(state: GameState): TurnView {
       eco: t.ecologicalHealth,
       timeAllocated: timeFor(t.id),
     })),
+    events,
     electionSoon: isElectionTurn(state.turn + 1) || isElectionTurn(state.turn + 2),
   };
 }

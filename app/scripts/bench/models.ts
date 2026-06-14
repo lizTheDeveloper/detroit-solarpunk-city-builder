@@ -90,6 +90,12 @@ function renderPrompt(view: TurnView): string {
   if (enactable.length > 0) {
     lines.push(`\nPOLICIES (enact: <id>): ${enactable.map((p) => p.id).join(', ')}`);
   }
+  if (view.events.length > 0) {
+    lines.push('\nEVENTS — for EACH, pick one choice with a line "event: <choiceId>" (mind the will/trust deltas):');
+    view.events.forEach((e) => {
+      lines.push(`- "${e.title}": ${e.choices.map((c) => `${c.id} [${c.deltas || 'no meter change'}]`).join(' | ')}`);
+    });
+  }
   if (view.tiles.length > 0) {
     lines.push(`\nCALENDAR — ${view.slotsRemaining} slots this turn | burnout buffer ${view.burnout.buffer.toFixed(0)}/${view.burnout.max} (${view.burnout.state})`);
     lines.push('Actions: "calendar: community_meeting <hood>" (2 slots, +trust/+eco) | "calendar: quick_check_in <hood>" (1 slot) | "calendar: public_event <hood>" (3 slots, +trust/+will) | "calendar: rest_day" (1 slot, recover burnout)');
@@ -97,7 +103,7 @@ function renderPrompt(view: TurnView): string {
     const sorted = [...view.tiles].sort((a, b) => a.timeAllocated - b.timeAllocated);
     lines.push('Neighborhoods (least-visited first → cover these): ' + sorted.map((t) => `${t.id}[t=${t.timeAllocated}]`).join(', '));
   }
-  lines.push('\nSpend your slots, then END_TURN.');
+  lines.push('\nDecide each EVENT, spend your slots, then END_TURN.');
   return lines.join('\n');
 }
 
@@ -134,9 +140,22 @@ function parseActions(response: string, view: TurnView): GameAction[] {
   return actions;
 }
 
+/** Parse the model's event decisions ("event: <choiceId>") into a set of chosen
+ *  choice ids, so chooseEvent can honor them (folded into the one per-turn call). */
+function parseEventChoices(response: string): Set<string> {
+  const chosen = new Set<string>();
+  for (const raw of response.split('\n')) {
+    const m = raw.trim().toLowerCase().match(/^event:?\s+([\w-]+)/);
+    if (m) chosen.add(m[1]);
+  }
+  return chosen;
+}
+
 /** Wrap a ModelAdapter as a DecisionAgent. Exposes lastPrompt/lastResponse so
- *  the runner can preserve them in the full JSONL log. */
+ *  the runner can preserve them in the full JSONL log. Event choices are decided
+ *  in the same per-turn call (no extra latency) and honored by chooseEvent. */
 export function llmAgent(adapter: ModelAdapter): DecisionAgent & { lastPrompt?: string; lastResponse?: string } {
+  let eventChoices = new Set<string>();
   const agent: DecisionAgent & { lastPrompt?: string; lastResponse?: string } = {
     id: adapter.name,
     async decide(view: TurnView): Promise<GameAction[]> {
@@ -149,10 +168,13 @@ export function llmAgent(adapter: ModelAdapter): DecisionAgent & { lastPrompt?: 
         response = `__ERROR__ ${(err as Error).message.slice(0, 120)}`;
       }
       agent.lastResponse = response;
+      eventChoices = parseEventChoices(response);
       return parseActions(response, view);
     },
     async chooseEvent(event: GameEvent): Promise<string> {
-      return firstChoice(event); // v1 documented limitation
+      // Honor the model's decision from this turn's call; fall back to first choice.
+      const picked = event.choices.find((c) => eventChoices.has(c.id.toLowerCase()));
+      return picked?.id ?? firstChoice(event);
     },
   };
   return agent;

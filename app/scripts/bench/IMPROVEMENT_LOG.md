@@ -31,3 +31,12 @@ Added `stageReached` + `winTurn` to GameMetrics; report shows a Stage column (to
 and mean WinTurn. Immediately useful: wins cluster turn ~71–88 (2nd half → why 48-turn games show
 0 wins); neglectful is stuck in `transition` 100% (never reaches `beyond`). Tests 9/9, typecheck clean.
 Files: types.ts, metrics.ts, report.ts.
+
+### R2 — LLM event-choice agency (2026-06-14 ~02:00) ✅
+Folded event decisions into the LLM's single per-turn call (view now carries pending events +
+choices + meter deltas; model emits "event: <choiceId>"; chooseEvent honors it; archetypes
+unchanged). MILESTONE result: the old fixed first-choice (confront/accept) was draining political
+will and CAUSING the policy-gate failure. With agency, gpt-oss-120b: 0%→**100% win** (reaches
+beyond), policies 3→7, final will ~32→87. qwen3-32b improved 58→66 (restoration) but still 0 win.
+Resolves the earlier "gpt-oss is one lever from winning" — the lever was event handling, not a prompt.
+Tests 9/9, typecheck clean. Files: types.ts, view.ts, models.ts.
