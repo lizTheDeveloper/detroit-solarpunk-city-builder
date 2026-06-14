@@ -57,18 +57,20 @@ A healthy difficulty curve: engaged, equitable play **wins**; doing nothing only
 at `transition`, never reaches victory); random play loses. *(This was not always true — see
 "How it got here".)*
 
-### LLM models (N=5, 96 turns, current harness)
+### LLM models (N=10, 96 turns, current harness)
 
 | Model | Score (95% CI) | Win rate (Wilson 95%) | Coalitions | Stage |
 |---|---|---|---|---|
-| groq/gpt-oss-120b | 93.0 [87, 99] | **100%** [57%, 100%] | 2.0 | beyond ×5 |
-| claude-haiku-4.5 | 89.2 [84, 95] | **100%** [57%, 100%] | 1.4 | beyond ×5 |
-| groq/qwen3-32b | 66.3 [63, 70] | **20%** [4%, 62%] | 0.2 | restoration ×4, beyond ×1 |
+| groq/gpt-oss-120b | 94.0 [90, 98] | **100%** [72%, 100%] | 1.8 | beyond ×10 |
+| claude-haiku-4.5 | 86.7 [84, 89] | **100%** [72%, 100%] | 1.2 | beyond ×10 |
+| groq/qwen3-32b | 59.8 [53, 66] | **0%** [0%, 28%] | 0.0 | restoration ×10 |
 
-**gpt-oss-120b and claude-haiku-4.5 reliably win the game**; **qwen3-32b mostly plateaus** one
-stage short. (Wilson intervals are wide at N=5 — 5/5 wins is consistent with a true rate as low as
-~57%. Treat 100% as "strong," not "certain.") `claude-sonnet-4.6` and `gemini-cli` are supported
-but not in this run (Sonnet pending cost sign-off; Gemini CLI has timeout issues).
+**gpt-oss-120b and claude-haiku-4.5 win every game**; **qwen3-32b never reaches victory**,
+plateauing one stage short. At N=10 the separation is statistically clear: the winners' win-rate
+CI `[72%, 100%]` does not overlap qwen's `[0%, 28%]`. (5/10 would still be ~[24%,76%] — the
+"100%" is strong but, honestly, a true rate as low as 72% is not excluded.) `claude-sonnet-4.6`
+and `gemini-cli` are supported but not in this run (Sonnet pending cost sign-off; Gemini CLI has
+timeout issues).
 
 ### The win-path
 
@@ -79,7 +81,7 @@ Across both archetypes and LLMs, victory follows one causal chain:
 
 The discriminator between winners and the qwen plateau is the **coalition**: winners build enough
 broad leader trust (5–12 advocates) that 3+ same-category leaders cross trust 40 and a coalition
-forms *for free*; qwen reaches too few advocates (coalitions ≈ 0.2) and stalls at `restoration`.
+forms *for free*; qwen reaches too few advocates (coalitions ≈ 0.0 at N=10) and stalls at `restoration`.
 
 ## Key findings
 
@@ -90,7 +92,7 @@ forms *for free*; qwen reaches too few advocates (coalitions ≈ 0.2) and stalls
    **100% win** (policies 3→8, final will ~32→~90). A frontier-ish model went from "can't win" to
    "wins every game" via one harness change.
 2. **Capability ranking is real and legible.** gpt-oss-120b ≈ claude-haiku-4.5 (both 100%) ≫
-   qwen3-32b (20%). The gap is specifically **relationship depth** — converting calendar visits
+   qwen3-32b (0% at N=10). The gap is specifically **relationship depth** — converting calendar visits
    into enough leader-advocates to form a coalition.
 3. **Two win-paths are in tension.** Coalitions reward *concentrating* attention on a few leaders;
    re-election rewards *spreading* it (equity). The strong models resolve this by building broad
@@ -115,8 +117,8 @@ became measurable.
 
 ## Limitations
 
-- **Small N for LLMs (5).** Win-rate CIs are wide; the ranking is directionally strong, not
-  precise. Larger N would tighten it (cost/time tradeoff).
+- **Modest N for LLMs (10).** Win-rate CIs remain non-trivial (winners ~[72%,100%]); the ranking
+  is statistically clear but exact win rates aren't pinned. Larger N would tighten it.
 - **One game configuration** (default new game, 96 turns). No difficulty/scenario sweep.
 - **Event choice is the only fully-agentic sub-decision added**; some calendar/relationship micro
   -decisions are heuristic in framing.
@@ -128,7 +130,7 @@ became measurable.
 ```
 cd app
 npx tsx scripts/monte-carlo.ts --runs 100 --turns 96            # archetypes
-npx tsx scripts/bench-llm.ts --models groq-gpt-oss-120b,groq-qwen3-32b,claude-haiku-4.5 --games 5 --turns 96
+npx tsx scripts/bench-llm.ts --models groq-gpt-oss-120b,groq-qwen3-32b,claude-haiku-4.5 --games 10 --turns 96
 ```
 Outputs (leaderboard.md, summary.json, per-game JSONL) land in `scripts/bench/results/<ts>/`.
 GROQ/ANTHROPIC keys load from the gitignored `app/.env`. See `scripts/bench/IMPROVEMENT_LOG.md`

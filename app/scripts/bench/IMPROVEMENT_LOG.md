@@ -88,3 +88,9 @@ mc-2026-06-14T13-24-14; LLMs N=5 @96t: llm-2026-06-14T13-24-28). Covers what/why
 results (archetype difficulty curve + LLM ranking gpt-oss≈haiku 100% ≫ qwen 20% with Wilson CIs),
 the will→policy→coalition→beyond win-path, the event-agency milestone, coalition-vs-equity tension,
 harness-validity lessons, limitations, and repro commands. Backlog R1-R8 complete.
+
+### R9 — Tighten benchmark CIs (N=10) (2026-06-14 ~06:55) ✅ (final polish)
+Re-ran the canonical LLM benchmark at N=10 (free Groq + cheap haiku) to address the writeup's own
+"small N" limitation. Result: gpt-oss-120b 10/10 + claude-haiku-4.5 10/10 (win-rate CI [72%,100%]);
+qwen3-32b 0/10 ([0%,28%]) — separation now statistically clear (CIs don't overlap). Updated
+BENCHMARK.md (llm-2026-06-14T14-38-06). Backlog complete; loop winding down per "stop-not-make-work".
