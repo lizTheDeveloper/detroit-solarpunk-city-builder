@@ -68,3 +68,10 @@ actions, 0 errors — parses cleanly. ⚠️ FLAG FOR USER: board "Claude only" 
 expensive" memory conflict; a full Claude benchmark run costs real Anthropic $$, so left to user
 authorization. Groq stays the default (free); Claude available on request. Tests 9/9, typecheck clean.
 File: models.ts (+ app/.env, untracked).
+
+### R5 data — claude-haiku-4.5 benchmark (2026-06-14 ~05:25, haiku only, ~cents)
+claude-haiku-4.5: **100% win** (3/3, all reach `beyond`), score 83–86, will 99–100, 8 policies,
+5–6 advocates, **coalition=1**. Forms the coalition qwen never could — and WITHOUT breaking equity
+(reframes R7: coalitions come FREE from broad high-trust play, not from concentration). Capability
+ranking so far (current harness): claude-haiku ✅100% win, gpt-oss-120b ✅100% win, qwen3-32b ❌0%
+(stalls at restoration, no coalition). Sonnet not run (pricier — awaiting user OK).
