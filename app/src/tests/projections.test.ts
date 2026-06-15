@@ -74,6 +74,7 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       burnoutState: 'sustainable', interactionsThisMonth: {}, lastInteractionMonth: {},
       monthNumber: 1, delegationTier: 0, crisisSlotTax: 0, neighborhoodTimeAllocation: {},
       consecutiveRecoveryMonths: 0,
+      leaderTrustGrantedThisMonth: {},
     },
     strategicContacts: [],
     mentors: [],

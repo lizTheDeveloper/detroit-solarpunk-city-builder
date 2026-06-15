@@ -18,6 +18,7 @@ function makeCalendarState(month: number, lastInteractions: Record<string, numbe
     monthNumber: month, delegationTier: 0, crisisSlotTax: 0,
     neighborhoodTimeAllocation: {},
     consecutiveRecoveryMonths: 0,
+    leaderTrustGrantedThisMonth: {},
   };
 }
 

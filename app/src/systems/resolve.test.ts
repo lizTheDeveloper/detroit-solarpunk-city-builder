@@ -981,6 +981,7 @@ describe('Phase 2 prepareTurn', () => {
         crisisSlotTax: 0,
         neighborhoodTimeAllocation: {},
         consecutiveRecoveryMonths: 0,
+        leaderTrustGrantedThisMonth: {},
       },
     });
     const result = prepareTurn(state, noFireRng);

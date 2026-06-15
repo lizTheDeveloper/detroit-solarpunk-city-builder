@@ -20,6 +20,7 @@ function makeCalendarState(overrides: Partial<CalendarState> = {}): CalendarStat
     crisisSlotTax: 0,
     neighborhoodTimeAllocation: {},
     consecutiveRecoveryMonths: 0,
+    leaderTrustGrantedThisMonth: {},
     ...overrides,
   };
 }

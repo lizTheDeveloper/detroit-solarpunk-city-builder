@@ -168,6 +168,7 @@ describe('Burnout System', () => {
         monthNumber: 1, delegationTier: 0, crisisSlotTax: 0,
         neighborhoodTimeAllocation: {},
         consecutiveRecoveryMonths: 0,
+        leaderTrustGrantedThisMonth: {},
       };
       const result = applyRestDay(state);
       expect(result.burnoutBuffer).toBe(13);
@@ -182,6 +183,7 @@ describe('Burnout System', () => {
         monthNumber: 1, delegationTier: 0, crisisSlotTax: 0,
         neighborhoodTimeAllocation: {},
         consecutiveRecoveryMonths: 0,
+        leaderTrustGrantedThisMonth: {},
       };
       const result = applyRestDay(state);
       expect(result.burnoutBuffer).toBe(20);

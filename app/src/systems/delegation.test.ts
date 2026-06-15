@@ -16,6 +16,7 @@ function makeCalendarState(): CalendarState {
     monthNumber: 1, delegationTier: 0, crisisSlotTax: 0,
     neighborhoodTimeAllocation: {},
     consecutiveRecoveryMonths: 0,
+    leaderTrustGrantedThisMonth: {},
   };
 }
 
