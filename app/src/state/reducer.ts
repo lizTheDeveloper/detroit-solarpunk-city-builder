@@ -7,6 +7,7 @@ import type {
 import { resolveTurn, prepareTurn } from '../systems/resolve';
 import { canEnactPolicy, enactPolicy } from '../systems/policies';
 import { applyEventChoice } from '../systems/events';
+import { recordMarcusResponse } from '../systems/marcus-arc';
 import { calculateLobbyingBonus } from '../systems/council';
 import { canFormCoalition, formCoalition } from '../systems/relationships';
 import { reclaimLot, canReclaimLot } from '../systems/reclamation';
@@ -236,8 +237,22 @@ function handleRespondEvent(
   state: GameState,
   action: Extract<GameAction, { type: 'RESPOND_EVENT' }>,
 ): GameState {
+  // Capture the event's type BEFORE applying the choice (applyEventChoice
+  // removes the event from the queue), so we can log Marcus arc responses.
+  const respondedEvent = state.eventQueue.find((e) => e.id === action.eventId);
+
   const result = applyEventChoice(state, action.eventId, action.choiceId);
-  return result.state;
+  let next = result.state;
+
+  // Task 5.4: track player responses to Marcus Webb events in responseHistory.
+  // applyEventChoice maintains the legacy arcState counters; the reducer owns
+  // the flat responseHistory log (single source of truth for the confront/ignore
+  // ratio used by phase transitions and the Phase 4 resolution branch).
+  if (respondedEvent && respondedEvent.type.startsWith('marcus_webb_')) {
+    next = recordMarcusResponse(next, respondedEvent.type, action.choiceId);
+  }
+
+  return next;
 }
 
 function handleLobbyCouncil(

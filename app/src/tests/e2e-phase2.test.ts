@@ -42,7 +42,7 @@ const RNG_SUPPRESS = () => 0.99;
 /** Force random events by always rolling low. */
 
 /**
- * Build a full game state with all 9 council members, all 8 leaders,
+ * Build a full game state with all 7 council members, all 8 leaders,
  * and all 4 antagonists injected from real data catalogs.
  */
 function createFullState(overrides: Partial<GameState> = {}): GameState {
@@ -184,22 +184,21 @@ describe('Scenario 2: Council voting fails without enough support', () => {
     const yesVotes = vote.votes.filter(v => v.vote === 'yes');
     vote.votes.filter(v => v.vote === 'no');
 
-    // With default dispositions, conservatives (Pat Lundgren -30, Frank Bukowski -50)
-    // and skeptics (Bobby Slade -10) will vote no or abstain.
+    // With default dispositions, Bobby Slade (-10) is the most skeptical member.
     // water_commons has foodSovBonus and trustBonus, which may align with some priorities
-    // but many members have negative dispositions that drag their scores down.
+    // but members with negative dispositions drag their scores down.
     // Need 5 yes to pass.
 
     // Verify the vote either passed or failed - the important thing is we can
     // observe the voting mechanics working correctly
-    expect(vote.votes).toHaveLength(9);
+    expect(vote.votes).toHaveLength(7);
     expect(vote.policyId).toBe('water_commons');
 
     // The vote result reflects whether 5+ members voted yes
     expect(vote.passed).toBe(yesVotes.length >= 5);
   });
 
-  it('conservative members vote no on water_commons with negative dispositions', () => {
+  it('skeptical member bobby_slade scores lowest on water_commons', () => {
     const state = createFullState();
 
     const vote = conductCouncilVote(
@@ -208,15 +207,21 @@ describe('Scenario 2: Council voting fails without enough support', () => {
       POLICY_CATALOG['water_commons'],
     );
 
-    // Pat Lundgren (disposition -30) and Frank Bukowski (disposition -50) should have
-    // negative scores and vote no
-    const patVote = vote.votes.find(v => v.memberId === 'pat_lundgren');
-    const frankVote = vote.votes.find(v => v.memberId === 'frank_bukowski');
+    // Bobby Slade (disposition -10, moderate-conservative) should have the lowest
+    // score among council members since his priorities (historic_preservation,
+    // property_tax, public_safety) don't align with water_commons
+    const bobbyVote = vote.votes.find(v => v.memberId === 'bobby_slade');
 
-    expect(patVote!.vote).toBe('no');
-    expect(frankVote!.vote).toBe('no');
-    expect(patVote!.score).toBeLessThan(0);
-    expect(frankVote!.score).toBeLessThan(0);
+    expect(bobbyVote).toBeDefined();
+    expect(bobbyVote!.score).toBeLessThan(0);
+
+    // Bobby should have the lowest score of all members
+    const otherScores = vote.votes
+      .filter(v => v.memberId !== 'bobby_slade')
+      .map(v => v.score);
+    for (const s of otherScores) {
+      expect(s).toBeGreaterThan(bobbyVote!.score);
+    }
   });
 
   it('progressive members vote yes on water_commons', () => {
@@ -792,14 +797,12 @@ describe('Scenario 9: Re-election score calculation', () => {
 
     // Score starts at trust (55)
     // Then adds/subtracts for council members with disposition >= 30 or <= -30
-    // Council: Marlena +3 (60), Denise +3 (40), Tomoko +3 (50) = +9 yes
-    //          Pat -3 (-30), Frank -3 (-50) = -6 no
-    // Some others: JT (20), Victor (25), Bobby (-10), Aaliyah (15) = neutral
+    // Council: Marlena +3 (60), Denise +3 (40), Tomoko +3 (50) = +9 allies
+    //          No members have disposition <= -30, so no opponents
+    // Other members: JT (20), Victor (25), Bobby (-10), Aaliyah (15) = neutral
     // Leaders: all below 40 trust by default, so no advocate/critic bonuses
-    // Wait, default leaders: grace 30, kez 10, darius 20, lucia 15, elder_whitehorse 25, hassan 5, tamika 20, big_mike 15
-    // All < 40 and > -20, so no leader bonuses
-    // Net: 55 + 9 - 6 = 58
-    expect(score).toBe(58);
+    // Net: 55 + 9 = 64
+    expect(score).toBe(64);
   });
 
   it('winning scenario: score >= 50 with good relationships', () => {
@@ -828,10 +831,10 @@ describe('Scenario 9: Re-election score calculation', () => {
 
     const score = calculateReElectionScore(state);
 
-    // 55 (trust) + 9 (council allies) - 6 (council opponents)
+    // 55 (trust) + 9 (council allies) + 0 (no council opponents)
     // + 15 (3 leaders at trust >= 40 = +5 each)
     // + 8 (1 coalition)
-    // = 55 + 3 + 15 + 8 = 81
+    // = 55 + 9 + 15 + 8 = 87
     expect(score).toBeGreaterThanOrEqual(50);
   });
 
@@ -873,10 +876,10 @@ describe('Scenario 9: Re-election score calculation', () => {
     const score = calculateReElectionScore(state);
 
     // 20 (trust) + council bonuses/penalties
-    // Council: Marlena +3, Denise +3, Tomoko +3, Pat -3, Frank -3 => net +3
+    // Council: Marlena +3, Denise +3, Tomoko +3 => net +9 (no opponents at <= -30)
     // Leaders: grace -5 (<=-20), kez -5 (<=-20), darius -5 (<=-20), lucia -5 (<=-20) => -20
     // Antagonists: sterling_cross -3, senator_voss -3 => -6
-    // Total: 20 + 3 - 20 - 6 = -3
+    // Total: 20 + 9 - 20 - 6 = 3
     expect(score).toBeLessThan(50);
   });
 
@@ -891,15 +894,16 @@ describe('Scenario 9: Re-election score calculation', () => {
     );
     expect(alliedMembers.length).toBe(3);
 
-    // Count opponents: Pat (-30), Frank (-50) = 2 opponents
+    // Count opponents: no members have disposition <= -30
+    // Bobby Slade (-10) is the most negative but doesn't reach the -30 threshold
     const opposingMembers = Object.values(state.councilMembers).filter(
       m => m.disposition <= -30
     );
-    expect(opposingMembers.length).toBe(2);
+    expect(opposingMembers.length).toBe(0);
 
     const score = calculateReElectionScore(state);
-    // 0 + 3*3 - 2*3 = 0 + 9 - 6 = 3
-    expect(score).toBe(3);
+    // 0 + 3*3 - 0*3 = 0 + 9 - 0 = 9
+    expect(score).toBe(9);
   });
 
   it('leader advocates (trust >= 40) each add +5', () => {
@@ -969,7 +973,7 @@ describe('Scenario 9: Re-election score calculation', () => {
 
 describe('Scenario 10: Full 16-turn first term simulation', () => {
   it('survives 16 turns without crashing with full state', () => {
-    let state = createFullState();
+    let state = createFullState({ month: 5, season: 'spring' });
 
     for (let i = 0; i < 16; i++) {
       // Prepare turn (suppresses random events)
@@ -1228,5 +1232,26 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     expect(state.meters.climatePressure).toBeGreaterThan(pressureStart);
     expect(state.meters.climatePressure).toBeGreaterThan(32);
     expect(state.meters.climatePressure).toBeLessThan(40);
+  });
+});
+
+describe('Playtest: Marcus Webb arc over 48 turns (task 9.7)', () => {
+  it('Marcus escalates past Phase 1 when the mayor ignores proposals and neglects neighborhoods', () => {
+    let state = createFullState({ month: 5, season: 'spring' });
+    expect(state.antagonists.marcus_webb?.arcPhase).toBe(1);
+
+    // 48 turns of disengagement: never respond to proposals; concentrate all
+    // attention on one neighborhood so the rest are neglected — Marcus's fuel.
+    for (let i = 0; i < 48; i++) {
+      state = prepareTurnDeterministic(state);
+      if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
+        state = gameReducer(state, { type: 'CALENDAR_ACTION', actionType: 'quick_check_in', tileId: 'brightmoor' });
+      }
+      state = endTurnDeterministic(state);
+    }
+
+    const marcus = state.antagonists.marcus_webb;
+    expect(marcus).toBeDefined();
+    expect(marcus!.arcPhase).toBeGreaterThan(1); // he escalated over the term
   });
 });

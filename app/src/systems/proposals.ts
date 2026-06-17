@@ -88,7 +88,7 @@ export function generateProposals(state: GameState): Proposal[] {
       tileId,
       reason: generateReason(leader, selectedProject),
       turnProposed: state.turn,
-      expirationTurn: state.turn + DEFAULT_URGENCY_WINDOW,
+      expirationTurn: state.turn + (leader.urgencyWindow ?? DEFAULT_URGENCY_WINDOW),
       pressureLevel: 0,
     };
 
@@ -145,7 +145,9 @@ export function applyExpirationPenalties(
   for (const p of expiredProposals) {
     const leader = updated[p.leaderId];
     if (!leader) continue;
-    const penalty = leader.trust >= 40 ? -12 : leader.trust >= 0 ? -8 : -3;
+    const basePenalty = leader.trust >= 40 ? -12 : leader.trust >= 0 ? -8 : -3;
+    const pressureMultiplier = p.pressureLevel >= 3 ? 1.0 : p.pressureLevel >= 2 ? 0.75 : 0.5;
+    const penalty = Math.round(basePenalty * pressureMultiplier);
     updated[p.leaderId] = {
       ...leader,
       trust: clampTrust(leader.trust + penalty),
@@ -187,7 +189,11 @@ export function applyProposalResponse(
 
   switch (response) {
     case 'accept': {
-      newLeader.trust += 6;
+      const trustBonus = proposal.pressureLevel >= 3 ? 3
+        : proposal.pressureLevel >= 2 ? 4
+        : proposal.pressureLevel >= 1 ? 5
+        : 6;
+      newLeader.trust += trustBonus;
       newLeader.consecutiveDeferrals = 0;
       startProject = true;
       costMultiplier = 0.85;

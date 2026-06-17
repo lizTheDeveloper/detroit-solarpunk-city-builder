@@ -24,7 +24,9 @@ export default function EndTurnButton({ onEndTurn, onResolve }: EndTurnButtonPro
     );
   }
 
-  const isBlocked = hasUnrespondedProposals || hasUnrespondedEvents;
+  const isBlocked = hasUnrespondedEvents;
+
+  const expiringSoon = state.activeProposals.filter(p => (p.expirationTurn - state.turn) <= 1).length;
 
   let title = 'End Turn';
   let label = 'End Turn';
@@ -33,8 +35,12 @@ export default function EndTurnButton({ onEndTurn, onResolve }: EndTurnButtonPro
     title = 'Respond to all events before ending the turn';
     label = `End Turn (${state.eventQueue.length} event${state.eventQueue.length !== 1 ? 's' : ''} pending)`;
   } else if (hasUnrespondedProposals) {
-    title = 'Respond to all proposals before ending the turn';
-    label = `End Turn (${state.activeProposals.length} proposal${state.activeProposals.length !== 1 ? 's' : ''} remaining)`;
+    title = expiringSoon > 0
+      ? `${expiringSoon} proposal${expiringSoon !== 1 ? 's' : ''} expiring soon`
+      : `${state.activeProposals.length} proposal${state.activeProposals.length !== 1 ? 's' : ''} pending`;
+    label = expiringSoon > 0
+      ? `End Turn (${expiringSoon} expiring soon)`
+      : `End Turn (${state.activeProposals.length} pending)`;
   }
 
   return (

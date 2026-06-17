@@ -64,8 +64,11 @@ function TileProposalCard({ proposal, onConversation }: { proposal: Proposal; on
     : proposal.pressureLevel >= 1 ? '#eab308'
     : '#22c55e';
 
+  const isExpiring = turnsLeft <= 1;
+  const cardClass = `tile-proposal-card${isExpiring ? ' tile-proposal-card--expiring' : ''}`;
+
   return (
-    <div className="tile-proposal-card">
+    <div className={cardClass}>
       <div className="proposal-pressure-bar" style={{ background: pressureColor, height: 3, borderRadius: 2, marginBottom: 4 }} />
       <div className="tile-proposal-header">
         <span className="tile-proposal-leader">{leader.name}</span>

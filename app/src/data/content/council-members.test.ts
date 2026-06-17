@@ -2,33 +2,31 @@ import { describe, it, expect } from 'vitest';
 import { COUNCIL_MEMBERS } from './council-members';
 
 describe('COUNCIL_MEMBERS', () => {
-  it('contains exactly 9 council members', () => {
-    expect(Object.keys(COUNCIL_MEMBERS)).toHaveLength(9);
+  it('contains exactly 7 council members', () => {
+    expect(Object.keys(COUNCIL_MEMBERS)).toHaveLength(7);
   });
 
-  it('has all 9 members by key', () => {
+  it('has all 7 members by key', () => {
     const expectedKeys = [
       'marlena_calloway',
       'jt_thibodeaux',
       'denise_okonkwo',
       'victor_marek',
-      'pat_lundgren',
-      'tomoko_reyes',
       'bobby_slade',
+      'tomoko_reyes',
       'aaliyah_foster',
-      'frank_bukowski',
     ];
     for (const key of expectedKeys) {
       expect(COUNCIL_MEMBERS).toHaveProperty(key);
     }
   });
 
-  it('has unique district numbers 1 through 9', () => {
+  it('has unique district numbers 1 through 7', () => {
     const districtNumbers = Object.values(COUNCIL_MEMBERS).map(
       (m) => m.districtNumber
     );
     expect(districtNumbers.sort((a, b) => a - b)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9,
+      1, 2, 3, 4, 5, 6, 7,
     ]);
   });
 
@@ -62,7 +60,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Bagley/Grandmont/Brightmoor');
+      expect(m().district).toBe('Northwest Detroit');
       expect(m().districtNumber).toBe(1);
     });
 
@@ -89,7 +87,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
   });
 
-  describe('JT Thibodeaux (District 2)', () => {
+  describe('JT Thibodeaux (District 5)', () => {
     const m = () => COUNCIL_MEMBERS.jt_thibodeaux;
 
     it('has correct id and name', () => {
@@ -98,8 +96,8 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Midtown/New Center/North End');
-      expect(m().districtNumber).toBe(2);
+      expect(m().district).toBe('Central Detroit');
+      expect(m().districtNumber).toBe(5);
     });
 
     it('is moderate', () => {
@@ -133,7 +131,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('East Side/Osborn/Gratiot');
+      expect(m().district).toBe('Northeast Detroit');
       expect(m().districtNumber).toBe(3);
     });
 
@@ -159,7 +157,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
   });
 
-  describe('Victor Marek (District 4)', () => {
+  describe('Victor Marek (District 7)', () => {
     const m = () => COUNCIL_MEMBERS.victor_marek;
 
     it('has correct id and name', () => {
@@ -168,8 +166,8 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Hamtramck/Banglatown/Conant Gardens');
-      expect(m().districtNumber).toBe(4);
+      expect(m().district).toBe('West-Central Detroit');
+      expect(m().districtNumber).toBe(7);
     });
 
     it('is moderate', () => {
@@ -194,38 +192,38 @@ describe('COUNCIL_MEMBERS', () => {
     });
   });
 
-  describe('Pat Lundgren (District 5)', () => {
-    const m = () => COUNCIL_MEMBERS.pat_lundgren;
+  describe('Bobby Slade (District 2)', () => {
+    const m = () => COUNCIL_MEMBERS.bobby_slade;
 
     it('has correct id and name', () => {
-      expect(m().id).toBe('pat_lundgren');
-      expect(m().name).toBe('Pat Lundgren');
+      expect(m().id).toBe('bobby_slade');
+      expect(m().name).toBe('Bobby Slade');
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Downtown/Corktown/Woodbridge');
-      expect(m().districtNumber).toBe(5);
+      expect(m().district).toBe('North-Central Detroit');
+      expect(m().districtNumber).toBe(2);
     });
 
-    it('is conservative', () => {
-      expect(m().leaning).toBe('conservative');
+    it('is moderate-conservative', () => {
+      expect(m().leaning).toBe('moderate-conservative');
     });
 
     it('has correct priorities', () => {
       expect(m().priorities).toEqual([
-        'budget_discipline',
-        'business_climate',
-        'property_values',
+        'historic_preservation',
+        'property_tax',
+        'public_safety',
       ]);
     });
 
-    it('has disposition -30', () => {
-      expect(m().disposition).toBe(-30);
+    it('has disposition -10', () => {
+      expect(m().disposition).toBe(-10);
     });
 
-    it('has a backstory mentioning corporate accountant', () => {
+    it('has a backstory mentioning auto industry and engineer', () => {
       expect(m().backstory.length).toBeGreaterThan(20);
-      expect(m().backstory.toLowerCase()).toMatch(/accountant|corporate/);
+      expect(m().backstory.toLowerCase()).toMatch(/auto|engineer/);
     });
   });
 
@@ -238,7 +236,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Southwest Detroit/Delray/Springwells');
+      expect(m().district).toBe('Southwest Detroit');
       expect(m().districtNumber).toBe(6);
     });
 
@@ -264,42 +262,7 @@ describe('COUNCIL_MEMBERS', () => {
     });
   });
 
-  describe('Bobby Slade (District 7)', () => {
-    const m = () => COUNCIL_MEMBERS.bobby_slade;
-
-    it('has correct id and name', () => {
-      expect(m().id).toBe('bobby_slade');
-      expect(m().name).toBe('Bobby Slade');
-    });
-
-    it('has correct district info', () => {
-      expect(m().district).toBe('Palmer Park/Sherwood Forest/University District');
-      expect(m().districtNumber).toBe(7);
-    });
-
-    it('is moderate-conservative', () => {
-      expect(m().leaning).toBe('moderate-conservative');
-    });
-
-    it('has correct priorities', () => {
-      expect(m().priorities).toEqual([
-        'historic_preservation',
-        'property_tax',
-        'public_safety',
-      ]);
-    });
-
-    it('has disposition -10', () => {
-      expect(m().disposition).toBe(-10);
-    });
-
-    it('has a backstory mentioning auto industry and engineer', () => {
-      expect(m().backstory.length).toBeGreaterThan(20);
-      expect(m().backstory.toLowerCase()).toMatch(/auto|engineer/);
-    });
-  });
-
-  describe('Aaliyah Foster (District 8)', () => {
+  describe('Aaliyah Foster (District 4)', () => {
     const m = () => COUNCIL_MEMBERS.aaliyah_foster;
 
     it('has correct id and name', () => {
@@ -308,8 +271,8 @@ describe('COUNCIL_MEMBERS', () => {
     });
 
     it('has correct district info', () => {
-      expect(m().district).toBe('Indian Village/West Village/Jefferson-Chalmers');
-      expect(m().districtNumber).toBe(8);
+      expect(m().district).toBe('Far East Side');
+      expect(m().districtNumber).toBe(4);
     });
 
     it('is moderate', () => {
@@ -331,41 +294,6 @@ describe('COUNCIL_MEMBERS', () => {
     it('has a backstory mentioning real estate', () => {
       expect(m().backstory.length).toBeGreaterThan(20);
       expect(m().backstory.toLowerCase()).toMatch(/real estate/);
-    });
-  });
-
-  describe('Frank Bukowski (District 9)', () => {
-    const m = () => COUNCIL_MEMBERS.frank_bukowski;
-
-    it('has correct id and name', () => {
-      expect(m().id).toBe('frank_bukowski');
-      expect(m().name).toBe('Frank Bukowski');
-    });
-
-    it('has correct district info', () => {
-      expect(m().district).toBe('Grosse Pointe border/Eastpointe/Near East Side');
-      expect(m().districtNumber).toBe(9);
-    });
-
-    it('is conservative', () => {
-      expect(m().leaning).toBe('conservative');
-    });
-
-    it('has correct priorities', () => {
-      expect(m().priorities).toEqual([
-        'tax_burden',
-        'public_safety',
-        'infrastructure_basics',
-      ]);
-    });
-
-    it('has disposition -50', () => {
-      expect(m().disposition).toBe(-50);
-    });
-
-    it('has a backstory mentioning DPD or police', () => {
-      expect(m().backstory.length).toBeGreaterThan(20);
-      expect(m().backstory.toLowerCase()).toMatch(/dpd|police|officer/);
     });
   });
 });

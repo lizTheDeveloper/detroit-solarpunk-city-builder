@@ -76,8 +76,8 @@ describe('createNewGame', () => {
       expect(state.meters.politicalWill).toBe(25);
     });
 
-    it('budget starts at 1.5', () => {
-      expect(state.meters.budget).toBe(1.5);
+    it('budget starts at 1576', () => {
+      expect(state.meters.budget).toBe(1576);
     });
 
     it('climatePressure starts at 30', () => {
@@ -206,8 +206,8 @@ describe('createNewGame', () => {
   });
 
   describe('community leaders', () => {
-    it('has 13 leaders (8 original + 5 expansion)', () => {
-      expect(Object.keys(state.leaders)).toHaveLength(13);
+    it('has 14 leaders (8 original + 6 expansion)', () => {
+      expect(Object.keys(state.leaders)).toHaveLength(14);
     });
 
     it('has grace, kez, darius', () => {

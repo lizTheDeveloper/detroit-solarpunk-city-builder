@@ -249,7 +249,7 @@ describe('applyEventChoice', () => {
   it('11. event choices apply correct meter deltas', () => {
     const state = stateWithEvent(federalGrantEvent);
     const result = applyEventChoice(state, 'evt-grant-1', 'accept');
-    expect(result.state.meters.budget).toBeCloseTo(1.5 + 0.5, 5);
+    expect(result.state.meters.budget).toBeCloseTo(1576 + 0.5, 5);
     expect(result.state.meters.politicalWill).toBeCloseTo(25 - 3, 5);
     expect(result.deltas).toHaveLength(2);
   });
@@ -268,14 +268,14 @@ describe('applyEventChoice', () => {
             relationshipChanges: [],
             other: [],
           },
-          requirements: { minBudget: 10, minWill: null, minTrust: null },
+          requirements: { minBudget: 2000, minWill: null, minTrust: null },
         },
       ],
     };
     const state = stateWithEvent(restrictedEvent);
     const result = applyEventChoice(state, 'evt-restricted', 'expensive');
-    // Budget is 1.5, requirement is 10 — should not apply
-    expect(result.state.meters.budget).toBeCloseTo(1.5, 5);
+    // Budget is 1576, requirement is 2000 — should not apply
+    expect(result.state.meters.budget).toBeCloseTo(1576, 5);
     expect(result.deltas).toHaveLength(0);
   });
 

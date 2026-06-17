@@ -273,6 +273,30 @@ describe('generateProposals', () => {
     const proposals = generateProposals(state);
     expect(proposals).toHaveLength(1);
   });
+
+  it('sets default expirationTurn to currentTurn + 3', () => {
+    const state = makeGameState({ turn: 10 });
+    const proposals = generateProposals(state);
+    expect(proposals[0].expirationTurn).toBe(13);
+  });
+
+  it('uses leader urgencyWindow for expirationTurn when set', () => {
+    const state = makeGameState({
+      turn: 10,
+      leaders: { grace: makeLeader({ urgencyWindow: 5 }) },
+    });
+    const proposals = generateProposals(state);
+    expect(proposals[0].expirationTurn).toBe(15);
+  });
+
+  it('uses leader urgencyWindow of 2 for urgent leaders', () => {
+    const state = makeGameState({
+      turn: 10,
+      leaders: { grace: makeLeader({ urgencyWindow: 2 }) },
+    });
+    const proposals = generateProposals(state);
+    expect(proposals[0].expirationTurn).toBe(12);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -297,10 +321,24 @@ describe('applyProposalResponse', () => {
   }
 
   describe('accept', () => {
-    it('increases leader trust by 6', () => {
+    it('increases leader trust by 6 at pressure 0 (early funding)', () => {
       const state = stateWithProposal();
       const result = applyProposalResponse(state, 'grace_5', 'accept');
       expect(result.leaders.grace.trust).toBe(36); // 30 + 6
+    });
+
+    it('increases leader trust by 3 at pressure 3 (late funding)', () => {
+      const state = stateWithProposal();
+      state.activeProposals[0].pressureLevel = 3;
+      const result = applyProposalResponse(state, 'grace_5', 'accept');
+      expect(result.leaders.grace.trust).toBe(33); // 30 + 3
+    });
+
+    it('increases leader trust by 5 at pressure 1', () => {
+      const state = stateWithProposal();
+      state.activeProposals[0].pressureLevel = 1;
+      const result = applyProposalResponse(state, 'grace_5', 'accept');
+      expect(result.leaders.grace.trust).toBe(35); // 30 + 5
     });
 
     it('starts project at 85% base cost', () => {
@@ -423,7 +461,7 @@ describe('applyProposalResponse', () => {
         leaders: { grace: makeLeader({ trust: 95 }) },
       });
       const result = applyProposalResponse(state, 'grace_5', 'accept');
-      expect(result.leaders.grace.trust).toBe(100); // 95 + 10 = 105, clamped to 100
+      expect(result.leaders.grace.trust).toBe(100); // 95 + 6 = 101, clamped to 100
     });
 
     it('clamps trust to min -100', () => {
@@ -599,27 +637,46 @@ describe('applyExpirationPenalties', () => {
     };
   }
 
-  it('applies -12 penalty for partner-level leaders (trust >= 40)', () => {
+  it('applies full -12 penalty for partner-level leaders at pressure 3', () => {
     const leaders = { grace: makeLeader({ trust: 50 }) };
-    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 3 })]);
     expect(result.grace.trust).toBe(38);
   });
 
-  it('applies -8 penalty for neutral leaders (trust >= 0)', () => {
+  it('applies reduced -6 penalty for partner-level leaders at pressure 0', () => {
+    const leaders = { grace: makeLeader({ trust: 50 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 0 })]);
+    expect(result.grace.trust).toBe(44);
+  });
+
+  it('applies -8 penalty for neutral leaders at pressure 3', () => {
     const leaders = { grace: makeLeader({ trust: 20 }) };
-    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 3 })]);
     expect(result.grace.trust).toBe(12);
   });
 
-  it('applies -3 penalty for hostile leaders (trust < 0)', () => {
+  it('applies -4 penalty for neutral leaders at pressure 0', () => {
+    const leaders = { grace: makeLeader({ trust: 20 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 0 })]);
+    expect(result.grace.trust).toBe(16);
+  });
+
+  it('applies -3 penalty for hostile leaders at pressure 3', () => {
     const leaders = { grace: makeLeader({ trust: -10 }) };
-    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 3 })]);
     expect(result.grace.trust).toBe(-13);
+  });
+
+  it('scales penalty at pressure 2 (75% multiplier)', () => {
+    const leaders = { grace: makeLeader({ trust: 50 }) };
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 2 })]);
+    // -12 * 0.75 = -9
+    expect(result.grace.trust).toBe(41);
   });
 
   it('clamps trust to -100', () => {
     const leaders = { grace: makeLeader({ trust: -99 }) };
-    const result = applyExpirationPenalties(leaders, [makeProposal()]);
+    const result = applyExpirationPenalties(leaders, [makeProposal({ pressureLevel: 3 })]);
     expect(result.grace.trust).toBe(-100);
   });
 });

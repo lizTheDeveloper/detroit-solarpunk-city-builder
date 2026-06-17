@@ -174,6 +174,19 @@ export interface AntagonistArcState {
   sterlingConnectionRevealed: boolean;
 }
 
+/**
+ * A single recorded player response to a Marcus Webb arc event.
+ * Used to compute the confront/ignore ratio that drives phase transitions
+ * and the Phase 4 resolution branch.
+ */
+export interface MarcusResponse {
+  turn: number;
+  eventType: string;
+  choiceId: string;
+  /** Bucketed interpretation of the choice for ratio math. */
+  kind: 'confront' | 'ignore' | 'co_opt' | 'strategic';
+}
+
 export interface Antagonist {
   id: string;
   name: string;
@@ -185,6 +198,17 @@ export interface Antagonist {
   lastEscalationTurn: number;
   tileTargets: string[];
   arcState?: AntagonistArcState;
+  // --- Marcus Webb arc (flat fields) ---
+  // These are optional/defaulted so other antagonists keep working unchanged.
+  // Marcus's definition initializes them; the marcus-arc.ts system reads/writes them.
+  /** Current arc phase: 1 Gadfly, 2 Demagogue, 3 Power Broker, 4 Resolution. */
+  arcPhase?: 1 | 2 | 3 | 4;
+  /** Chronological log of player responses to Marcus events. */
+  responseHistory?: MarcusResponse[];
+  /** Number of events fired in the current phase (resets on transition). */
+  phaseEventCount?: number;
+  /** Whether the Sterling Cross funding motivation has been surfaced. */
+  motivationRevealed?: boolean;
 }
 
 export interface PolicyDefinition {

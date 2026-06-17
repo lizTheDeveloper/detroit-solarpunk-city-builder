@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { LEADER_DEFINITIONS } from './leaders';
 
 describe('LEADER_DEFINITIONS', () => {
-  it('contains 13 leaders (8 original + 5 expansion)', () => {
-    expect(Object.keys(LEADER_DEFINITIONS)).toHaveLength(13);
+  it('contains 14 leaders (8 original + 6 expansion)', () => {
+    expect(Object.keys(LEADER_DEFINITIONS)).toHaveLength(14);
   });
 
-  it('has all 13 leaders by key', () => {
+  it('has all 14 leaders by key', () => {
     const expectedKeys = [
       'grace',
       'kez',
@@ -21,6 +21,7 @@ describe('LEADER_DEFINITIONS', () => {
       'dorothy',
       'jerome',
       'aisha',
+      'andy',
     ];
     for (const key of expectedKeys) {
       expect(LEADER_DEFINITIONS).toHaveProperty(key);

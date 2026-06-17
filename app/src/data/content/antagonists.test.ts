@@ -116,12 +116,31 @@ describe('ANTAGONIST_DEFINITIONS', () => {
       expect(a().activationCondition).toBe('turn_1');
     });
 
-    it('has escalationInterval 0 (always low intensity)', () => {
-      expect(a().escalationInterval).toBe(0);
+    it('no longer uses escalationInterval 0 (arc is phase-driven, not interval-driven)', () => {
+      // Marcus's behavior is governed by the phase state machine in marcus-arc.ts,
+      // not the generic interval timer. The old escalationInterval: 0 (which made
+      // him fire the identical event every turn) has been removed.
+      expect(a().escalationInterval).not.toBe(0);
     });
 
     it('starts inactive (activated by game logic on turn 1)', () => {
       expect(a().active).toBe(false);
+    });
+
+    it('starts in arc Phase 1 (Gadfly)', () => {
+      expect(a().arcPhase).toBe(1);
+    });
+
+    it('starts with an empty response history', () => {
+      expect(a().responseHistory).toEqual([]);
+    });
+
+    it('starts with phaseEventCount 0', () => {
+      expect(a().phaseEventCount).toBe(0);
+    });
+
+    it('starts with motivationRevealed false', () => {
+      expect(a().motivationRevealed).toBe(false);
     });
   });
 

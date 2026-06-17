@@ -47,7 +47,7 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
     ecologicalHealth: 20,
     foodSovereignty: 12,
     politicalWill: 25,
-    budget: 1.5,
+    budget: 1576,
     climatePressure: 30,
     ...overrides,
   };
@@ -124,9 +124,9 @@ const projectDefs: Record<string, ProjectDefinition> = {
 // ============================================================
 
 describe('Scenario 1: Budget Economy Test', () => {
-  it('starting budget is $1.5M', () => {
+  it('starting budget is $1,576M', () => {
     const state = createNewGame();
-    expect(state.meters.budget).toBe(1.5);
+    expect(state.meters.budget).toBe(1576);
   });
 
   it('starting 2 projects deducts correct costs from budget', () => {
@@ -138,7 +138,7 @@ describe('Scenario 1: Budget Economy Test', () => {
       { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(1.5 - 0.10, 5);
+    expect(state.meters.budget).toBeCloseTo(1576 - 0.10, 5);
 
     // Start rain_garden ($0.14M player-initiated)
     state = gameReducer(
@@ -146,11 +146,12 @@ describe('Scenario 1: Budget Economy Test', () => {
       { type: 'START_PROJECT', tileId: 'eastern_market', projectId: 'rain_garden', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(1.5 - 0.10 - 0.14, 5);
+    expect(state.meters.budget).toBeCloseTo(1576 - 0.10 - 0.14, 5);
   });
 
-  it('budget grows with monthly revenue every turn after turn 1', () => {
+  it('budget changes with monthly revenue/expenses every turn after turn 1', () => {
     // Budget replenishment is now monthly (every turn after turn 1).
+    // At starting eco=20 (<30 threshold), emergency costs cause slight net loss.
     const state = createNewGame();
     let current = state;
     for (let i = 0; i < 3; i++) {
@@ -158,8 +159,10 @@ describe('Scenario 1: Budget Economy Test', () => {
     }
     // After 3 END_TURNs (monthly): should advance 3 months
     expect(current.year).toBe(1);
-    // Budget should be higher than starting (monthly revenue adds per turn)
-    expect(current.meters.budget).toBeGreaterThan(1.5);
+    // Budget decreases slightly at starting conditions (eco emergency costs > trust bonus)
+    // but stays within reasonable range of starting value
+    expect(current.meters.budget).toBeLessThan(1576);
+    expect(current.meters.budget).toBeGreaterThan(1560);
   });
 
   it.todo(
@@ -360,7 +363,7 @@ describe('Scenario 4: Community-Led vs Player-Initiated Trade-off', () => {
         { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
         projectDefs,
       );
-      expect(result.meters.budget).toBeCloseTo(1.5 - 0.10, 5);
+      expect(result.meters.budget).toBeCloseTo(1576 - 0.10, 5);
       expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(0.10, 5);
     });
 
@@ -384,7 +387,7 @@ describe('Scenario 4: Community-Led vs Player-Initiated Trade-off', () => {
         projectDefs,
       );
       const expectedCost = 0.10 * 1.3;
-      expect(result.meters.budget).toBeCloseTo(1.5 - expectedCost, 5);
+      expect(result.meters.budget).toBeCloseTo(1576 - expectedCost, 5);
       expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(expectedCost, 5);
     });
 
@@ -893,8 +896,8 @@ describe('Scenario 11: Starting Conditions Match Spec', () => {
     expect(createNewGame().meters.politicalWill).toBe(25);
   });
 
-  it('budget starts at $1.5M', () => {
-    expect(createNewGame().meters.budget).toBe(1.5);
+  it('budget starts at $1,576M', () => {
+    expect(createNewGame().meters.budget).toBe(1576);
   });
 
   it('climate pressure starts at 30', () => {
@@ -966,13 +969,13 @@ describe('Scenario 12: Multi-Turn Integration - 16-Turn First Term Simulation', 
   it('budget does not collapse after starting 2 projects and advancing 16 turns', () => {
     let state = createNewGame();
 
-    // Start a food_forest on turn 1 (cost $0.10M, budget starts at $1.5M)
+    // Start a food_forest on turn 1 (cost $0.10M, budget starts at $1,576M)
     state = gameReducer(
       state,
       { type: 'START_PROJECT', tileId: 'brightmoor', projectId: 'food_forest', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(1.40, 2);
+    expect(state.meters.budget).toBeCloseTo(1575.90, 2);
 
     // Start a rain_garden on turn 1 (cost $0.14M)
     state = gameReducer(
@@ -980,7 +983,7 @@ describe('Scenario 12: Multi-Turn Integration - 16-Turn First Term Simulation', 
       { type: 'START_PROJECT', tileId: 'eastern_market', projectId: 'rain_garden', mode: 'player-initiated' },
       projectDefs,
     );
-    expect(state.meters.budget).toBeCloseTo(1.26, 2);
+    expect(state.meters.budget).toBeCloseTo(1575.76, 2);
 
     // Advance 16 turns
     for (let i = 0; i < 16; i++) {

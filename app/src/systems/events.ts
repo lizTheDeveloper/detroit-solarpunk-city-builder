@@ -14,6 +14,36 @@ import type { ArcTemplate } from '../data/arcs/types';
 import { assessTaboo } from './overton-window';
 import { scheduleConsequence } from './delayed-consequences';
 import { arcTemplateMap } from '../data/arcs';
+import { PROJECT_CATALOG } from '../data/content/project-catalog';
+
+// Marcus Webb's childhood neighborhood. North End is an east-side / central
+// Detroit neighborhood that starts with high vacancy (~55%) and very low
+// ecological health (~9%), led by Tamika Jefferson — it grounds his "I grew up
+// on the east side" motivation (spec 4.6) in a real, neglect-prone tile. Marcus's
+// antagonist definition carries this in tileTargets; this is the fallback.
+const MARCUS_CHILDHOOD_TILE_ID = 'north_end';
+
+/** Resolve Marcus's childhood tile + its leader, honoring tileTargets override. */
+function findChildhoodNeighborhood(
+  state: GameState,
+  ant: Antagonist,
+): { tile: GameState['tiles'][string]; leader: GameState['leaders'][string] | null } | null {
+  const tileId = ant.tileTargets[0] ?? MARCUS_CHILDHOOD_TILE_ID;
+  const tile = state.tiles[tileId];
+  if (!tile) return null;
+  const leader = Object.values(state.leaders).find(l => l.tileIds.includes(tileId)) ?? null;
+  return { tile, leader };
+}
+
+/** True when the childhood tile is in visible distress (spec 4.6 trigger). */
+function childhoodTileInDistress(tile: GameState['tiles'][string]): boolean {
+  return tile.ecologicalHealth < 30 || tile.vacancyRate > 50;
+}
+
+/** Human-readable project name from a definition id. */
+function projectDisplayName(projectDefinitionId: string): string {
+  return PROJECT_CATALOG[projectDefinitionId]?.name ?? projectDefinitionId.replace(/_/g, ' ');
+}
 
 // ---------------------------------------------------------------------------
 // Event definitions: base probabilities, conditions, and choice templates
@@ -715,7 +745,7 @@ export function applyEventChoice(
 
   // Marcus Webb arc: track confrontation/ignore/co-opt responses
   if (event.type.startsWith('marcus_webb_')) {
-    updatedState = applyMarcusArcTracking(updatedState, choiceId);
+    updatedState = applyMarcusArcTracking(updatedState, choiceId, event.type);
   }
 
   // Crisis fork: apply dependency web changes, schedule delayed consequences, update arc
@@ -729,14 +759,44 @@ export function applyEventChoice(
   };
 }
 
-function applyMarcusArcTracking(state: GameState, choiceId: string): GameState {
+/**
+ * Bucket a Marcus event choice into one of the four response kinds used by
+ * both the arcState confront/ignore counters and the flat responseHistory log.
+ * Exported so marcus-arc.ts can classify responses without duplicating the map.
+ */
+export function classifyMarcusResponse(
+  choiceId: string,
+): 'confront' | 'ignore' | 'co_opt' | 'strategic' {
+  if (choiceId === 'co_opt') return 'co_opt';
+  if (choiceId === 'ignore') return 'ignore';
+  if (
+    choiceId === 'confront' || choiceId === 'attend' || choiceId === 'debate' ||
+    choiceId === 'invest' || choiceId === 'leverage' || choiceId === 'acknowledge'
+  ) {
+    return 'confront';
+  }
+  // counter_media / community_response / negotiate / cautious / accept etc.
+  return 'strategic';
+}
+
+function applyMarcusArcTracking(
+  state: GameState,
+  choiceId: string,
+  eventType: string,
+): GameState {
   const marcus = state.antagonists['marcus_webb'];
   if (!marcus?.arcState) return state;
 
   const arc = { ...marcus.arcState };
+  const kind = classifyMarcusResponse(choiceId);
 
-  if (choiceId === 'confront' || choiceId === 'counter_media' || choiceId === 'attend' ||
-      choiceId === 'debate' || choiceId === 'invest' || choiceId === 'leverage') {
+  // confront / co_opt / strategic-confront choices count as confrontations;
+  // ignore counts as an ignore. (Preserves prior arcState semantics: the
+  // creative options counter_media/attend/etc. were treated as confrontations.)
+  if (
+    choiceId === 'confront' || choiceId === 'counter_media' || choiceId === 'attend' ||
+    choiceId === 'debate' || choiceId === 'invest' || choiceId === 'leverage'
+  ) {
     arc.confrontations += 1;
   } else if (choiceId === 'ignore') {
     arc.ignores += 1;
@@ -751,15 +811,29 @@ function applyMarcusArcTracking(state: GameState, choiceId: string): GameState {
   }
 
   // Sterling reveal event specifically
-  if (state.eventQueue.some(e => e.type === 'marcus_webb_sterling_reveal')) {
+  if (eventType === 'marcus_webb_sterling_reveal' ||
+      state.eventQueue.some(e => e.type === 'marcus_webb_sterling_reveal')) {
     arc.sterlingConnectionRevealed = true;
   }
+
+  // NOTE: the flat `responseHistory` log is appended by the reducer
+  // (recordMarcusResponse) so that response tracking is owned in one place
+  // per task 5.4. Here we only maintain the legacy arcState counters and the
+  // derived flat mirrors (phase + motivation reveal). `kind` is referenced via
+  // classifyMarcusResponse above to keep the bucketing logic shared.
+  void kind;
 
   return {
     ...state,
     antagonists: {
       ...state.antagonists,
-      marcus_webb: { ...marcus, arcState: arc },
+      marcus_webb: {
+        ...marcus,
+        arcState: arc,
+        // Keep flat phase mirror current and surface motivation when revealed.
+        arcPhase: arc.phase,
+        motivationRevealed: marcus.motivationRevealed || arc.sterlingConnectionRevealed,
+      },
     },
   };
 }
@@ -910,13 +984,18 @@ export function escalateAntagonists(
     if (id === 'marcus_webb' && ant.arcState) {
       const transitioned = advanceMarcusPhase(ant, state);
       const event = createMarcusEvent(transitioned, state);
+      const newArcState = {
+        ...transitioned.arcState!,
+        phaseEventsFired: transitioned.arcState!.phaseEventsFired + (event ? 1 : 0),
+      };
       const updated: Antagonist = {
         ...transitioned,
         lastEscalationTurn: state.turn,
-        arcState: {
-          ...transitioned.arcState!,
-          phaseEventsFired: transitioned.arcState!.phaseEventsFired + (event ? 1 : 0),
-        },
+        arcState: newArcState,
+        // Keep the flat arc fields in sync with the legacy arcState mirror.
+        arcPhase: newArcState.phase,
+        phaseEventCount: newArcState.phaseEventsFired,
+        motivationRevealed: transitioned.motivationRevealed || newArcState.sterlingConnectionRevealed,
       };
       updatedAntagonists[id] = updated;
       if (event) events.push(event);
@@ -1062,7 +1141,7 @@ export function createMarcusEvent(ant: Antagonist, state: GameState): GameEvent 
     case 1:
       return createMarcusPhase1Event(eventId, turn, state);
     case 2:
-      return createMarcusPhase2Event(eventId, turn, arc, state);
+      return createMarcusPhase2Event(eventId, turn, arc, ant, state);
     case 3:
       return createMarcusPhase3Event(eventId, turn, arc, state);
     case 4:
@@ -1070,6 +1149,78 @@ export function createMarcusEvent(ant: Antagonist, state: GameState): GameEvent 
     default:
       return null;
   }
+}
+
+/**
+ * Motivation-layer event (spec 4.6): fires when Marcus's childhood tile is in
+ * visible distress (eco < 30% OR vacancy > 50%). The text references his personal
+ * connection and the player gets an option to address THAT neighborhood directly.
+ */
+function createMarcusChildhoodEvent(
+  eventId: string,
+  turn: number,
+  tile: GameState['tiles'][string],
+  leader: GameState['leaders'][string] | null,
+): GameEvent {
+  const leaderRef = leader ? ` Ask ${leader.name} — they've watched it happen.` : '';
+  return {
+    id: eventId,
+    type: 'marcus_webb_childhood_motivation',
+    category: 'antagonist',
+    title: `Marcus Webb: Where I'm From`,
+    description: `Webb drops the talk-radio act tonight. "I grew up in ${tile.name}. The vacant lots where my friends' houses used to be — ${tile.vacancyRate}% of that neighborhood is empty now. The contaminated soil. Every administration promised, and ${tile.name} is still bleeding. I'm not doing this for ratings."${leaderRef}`,
+    turnGenerated: turn,
+    cooldownTurns: 3,
+    targetTileId: tile.id,
+    targetCharacterId: leader?.id ?? null,
+    choices: [
+      {
+        id: 'invest',
+        label: `Prioritize ${tile.name}`,
+        description: `Announce a concrete investment plan for ${tile.name} — address his grievance with action, not words`,
+        effects: {
+          meterDeltas: [
+            { meter: 'budget', amount: -0.5, source: 'marcus_webb_childhood_invest' },
+            { meter: 'communityTrust', amount: 3, source: 'marcus_webb_childhood_action' },
+            { meter: 'politicalWill', amount: -1, source: 'marcus_webb_childhood_invest_cost' },
+          ],
+          relationshipChanges: [],
+          other: [
+            `Direct investment commitment for ${tile.name}`,
+            ...(leader ? [`${leader.name} trust boost (childhood neighborhood addressed)`] : []),
+          ],
+        },
+        requirements: { minWill: null, minBudget: 1, minTrust: null },
+      },
+      {
+        id: 'acknowledge',
+        label: 'Acknowledge the History',
+        description: `Respond publicly: "${tile.name} was failed for decades. We're trying to change that." Honesty without a checkbook`,
+        effects: {
+          meterDeltas: [
+            { meter: 'politicalWill', amount: -2, source: 'marcus_webb_childhood_acknowledge' },
+            { meter: 'communityTrust', amount: 2, source: 'marcus_webb_childhood_honesty' },
+          ],
+          relationshipChanges: [],
+          other: [],
+        },
+        requirements: null,
+      },
+      {
+        id: 'ignore',
+        label: 'Stay Quiet',
+        description: 'Don\'t touch the personal story — trap or real, it\'s dangerous either way',
+        effects: {
+          meterDeltas: [
+            { meter: 'communityTrust', amount: -2, source: 'marcus_webb_childhood_no_empathy' },
+          ],
+          relationshipChanges: [],
+          other: [],
+        },
+        requirements: null,
+      },
+    ],
+  };
 }
 
 function createMarcusPhase1Event(eventId: string, turn: number, state: GameState): GameEvent {
@@ -1165,12 +1316,26 @@ function createMarcusPhase2Event(
   eventId: string,
   turn: number,
   arc: AntagonistArcState,
+  ant: Antagonist,
   state: GameState,
 ): GameEvent {
   const neglected = findNeglectedNeighborhood(state);
   const ignored = findIgnoredProposal(state);
   const partner = findPartnerLeader(state);
   const sterlingActive = state.antagonists['sterling_cross']?.active ?? false;
+
+  // Motivation layer (spec 4.6): when his childhood neighborhood is in distress,
+  // surface the personal grievance and offer a direct-address option. Yields to
+  // the Sterling reveal (which only fires once) and to an active high-pressure
+  // ignored proposal, but otherwise takes precedence so the motivation surfaces.
+  const childhood = findChildhoodNeighborhood(state, ant);
+  if (
+    childhood && childhoodTileInDistress(childhood.tile) &&
+    !(sterlingActive && !arc.sterlingConnectionRevealed) &&
+    !ignored
+  ) {
+    return createMarcusChildhoodEvent(eventId, turn, childhood.tile, childhood.leader);
+  }
 
   if (sterlingActive && !arc.sterlingConnectionRevealed) {
     return {
@@ -1231,12 +1396,13 @@ function createMarcusPhase2Event(
   if (ignored) {
     const { proposal, leader } = ignored;
     const tileName = state.tiles[proposal.tileId]?.name ?? proposal.tileId;
+    const projectName = projectDisplayName(proposal.projectDefinitionId);
     return {
       id: eventId,
       type: 'marcus_webb_weaponize_proposal',
       category: 'antagonist',
       title: `Marcus Webb: ${tileName} Abandoned`,
-      description: `"${leader.name} begged the mayor for help in ${tileName}. The answer? Silence. This administration doesn't care about Black neighborhoods — they care about photo ops." Webb holds up a printout of the ignored proposal on camera.`,
+      description: `"${leader.name} begged the mayor for a ${projectName} in ${tileName}. The answer? Silence. This administration doesn't care about Black neighborhoods — they care about photo ops." Webb holds up a printout of the ignored ${projectName} proposal on camera.`,
       turnGenerated: turn,
       cooldownTurns: 2,
       targetTileId: proposal.tileId,
@@ -1462,7 +1628,7 @@ function createMarcusPhase3Event(
   eventId: string,
   turn: number,
   arc: AntagonistArcState,
-  state: GameState,
+  _state: GameState,
 ): GameEvent {
   if (arc.phaseEventsFired === 0 && arc.confrontations < 3) {
     return {

@@ -106,8 +106,10 @@ function ProposalCard({ proposal, onConversation }: { proposal: Proposal; onConv
     : proposal.pressureLevel >= 1 ? '#eab308'
     : '#22c55e';
 
+  const isExpiring = turnsLeft <= 1;
+
   return (
-    <div className={`proposal-card ${hasNegotiation ? 'proposal-card--negotiated' : ''}`}>
+    <div className={`proposal-card ${hasNegotiation ? 'proposal-card--negotiated' : ''}${isExpiring ? ' tile-proposal-card--expiring' : ''}`}>
       <div className="proposal-pressure-bar" style={{ background: pressureColor, height: 3, borderRadius: 2, marginBottom: 4 }} />
       <div className="proposal-header" onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer' }}>
         <span className="proposal-leader-name">{leader.name}</span>

@@ -143,16 +143,21 @@ export default function MapPanel({ onSelectTile, onSelectBlock, selectedTileId, 
     }
 
     if (feature.properties.id) {
-      onSelectTile(feature.properties.id);
+      const rawId = feature.properties.id as string;
+      const tileId = rawId.replace(/-/g, '_');
+      if (tileHealthMap[tileId] !== undefined || tileHealthMap[rawId] !== undefined) {
+        onSelectTile(tileId);
+      }
     }
-  }, [onSelectTile, onSelectBlock, headlinePins]);
+  }, [onSelectTile, onSelectBlock, headlinePins, tileHealthMap]);
 
   const neighborhoodFillPaint = useMemo(() => {
     const stops: string[] = [];
     for (const [id, health] of Object.entries(tileHealthMap)) {
       const r = Math.round(255 * (1 - health / 100));
       const g = Math.round(255 * (health / 100));
-      stops.push(id, `rgba(${r}, ${g}, 50, 0.15)`);
+      const geoId = id.replace(/_/g, '-');
+      stops.push(geoId, `rgba(${r}, ${g}, 50, 0.15)`);
     }
     if (stops.length === 0) {
       return { 'fill-color': 'rgba(0, 255, 65, 0.05)', 'fill-opacity': 0.5 };
@@ -164,7 +169,7 @@ export default function MapPanel({ onSelectTile, onSelectBlock, selectedTileId, 
   }, [tileHealthMap]);
 
   const selectedFilter = useMemo(
-    () => selectedTileId ? ['==', ['get', 'id'], selectedTileId] : ['==', ['get', 'id'], ''],
+    () => selectedTileId ? ['==', ['get', 'id'], selectedTileId.replace(/_/g, '-')] : ['==', ['get', 'id'], ''],
     [selectedTileId],
   );
 

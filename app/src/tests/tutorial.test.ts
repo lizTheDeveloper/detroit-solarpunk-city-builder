@@ -48,6 +48,8 @@ describe('Tutorial System', () => {
           tileId: 'brightmoor',
           reason: 'testing',
           turnProposed: 3,
+          expirationTurn: 6,
+          pressureLevel: 0,
         }],
       });
       state = completeStep(state, 'start-project');
@@ -155,6 +157,8 @@ describe('Tutorial System', () => {
           tileId: 'brightmoor',
           reason: 'test',
           turnProposed: 3,
+          expirationTurn: 6,
+          pressureLevel: 0,
         }],
         activeArcs: createNewGame().activeArcs.map((a, i) => ({
           ...a,

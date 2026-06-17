@@ -13,6 +13,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     advocacyPower: 4,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 4,
   },
   kez: {
     id: 'kez',
@@ -52,6 +53,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     advocacyPower: 4,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 2,
   },
   elder_whitehorse: {
     id: 'elder_whitehorse',
@@ -65,6 +67,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     advocacyPower: 3,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 5,
   },
   hassan: {
     id: 'hassan',
@@ -91,6 +94,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     advocacyPower: 3,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 2,
   },
   big_mike: {
     id: 'big_mike',
@@ -144,6 +148,7 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     advocacyPower: 4,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 4,
   },
   jerome: {
     id: 'jerome',
@@ -177,11 +182,12 @@ export const LEADER_DEFINITIONS: Record<string, CommunityLeader> = {
     neighborhood: 'Corktown/Citywide',
     tileIds: ['corktown', 'midtown', 'eastern_market', 'southwest_detroit'],
     backstory:
-      'Founded the Detroit Bus Company because DDOT wasn\'t cutting it — bought a school bus, painted it, and started running routes the city wouldn\'t. Then Detroit Threat Management, Detroit Cutting Company, a hundred other projects that all follow the same logic: if the system won\'t do it, do it yourself and make it look cool. Operates out of a Corktown warehouse full of buses, CNC machines, and plans for things that don\'t exist yet. The city keeps trying to regulate him and he keeps being right.',
+      'Dropped out of engineering school, spent $2,800 on a school bus, hired Kobie Solomon to paint it, and started running routes DDOT wouldn\'t — 200 daily riders within months. Got a Skillman Foundation grant to give kids free rides to school: 5,711 rides in one year on a 24-seat bus. Now runs Mutiny Motors out of a 55,000-square-foot factory downtown, converting gas cars to electric drivetrains. When COVID hit, pivoted to manufacturing hand sanitizer. The through-line: if the system won\'t do it, build it yourself and make it look cool.',
     priorities: ['maker_space', 'solar_grid', 'greenway'],
     trust: 15,
     advocacyPower: 5,
     proposalCooldown: 0,
     consecutiveDeferrals: 0,
+    urgencyWindow: 2,
   },
 };
