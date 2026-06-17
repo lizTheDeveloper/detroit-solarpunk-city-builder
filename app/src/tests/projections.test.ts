@@ -79,6 +79,7 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
     strategicContacts: [],
     mentors: [],
     mapState: { selectedBlockId: null, viewState: { longitude: -83.0458, latitude: 42.3314, zoom: 12 } },
+    blockDataMap: {},
     ...overrides,
   };
 }

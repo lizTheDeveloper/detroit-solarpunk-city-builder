@@ -2,11 +2,10 @@ import { useGame } from '@/state/store';
 import { EXPENSE_LINES, REVENUE_LINES, totalAnnualExpenses, totalAnnualRevenue } from '@/data/content/budget-lines';
 import { formatBudget } from '@/ui/format';
 
-function BudgetLine({ name, annual, monthly, category, description }: {
+function BudgetLine({ name, annual, monthly, description }: {
   name: string;
   annual: number;
   monthly: number;
-  category: string;
   description: string;
 }) {
   return (
@@ -36,7 +35,6 @@ function CategoryGroup({ label, lines, color }: {
           name={l.name}
           annual={l.annualAmount}
           monthly={Math.round(l.annualAmount / 12 * 10) / 10}
-          category={l.category}
           description={l.description}
         />
       ))}
@@ -147,7 +145,6 @@ export default function BudgetPanel() {
               name={l.name}
               annual={l.annualAmount}
               monthly={Math.round(l.annualAmount / 12 * 10) / 10}
-              category={l.category}
               description={l.description}
             />
           ))}

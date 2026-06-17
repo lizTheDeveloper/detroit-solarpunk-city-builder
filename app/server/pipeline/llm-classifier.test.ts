@@ -10,7 +10,6 @@ import {
   resetQuota,
   type ClassifierConfig,
   type ClassifierChatFn,
-  type LLMClassification,
 } from './llm-classifier';
 import type { ProcessedHeadline, ArcConfig } from './types';
 import { join } from 'path';

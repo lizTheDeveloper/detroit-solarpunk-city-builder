@@ -7,7 +7,6 @@ import {
   parseFrameResponse,
   generateFramesBatch,
   type FrameGeneratorConfig,
-  type GeneratedFrames,
 } from './frame-generator';
 import { getProfilesForArc, VOICE_PROFILES } from './voice-profiles';
 import type { ProcessedHeadline } from './types';

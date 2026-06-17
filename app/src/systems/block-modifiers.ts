@@ -1,4 +1,4 @@
-import type { ProjectDefinition, ProjectCategory } from '../state/types';
+import type { ProjectDefinition } from '../state/types';
 import type { BlockData } from '../map/block-layer';
 
 export interface BlockModifierResult {

@@ -1,5 +1,5 @@
 import posthog from 'posthog-js';
-import type { GameState, GameAction, Meters, CalendarActionType, BurnoutState, Stage } from '@/state/types';
+import type { GameState, GameAction, Meters } from '@/state/types';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
 const POSTHOG_HOST = (import.meta.env.VITE_POSTHOG_HOST as string) || 'https://us.i.posthog.com';
@@ -312,7 +312,6 @@ function trackBurnoutTransition(prevState: GameState, nextState: GameState): voi
 
 function trackArcTransitions(prevState: GameState, nextState: GameState): void {
   const prevArcIds = new Set(prevState.activeArcs.map(a => a.arcId));
-  const nextArcIds = new Set(nextState.activeArcs.map(a => a.arcId));
 
   for (const arc of nextState.activeArcs) {
     if (!prevArcIds.has(arc.arcId)) {

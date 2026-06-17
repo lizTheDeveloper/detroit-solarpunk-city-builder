@@ -4,7 +4,6 @@ import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { scoreBlockSuitability, calculateBlockModifiers } from '@/systems/block-modifiers';
 import type { BlockData } from '@/map/block-layer';
 import type { ProjectDefinition } from '@/state/types';
-import { formatCost } from '@/ui/format';
 
 interface BlockDetailPanelProps {
   blockId: string;

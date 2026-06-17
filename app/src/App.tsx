@@ -17,7 +17,6 @@ import {
   trackPanelOpen,
   trackConversationStart,
   trackFunnelStep,
-  trackSaveGame,
   trackLoadGame,
   trackUndo as trackUndoAnalytics,
   trackStrategySnapshot,

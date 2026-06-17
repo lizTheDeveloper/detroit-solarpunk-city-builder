@@ -112,13 +112,11 @@ export async function runPipeline(): Promise<PipelineRunResult> {
   const unclassified = loadUnclassifiedHeadlines(DATA_DIR);
   const chatFn = classifierChatFn ?? defaultChatFn;
 
-  let classifiedCount = 0;
   if (unclassified.length > 0 && classifierConfig.enabled) {
     try {
       const classifications = await classifyBatch(unclassified, chatFn, classifierConfig, CONFIG_DIR);
       if (classifications.length > 0) {
         const newlyClassified = updateHeadlineClassifications(DATA_DIR, classifications);
-        classifiedCount = newlyClassified.length;
         updateArcStates(DATA_DIR, newlyClassified);
       }
     } catch (err) {
