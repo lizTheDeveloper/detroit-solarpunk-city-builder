@@ -1,5 +1,10 @@
 name: CI
 
+# CI runs build + tests only. Deployment is NOT done via GitHub Actions — it
+# uses the studio's standard game-deploy pattern: a git checkout at
+# /opt/solarpunk-detroit on the Hetzner box, deployed with deploy/deploy.sh
+# (cf. /opt/precursors). See ops/deploy-solarpunk-detroit.md.
+
 on:
   push:
     branches: [main]
@@ -22,22 +27,3 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx vitest run
-
-  deploy:
-    needs: build-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Hetzner
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ./deploy/deploy.sh
