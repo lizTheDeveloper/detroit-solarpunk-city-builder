@@ -5,7 +5,6 @@ import type {
   EventCategory,
   MeterDelta,
   Antagonist,
-  AntagonistArcState,
   Season,
   Meters,
 } from '../state/types';
@@ -15,6 +14,7 @@ import { assessTaboo } from './overton-window';
 import { scheduleConsequence } from './delayed-consequences';
 import { arcTemplateMap } from '../data/arcs';
 import { PROJECT_CATALOG } from '../data/content/project-catalog';
+import { advanceMarcusPhase, arcPhaseOf, tallyResponses } from './marcus-arc';
 
 // Marcus Webb's childhood neighborhood. North End is an east-side / central
 // Detroit neighborhood that starts with high vacancy (~55%) and very low
@@ -697,24 +697,24 @@ export function applyEventChoice(
   state: GameState,
   eventId: string,
   choiceId: string,
-): { state: GameState; deltas: MeterDelta[] } {
+): { state: GameState; deltas: MeterDelta[]; applied: boolean } {
   const event = state.eventQueue.find((e) => e.id === eventId);
-  if (!event) return { state, deltas: [] };
+  if (!event) return { state, deltas: [], applied: false };
 
   const choice = event.choices.find((c) => c.id === choiceId);
-  if (!choice) return { state, deltas: [] };
+  if (!choice) return { state, deltas: [], applied: false };
 
   // Check requirements
   if (choice.requirements) {
     const req = choice.requirements;
     if (req.minWill !== null && state.meters.politicalWill < req.minWill) {
-      return { state, deltas: [] };
+      return { state, deltas: [], applied: false };
     }
     if (req.minBudget !== null && state.meters.budget < req.minBudget) {
-      return { state, deltas: [] };
+      return { state, deltas: [], applied: false };
     }
     if (req.minTrust !== null && state.meters.communityTrust < req.minTrust) {
-      return { state, deltas: [] };
+      return { state, deltas: [], applied: false };
     }
   }
 
@@ -743,7 +743,7 @@ export function applyEventChoice(
     eventCooldowns: updatedCooldowns,
   };
 
-  // Marcus Webb arc: track confrontation/ignore/co-opt responses
+  // Marcus Webb arc: latch the Sterling/motivation reveal on relevant choices.
   if (event.type.startsWith('marcus_webb_')) {
     updatedState = applyMarcusArcTracking(updatedState, choiceId, event.type);
   }
@@ -756,12 +756,14 @@ export function applyEventChoice(
   return {
     state: updatedState,
     deltas: choice.effects.meterDeltas,
+    applied: true,
   };
 }
 
 /**
  * Bucket a Marcus event choice into one of the four response kinds used by
- * both the arcState confront/ignore counters and the flat responseHistory log.
+ * the derived confront/ignore tallies (see marcus-arc.ts tallyResponses) and the
+ * flat responseHistory log.
  * Exported so marcus-arc.ts can classify responses without duplicating the map.
  */
 export function classifyMarcusResponse(
@@ -779,61 +781,43 @@ export function classifyMarcusResponse(
   return 'strategic';
 }
 
+/**
+ * Latch the Sterling/motivation reveal flag in response to a Marcus event choice.
+ *
+ * The confront/ignore/co-opt tallies are no longer stored — they are derived from
+ * `responseHistory` (appended by the reducer via recordMarcusResponse) on demand
+ * in marcus-arc.ts. Here we only maintain the `motivationRevealed` latch, which
+ * depends on game state at response time (not reconstructable from history alone).
+ */
 function applyMarcusArcTracking(
   state: GameState,
   choiceId: string,
   eventType: string,
 ): GameState {
   const marcus = state.antagonists['marcus_webb'];
-  if (!marcus?.arcState) return state;
+  if (!marcus) return state;
 
-  const arc = { ...marcus.arcState };
-  const kind = classifyMarcusResponse(choiceId);
+  let revealed = marcus.motivationRevealed ?? false;
 
-  // confront / co_opt / strategic-confront choices count as confrontations;
-  // ignore counts as an ignore. (Preserves prior arcState semantics: the
-  // creative options counter_media/attend/etc. were treated as confrontations.)
-  if (
-    choiceId === 'confront' || choiceId === 'counter_media' || choiceId === 'attend' ||
-    choiceId === 'debate' || choiceId === 'invest' || choiceId === 'leverage'
-  ) {
-    arc.confrontations += 1;
-  } else if (choiceId === 'ignore') {
-    arc.ignores += 1;
-  } else if (choiceId === 'co_opt') {
-    arc.coOpted = true;
-    arc.confrontations += 1;
-  }
-
+  // Confronting during a Phase 2 Sterling-active beat surfaces the funding tie.
   if (choiceId === 'confront' && state.antagonists['sterling_cross']?.active &&
-      marcus.arcState.phase === 2 && !arc.sterlingConnectionRevealed) {
-    arc.sterlingConnectionRevealed = true;
+      arcPhaseOf(marcus) === 2 && !revealed) {
+    revealed = true;
   }
 
-  // Sterling reveal event specifically
+  // The Sterling reveal event itself (now firing or already queued) surfaces it.
   if (eventType === 'marcus_webb_sterling_reveal' ||
       state.eventQueue.some(e => e.type === 'marcus_webb_sterling_reveal')) {
-    arc.sterlingConnectionRevealed = true;
+    revealed = true;
   }
 
-  // NOTE: the flat `responseHistory` log is appended by the reducer
-  // (recordMarcusResponse) so that response tracking is owned in one place
-  // per task 5.4. Here we only maintain the legacy arcState counters and the
-  // derived flat mirrors (phase + motivation reveal). `kind` is referenced via
-  // classifyMarcusResponse above to keep the bucketing logic shared.
-  void kind;
+  if (revealed === (marcus.motivationRevealed ?? false)) return state;
 
   return {
     ...state,
     antagonists: {
       ...state.antagonists,
-      marcus_webb: {
-        ...marcus,
-        arcState: arc,
-        // Keep flat phase mirror current and surface motivation when revealed.
-        arcPhase: arc.phase,
-        motivationRevealed: marcus.motivationRevealed || arc.sterlingConnectionRevealed,
-      },
+      marcus_webb: { ...marcus, motivationRevealed: revealed },
     },
   };
 }
@@ -980,22 +964,14 @@ export function escalateAntagonists(
       continue;
     }
 
-    // Marcus Webb uses custom phase-based escalation
-    if (id === 'marcus_webb' && ant.arcState) {
+    // Marcus Webb uses custom phase-based escalation, driven by the flat arc fields.
+    if (id === 'marcus_webb') {
       const transitioned = advanceMarcusPhase(ant, state);
       const event = createMarcusEvent(transitioned, state);
-      const newArcState = {
-        ...transitioned.arcState!,
-        phaseEventsFired: transitioned.arcState!.phaseEventsFired + (event ? 1 : 0),
-      };
       const updated: Antagonist = {
         ...transitioned,
         lastEscalationTurn: state.turn,
-        arcState: newArcState,
-        // Keep the flat arc fields in sync with the legacy arcState mirror.
-        arcPhase: newArcState.phase,
-        phaseEventCount: newArcState.phaseEventsFired,
-        motivationRevealed: transitioned.motivationRevealed || newArcState.sterlingConnectionRevealed,
+        phaseEventCount: (transitioned.phaseEventCount ?? 0) + (event ? 1 : 0),
       };
       updatedAntagonists[id] = updated;
       if (event) events.push(event);
@@ -1025,83 +1001,13 @@ export function escalateAntagonists(
 }
 
 // ---------------------------------------------------------------------------
-// Marcus Webb 4-phase arc
+// Marcus Webb 4-phase arc — event builders.
+//
+// The phase state machine (advanceMarcusPhase / determineResolutionType /
+// tallyResponses) lives in marcus-arc.ts. These builders read the flat arc
+// fields (arcPhase, phaseEventCount, motivationRevealed, resolutionType) plus
+// the derived confront tally to pick and interpolate the phase-appropriate event.
 // ---------------------------------------------------------------------------
-
-export function advanceMarcusPhase(ant: Antagonist, state: GameState): Antagonist {
-  const arc = ant.arcState;
-  if (!arc) return ant;
-
-  const { phase } = arc;
-  let nextPhase = phase;
-
-  if (phase === 1) {
-    const sterlingActive = state.antagonists['sterling_cross']?.active ?? false;
-    const earlyViaSterling = sterlingActive && state.turn >= 6;
-
-    const highPressureProposals = [
-      ...state.activeProposals,
-      ...state.pendingProposals,
-    ].filter(p => p.pressureLevel >= 3).length;
-
-    const neglectedTiles = Object.values(state.tiles).filter(
-      t => t.activeProjects.length === 0 && t.completedProjects.length === 0
-    );
-    const severeNeglect = neglectedTiles.length >= 3;
-
-    const standardTransition = state.turn >= 9 && (
-      arc.ignores >= 3 ||
-      highPressureProposals >= 2 ||
-      severeNeglect
-    );
-
-    if (earlyViaSterling || standardTransition) {
-      nextPhase = 2;
-    }
-  } else if (phase === 2) {
-    if (state.turn >= 20 && arc.phaseEventsFired >= 4) {
-      nextPhase = 3;
-    }
-  } else if (phase === 3) {
-    if (state.turn >= 36) {
-      nextPhase = 4;
-    }
-  }
-
-  if (nextPhase === phase) return ant;
-
-  const newArc: AntagonistArcState = {
-    ...arc,
-    phase: nextPhase as 1 | 2 | 3 | 4,
-    phaseEventsFired: 0,
-  };
-
-  if (nextPhase === 4) {
-    newArc.resolutionType = determineResolutionType(arc);
-  }
-
-  return {
-    ...ant,
-    escalationLevel: nextPhase - 1,
-    arcState: newArc,
-  };
-}
-
-function determineResolutionType(arc: AntagonistArcState): AntagonistArcState['resolutionType'] {
-  const total = arc.confrontations + arc.ignores;
-  if (total === 0) return 'cynicism_engine';
-
-  if (arc.coOpted && arc.confrontations >= 4) {
-    return 'reluctant_ally';
-  }
-
-  const ignoreRatio = arc.ignores / total;
-  if (ignoreRatio > 0.6 && !arc.coOpted) {
-    return 'election_threat';
-  }
-
-  return 'cynicism_engine';
-}
 
 function findNeglectedNeighborhood(state: GameState): { tile: GameState['tiles'][string]; leader: GameState['leaders'][string] } | null {
   for (const tile of Object.values(state.tiles)) {
@@ -1131,21 +1037,20 @@ function findPartnerLeader(state: GameState): GameState['leaders'][string] | nul
 }
 
 export function createMarcusEvent(ant: Antagonist, state: GameState): GameEvent | null {
-  const arc = ant.arcState;
-  if (!arc) return null;
+  if (ant.id !== 'marcus_webb') return null;
 
   const turn = state.turn;
   const eventId = `evt-antag-marcus_webb-${turn}`;
 
-  switch (arc.phase) {
+  switch (arcPhaseOf(ant)) {
     case 1:
       return createMarcusPhase1Event(eventId, turn, state);
     case 2:
-      return createMarcusPhase2Event(eventId, turn, arc, ant, state);
+      return createMarcusPhase2Event(eventId, turn, ant, state);
     case 3:
-      return createMarcusPhase3Event(eventId, turn, arc, state);
+      return createMarcusPhase3Event(eventId, turn, ant, state);
     case 4:
-      return createMarcusPhase4Event(eventId, turn, arc, state);
+      return createMarcusPhase4Event(eventId, turn, ant, state);
     default:
       return null;
   }
@@ -1315,7 +1220,6 @@ function createMarcusPhase1Event(eventId: string, turn: number, state: GameState
 function createMarcusPhase2Event(
   eventId: string,
   turn: number,
-  arc: AntagonistArcState,
   ant: Antagonist,
   state: GameState,
 ): GameEvent {
@@ -1323,6 +1227,7 @@ function createMarcusPhase2Event(
   const ignored = findIgnoredProposal(state);
   const partner = findPartnerLeader(state);
   const sterlingActive = state.antagonists['sterling_cross']?.active ?? false;
+  const motivationRevealed = ant.motivationRevealed ?? false;
 
   // Motivation layer (spec 4.6): when his childhood neighborhood is in distress,
   // surface the personal grievance and offer a direct-address option. Yields to
@@ -1331,13 +1236,13 @@ function createMarcusPhase2Event(
   const childhood = findChildhoodNeighborhood(state, ant);
   if (
     childhood && childhoodTileInDistress(childhood.tile) &&
-    !(sterlingActive && !arc.sterlingConnectionRevealed) &&
+    !(sterlingActive && !motivationRevealed) &&
     !ignored
   ) {
     return createMarcusChildhoodEvent(eventId, turn, childhood.tile, childhood.leader);
   }
 
-  if (sterlingActive && !arc.sterlingConnectionRevealed) {
+  if (sterlingActive && !motivationRevealed) {
     return {
       id: eventId,
       type: 'marcus_webb_sterling_reveal',
@@ -1627,10 +1532,12 @@ function createMarcusPhase2Event(
 function createMarcusPhase3Event(
   eventId: string,
   turn: number,
-  arc: AntagonistArcState,
+  ant: Antagonist,
   _state: GameState,
 ): GameEvent {
-  if (arc.phaseEventsFired === 0 && arc.confrontations < 3) {
+  const phaseEventsFired = ant.phaseEventCount ?? 0;
+  const { confrontations } = tallyResponses(ant.responseHistory ?? []);
+  if (phaseEventsFired === 0 && confrontations < 3) {
     return {
       id: eventId,
       type: 'marcus_webb_council_run',
@@ -1837,7 +1744,7 @@ function createMarcusPhase3Event(
     },
   ];
 
-  const variant = variants[arc.phaseEventsFired % variants.length];
+  const variant = variants[phaseEventsFired % variants.length];
   return {
     id: eventId,
     type: variant.type,
@@ -1855,10 +1762,10 @@ function createMarcusPhase3Event(
 function createMarcusPhase4Event(
   eventId: string,
   turn: number,
-  arc: AntagonistArcState,
+  ant: Antagonist,
   _state: GameState,
 ): GameEvent {
-  switch (arc.resolutionType) {
+  switch (ant.resolutionType ?? null) {
     case 'reluctant_ally':
       return {
         id: eventId,

@@ -1,27 +1,27 @@
-import type { GameState, GameEvent, Antagonist, AntagonistArcState, MarcusResponse } from '../state/types';
-import { advanceMarcusPhase, createMarcusEvent, classifyMarcusResponse } from './events';
+import type { GameState, GameEvent, Antagonist, MarcusResponse, MarcusResolutionType } from '../state/types';
+import { createMarcusEvent, classifyMarcusResponse } from './events';
 
 // ---------------------------------------------------------------------------
 // Marcus Webb 4-phase antagonist arc — state-machine driver.
 //
-// This module is the canonical, state-level API for the Marcus arc requested by
-// the marcus-arc spec. It operates on the flat arc fields living directly on the
-// `marcus_webb` antagonist (`arcPhase`, `responseHistory`, `phaseEventCount`,
-// `motivationRevealed`) while keeping the legacy `arcState` sub-object — which
-// the templated event-pool builders in events.ts consume — in sync.
+// This module is the canonical, state-level API for the Marcus arc. It operates
+// ONLY on the flat arc fields living directly on the `marcus_webb` antagonist:
+//   arcPhase, responseHistory, phaseEventCount, motivationRevealed, resolutionType
+// There is no separate `arcState` sub-object; the confront/ignore/co-opt tallies
+// that drive transitions and the resolution branch are DERIVED from
+// responseHistory (see `tallyResponses`).
 //
 // Phase transitions (spec: "Phase transitions are driven by game state"):
 //   1 Gadfly      → 2 Demagogue    : turn >= 9 AND (ignored 3+ / 2+ proposals at
-//                                      pressure>=3 / a neighborhood neglected for
+//                                      pressure>=3 / 3+ neighborhoods with no
+//                                      projects / a neighborhood neglected for
 //                                      3+ months). EARLY at turn >= 6 if Sterling
 //                                      Cross is co-active.
 //   2 Demagogue   → 3 Power Broker : turn >= 20 AND 4+ Phase 2 events fired.
-//   3 Power Broker→ 4 Resolution   : turn >= 36.
+//   3 Power Broker→ 4 Resolution   : turn >= 36 (resolutionType frozen here).
 //
-// Event selection (spec: "selectMarcusEvent picks from the current phase's pool
-// by game state") delegates to the templated builders, which already choose
-// among 3-5 variants per phase using neglected neighborhoods, high-pressure /
-// expired proposals, partner leaders, and the Sterling Cross funding reveal.
+// Event selection delegates to the templated builders in events.ts, which
+// interpolate real neighborhood, leader, project, and budget data.
 // ---------------------------------------------------------------------------
 
 const MARCUS_ID = 'marcus_webb';
@@ -29,6 +29,11 @@ const MARCUS_ID = 'marcus_webb';
 /** Read the Marcus antagonist, or null if absent/never initialized. */
 export function getMarcus(state: GameState): Antagonist | null {
   return state.antagonists[MARCUS_ID] ?? null;
+}
+
+/** Current arc phase, defaulting to 1. */
+export function arcPhaseOf(ant: Antagonist): 1 | 2 | 3 | 4 {
+  return ant.arcPhase ?? 1;
 }
 
 /** True if a neighborhood has had 0 calendar time allocation for 3+ months. */
@@ -55,25 +60,35 @@ export function highPressureProposalCount(state: GameState): number {
 }
 
 /**
- * Build the flat arc fields from an antagonist, defaulting any that are missing.
- * Lets callers (and tests) work with a guaranteed-present shape.
+ * Choice ids that the legacy `applyMarcusArcTracking` counted as a confrontation
+ * (distinct from `kind`-based bucketing: `counter_media` counts here but is
+ * `strategic` under `kind`; `acknowledge` is the inverse).
  */
-function readFlatArc(ant: Antagonist): {
-  arcPhase: 1 | 2 | 3 | 4;
-  responseHistory: MarcusResponse[];
-  phaseEventCount: number;
-  motivationRevealed: boolean;
-} {
-  return {
-    arcPhase: ant.arcPhase ?? ant.arcState?.phase ?? 1,
-    responseHistory: ant.responseHistory ?? [],
-    phaseEventCount: ant.phaseEventCount ?? ant.arcState?.phaseEventsFired ?? 0,
-    motivationRevealed:
-      ant.motivationRevealed ?? ant.arcState?.sterlingConnectionRevealed ?? false,
-  };
+const CHOICE_ID_CONFRONT = new Set([
+  'confront', 'counter_media', 'attend', 'debate', 'invest', 'leverage', 'co_opt',
+]);
+
+function isCounted(r: MarcusResponse): boolean {
+  // Blocked choices (requirements unmet) were logged but never counted toward the
+  // legacy arc counters; preserve that by skipping them in the derivation.
+  return r.applied !== false;
 }
 
-/** Derive confront/ignore counts from the flat response history. */
+/**
+ * Derive confront/ignore/co-opt tallies from the flat response history.
+ *
+ * `confrontations` reproduces the legacy stored counter, which was a blend of two
+ * counting schemes synced bidirectionally each turn — equivalent at all decision
+ * sites to `max(choiceId-confront-count, kind-confront-count)`. (See
+ * scripts/marcus-baseline.ts verification: at every Phase-3 entry / 3→4 turn the
+ * blend equals this max across all exercised response patterns.) `ignores` and
+ * `coOpted` have 1:1 choiceId↔kind maps, so they are unambiguous.
+ *
+ * NOTE: `ignoreRatio`/`total` are informational (all-applied denominator). The
+ * Phase-4 resolution branch uses the narrower `confrontations + ignores`
+ * denominator (see determineResolutionType) — do not wire `ignoreRatio` into a
+ * decision without matching that denominator.
+ */
 export function tallyResponses(history: MarcusResponse[]): {
   confrontations: number;
   ignores: number;
@@ -81,139 +96,117 @@ export function tallyResponses(history: MarcusResponse[]): {
   total: number;
   ignoreRatio: number;
 } {
-  let confrontations = 0;
+  let choiceIdConfront = 0;
+  let kindConfront = 0;
   let ignores = 0;
   let coOpted = false;
   for (const r of history) {
+    if (!isCounted(r)) continue;
+    if (CHOICE_ID_CONFRONT.has(r.choiceId)) choiceIdConfront += 1;
+    if (r.kind === 'confront' || r.kind === 'co_opt') kindConfront += 1;
     if (r.kind === 'ignore') ignores += 1;
-    else if (r.kind === 'co_opt') {
-      coOpted = true;
-      confrontations += 1;
-    } else if (r.kind === 'confront') confrontations += 1;
-    // 'strategic' responses are engagements but not pure confrontations;
-    // they still count toward "not ignoring" via total.
+    if (r.kind === 'co_opt') coOpted = true;
   }
-  const total = history.length;
+  const confrontations = Math.max(choiceIdConfront, kindConfront);
+  const total = history.filter(isCounted).length;
   const ignoreRatio = total === 0 ? 0 : ignores / total;
   return { confrontations, ignores, coOpted, total, ignoreRatio };
 }
 
+/** Determine the frozen Phase-4 resolution branch from the response tally. */
+export function determineResolutionType(history: MarcusResponse[]): MarcusResolutionType {
+  const { confrontations, ignores, coOpted } = tallyResponses(history);
+  const total = confrontations + ignores;
+  if (total === 0) return 'cynicism_engine';
+  if (coOpted && confrontations >= 4) return 'reluctant_ally';
+  const ignoreRatio = ignores / total;
+  if (ignoreRatio > 0.6 && !coOpted) return 'election_threat';
+  return 'cynicism_engine';
+}
+
 /**
- * Sync the legacy `arcState` sub-object FROM the flat fields + response history,
- * so the templated event builders (which read arcState) reflect the canonical
- * flat data before we ask them to advance/build.
+ * Pure phase-transition evaluation against the current game state. Returns the
+ * (possibly) advanced antagonist; resets the per-phase counter and freezes the
+ * resolution type on transition. Does not fire events. Augments the spec's
+ * Phase 1→2 trigger with the calendar neighborhood-neglect signal.
  */
-function syncArcStateFromFlat(ant: Antagonist): Antagonist {
-  const flat = readFlatArc(ant);
-  const tally = tallyResponses(flat.responseHistory);
-  const prev: AntagonistArcState = ant.arcState ?? {
-    phase: flat.arcPhase,
-    phaseEventsFired: flat.phaseEventCount,
-    confrontations: 0,
-    ignores: 0,
-    coOpted: false,
-    resolutionType: null,
-    sterlingConnectionRevealed: false,
-  };
-  const arcState: AntagonistArcState = {
-    ...prev,
-    phase: flat.arcPhase,
-    phaseEventsFired: flat.phaseEventCount,
-    // Prefer the higher of the recorded counters and the response-history tally
-    // (escalateAntagonists may have incremented arcState directly in legacy flows).
-    confrontations: Math.max(prev.confrontations, tally.confrontations),
-    ignores: Math.max(prev.ignores, tally.ignores),
-    coOpted: prev.coOpted || tally.coOpted,
-    sterlingConnectionRevealed: prev.sterlingConnectionRevealed || flat.motivationRevealed,
-  };
-  return { ...ant, arcState, arcPhase: flat.arcPhase };
-}
+export function advanceMarcusPhase(ant: Antagonist, state: GameState): Antagonist {
+  const phase = arcPhaseOf(ant);
+  const history = ant.responseHistory ?? [];
+  let nextPhase: 1 | 2 | 3 | 4 = phase;
 
-/** Mirror the flat fields back out of a freshly-advanced antagonist. */
-function syncFlatFromArcState(ant: Antagonist, prevHistory: MarcusResponse[]): Antagonist {
-  const arc = ant.arcState;
-  if (!arc) return ant;
-  return {
+  if (phase === 1) {
+    const sterlingActive = state.antagonists['sterling_cross']?.active ?? false;
+    const earlyViaSterling = sterlingActive && state.turn >= 6;
+
+    const highPressureProposals = highPressureProposalCount(state);
+
+    const neglectedTiles = Object.values(state.tiles).filter(
+      t => t.activeProjects.length === 0 && t.completedProjects.length === 0,
+    );
+    const severeNeglect = neglectedTiles.length >= 3;
+
+    const { ignores } = tallyResponses(history);
+
+    const standardTransition = state.turn >= 9 && (
+      ignores >= 3 ||
+      highPressureProposals >= 2 ||
+      severeNeglect ||
+      hasNeglectedNeighborhood(state)
+    );
+
+    if (earlyViaSterling || standardTransition) {
+      nextPhase = 2;
+    }
+  } else if (phase === 2) {
+    if (state.turn >= 20 && (ant.phaseEventCount ?? 0) >= 4) {
+      nextPhase = 3;
+    }
+  } else if (phase === 3) {
+    if (state.turn >= 36) {
+      nextPhase = 4;
+    }
+  }
+
+  if (nextPhase === phase) return ant;
+
+  const updated: Antagonist = {
     ...ant,
-    arcPhase: arc.phase,
-    phaseEventCount: arc.phaseEventsFired,
-    responseHistory: ant.responseHistory ?? prevHistory,
-    motivationRevealed: (ant.motivationRevealed ?? false) || arc.sterlingConnectionRevealed,
+    escalationLevel: nextPhase - 1,
+    arcPhase: nextPhase,
+    phaseEventCount: 0,
   };
+  if (nextPhase === 4) {
+    updated.resolutionType = determineResolutionType(history);
+  }
+  return updated;
 }
 
 /**
- * Evaluate Marcus's phase transition against current game state and return the
- * updated GameState (with Marcus's flat fields + arcState advanced). Pure — does
- * not fire events. Safe to call when Marcus is absent or inactive (no-op).
- *
- * Re-uses the battle-tested transition thresholds in advanceMarcusPhase, then
- * augments the Phase 1→2 trigger with the neighborhood-neglect signal sourced
- * from calendarState.neighborhoodTimeAllocation (spec 8.2 / scenario "Marcus
- * targets neighborhood neglect").
+ * Evaluate Marcus's phase transition and write the result back to the GameState.
+ * Pure (does not fire events). No-op when Marcus is absent/inactive.
  */
 export function evaluateMarcusPhaseTransition(state: GameState): GameState {
   const marcus = getMarcus(state);
   if (!marcus || !marcus.active) return state;
-
-  const synced = syncArcStateFromFlat(marcus);
-  const prevHistory = synced.responseHistory ?? [];
-  const prevPhase = synced.arcState?.phase ?? 1;
-
-  // Primary transition via the shared engine.
-  let transitioned = advanceMarcusPhase(synced, state);
-
-  // Augmented Phase 1→2 trigger: time-allocation neglect (months with 0 slots).
-  // advanceMarcusPhase only sees project-based neglect; here we also honor the
-  // calendar neglect signal the spec calls out.
-  if (
-    transitioned.arcState?.phase === 1 &&
-    state.turn >= 9 &&
-    hasNeglectedNeighborhood(state)
-  ) {
-    transitioned = advancePhaseTo(transitioned, 2);
-  }
-
-  if (transitioned === synced && prevPhase === (transitioned.arcState?.phase ?? 1)) {
-    // No change — still write back synced arcState so flat/legacy stay aligned.
-    return writeMarcus(state, syncFlatFromArcState(synced, prevHistory));
-  }
-
-  return writeMarcus(state, syncFlatFromArcState(transitioned, prevHistory));
-}
-
-/** Force-advance an antagonist to a target phase, resetting per-phase counters. */
-function advancePhaseTo(ant: Antagonist, phase: 1 | 2 | 3 | 4): Antagonist {
-  const arc = ant.arcState;
-  if (!arc) return ant;
-  const newArc: AntagonistArcState = { ...arc, phase, phaseEventsFired: 0 };
-  return {
-    ...ant,
-    escalationLevel: phase - 1,
-    arcState: newArc,
-    arcPhase: phase,
-    phaseEventCount: 0,
-  };
+  const advanced = advanceMarcusPhase(marcus, state);
+  if (advanced === marcus) return state;
+  return writeMarcus(state, advanced);
 }
 
 /**
  * Select the Marcus event appropriate to his current phase and game state.
- * Returns null if Marcus is absent/inactive/uninitialized. Delegates to the
- * templated event-pool builders, which interpolate real neighborhood, leader,
- * project, and budget data and weaponize the most-recent high-pressure proposal.
+ * Returns null if Marcus is absent/inactive. Delegates to the templated builders.
  */
 export function selectMarcusEvent(state: GameState): GameEvent | null {
   const marcus = getMarcus(state);
-  if (!marcus || !marcus.active || !marcus.arcState) return null;
-  const synced = syncArcStateFromFlat(marcus);
-  return createMarcusEvent(synced, state);
+  if (!marcus || !marcus.active) return null;
+  return createMarcusEvent(marcus, state);
 }
 
 /**
  * Full resolve-pipeline step: evaluate the phase transition, then select and
  * enqueue exactly one Marcus event, incrementing the per-phase event counter.
- * Intended to run AFTER proposal expiration so Marcus can reference newly
- * expired / high-pressure proposals (spec 5.3 / 8.1).
  */
 export function processMarcusArc(state: GameState): GameState {
   const marcus0 = getMarcus(state);
@@ -226,35 +219,35 @@ export function processMarcusArc(state: GameState): GameState {
   const event = selectMarcusEvent(next);
   if (!event) return next;
 
-  // 3) Enqueue + bump per-phase counter on both flat + legacy mirrors.
+  // 3) Enqueue + bump per-phase counter.
   const marcus = getMarcus(next)!;
-  const newPhaseCount = (marcus.phaseEventCount ?? marcus.arcState?.phaseEventsFired ?? 0) + 1;
   const updatedMarcus: Antagonist = {
     ...marcus,
     lastEscalationTurn: next.turn,
-    phaseEventCount: newPhaseCount,
-    arcState: marcus.arcState
-      ? { ...marcus.arcState, phaseEventsFired: newPhaseCount }
-      : marcus.arcState,
+    phaseEventCount: (marcus.phaseEventCount ?? 0) + 1,
   };
 
   next = writeMarcus(next, updatedMarcus);
   return { ...next, eventQueue: [...next.eventQueue, event] };
 }
 
-/** Record a player's response to a Marcus event into the flat responseHistory. */
+/**
+ * Record a player's response to a Marcus event into the flat responseHistory.
+ * `applied` defaults to true; pass false when the choice's requirements blocked
+ * its effects so the response is logged but excluded from the arc tallies.
+ */
 export function recordMarcusResponse(
   state: GameState,
   eventType: string,
   choiceId: string,
+  applied = true,
 ): GameState {
   const marcus = getMarcus(state);
   if (!marcus) return state;
   const kind = classifyMarcusResponse(choiceId);
-  const responseHistory: MarcusResponse[] = [
-    ...(marcus.responseHistory ?? []),
-    { turn: state.turn, eventType, choiceId, kind },
-  ];
+  const entry: MarcusResponse = { turn: state.turn, eventType, choiceId, kind };
+  if (!applied) entry.applied = false;
+  const responseHistory: MarcusResponse[] = [...(marcus.responseHistory ?? []), entry];
   return writeMarcus(state, { ...marcus, responseHistory });
 }
 

@@ -244,12 +244,13 @@ function handleRespondEvent(
   const result = applyEventChoice(state, action.eventId, action.choiceId);
   let next = result.state;
 
-  // Task 5.4: track player responses to Marcus Webb events in responseHistory.
-  // applyEventChoice maintains the legacy arcState counters; the reducer owns
-  // the flat responseHistory log (single source of truth for the confront/ignore
-  // ratio used by phase transitions and the Phase 4 resolution branch).
+  // The reducer owns the canonical responseHistory log — the single source of
+  // truth from which the confront/ignore/co-opt tallies are derived (phase
+  // transitions + Phase 4 resolution). A choice whose requirements were unmet is
+  // still logged but flagged not-applied so it is excluded from the tallies,
+  // matching the legacy behavior where blocked choices skipped the arc counters.
   if (respondedEvent && respondedEvent.type.startsWith('marcus_webb_')) {
-    next = recordMarcusResponse(next, respondedEvent.type, action.choiceId);
+    next = recordMarcusResponse(next, respondedEvent.type, action.choiceId, result.applied);
   }
 
   return next;

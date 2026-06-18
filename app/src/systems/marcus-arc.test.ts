@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, Antagonist, AntagonistArcState, MarcusResponse, Proposal } from '../state/types';
+import type { GameState, Antagonist, MarcusResponse, MarcusResolutionType, Proposal } from '../state/types';
 import { createNewGame } from '../state/create-game';
 import { gameReducer } from '../state/reducer';
 import { resolveTurn } from './resolve';
@@ -24,38 +24,68 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   return { ...base, ...overrides, meters: { ...base.meters, ...(overrides.meters ?? {}) } };
 }
 
-function makeArcState(overrides: Partial<AntagonistArcState> = {}): AntagonistArcState {
-  return {
-    phase: 1,
-    phaseEventsFired: 0,
-    confrontations: 0,
-    ignores: 0,
-    coOpted: false,
-    resolutionType: null,
-    sterlingConnectionRevealed: false,
-    ...overrides,
-  };
+/**
+ * The Marcus arc's confront/ignore/co-opt tallies are now DERIVED from
+ * responseHistory. This shape lets tests express the intent ("Marcus has been
+ * ignored 3 times", "5 confrontations, co-opted") and we synthesize a
+ * responseHistory that yields exactly those derived counts under tallyResponses.
+ */
+interface ArcShape {
+  phase?: 1 | 2 | 3 | 4;
+  phaseEventsFired?: number;
+  confrontations?: number;
+  ignores?: number;
+  coOpted?: boolean;
+  resolutionType?: MarcusResolutionType;
+  sterlingConnectionRevealed?: boolean;
 }
 
-/** Build a Marcus antagonist with flat fields + a synced arcState. */
-function makeMarcus(overrides: Partial<Antagonist> = {}): Antagonist {
-  const arcState = (overrides.arcState as AntagonistArcState) ?? makeArcState();
+/**
+ * Build a responseHistory that derives to the requested confront/ignore/co-opt
+ * tallies. Each `confront` choiceId adds 1 to confrontations; `ignore` adds 1 to
+ * ignores; a single `co_opt` (when coOpted) both flags coOpted and counts as a
+ * confrontation, so we emit (confrontations-1) confronts + 1 co_opt.
+ */
+function historyFor(shape: ArcShape): MarcusResponse[] {
+  const confrontations = shape.confrontations ?? 0;
+  const ignores = shape.ignores ?? 0;
+  const coOpted = shape.coOpted ?? false;
+  const out: MarcusResponse[] = [];
+  let turn = 1;
+  const confrontCount = coOpted ? Math.max(0, confrontations - 1) : confrontations;
+  for (let i = 0; i < confrontCount; i++) {
+    out.push({ turn: turn++, eventType: 'marcus_webb_potshot_spending', choiceId: 'confront', kind: 'confront' });
+  }
+  if (coOpted) {
+    out.push({ turn: turn++, eventType: 'marcus_webb_council_run', choiceId: 'co_opt', kind: 'co_opt' });
+  }
+  for (let i = 0; i < ignores; i++) {
+    out.push({ turn: turn++, eventType: 'marcus_webb_potshot_spending', choiceId: 'ignore', kind: 'ignore' });
+  }
+  return out;
+}
+
+/** Build a Marcus antagonist from an arc-shape, projecting onto flat fields. */
+function makeMarcus(overrides: Partial<Antagonist> & { arc?: ArcShape } = {}): Antagonist {
+  const arc = overrides.arc ?? {};
+  const { arc: _omit, ...antOverrides } = overrides;
+  const phase = arc.phase ?? 1;
   return {
     id: 'marcus_webb',
     name: 'Marcus Webb',
     role: 'Media Figure',
     activationCondition: 'turn_1',
-    escalationLevel: arcState.phase - 1,
+    escalationLevel: phase - 1,
     escalationInterval: 1,
     active: true,
     lastEscalationTurn: 0,
     tileTargets: [],
-    arcPhase: arcState.phase,
-    responseHistory: [],
-    phaseEventCount: arcState.phaseEventsFired,
-    motivationRevealed: arcState.sterlingConnectionRevealed,
-    arcState,
-    ...overrides,
+    arcPhase: phase,
+    responseHistory: historyFor(arc),
+    phaseEventCount: arc.phaseEventsFired ?? 0,
+    motivationRevealed: arc.sterlingConnectionRevealed ?? false,
+    resolutionType: arc.resolutionType ?? null,
+    ...antOverrides,
   };
 }
 
@@ -105,7 +135,7 @@ describe('9.1 evaluateMarcusPhaseTransition — phase transitions', () => {
 
   it('transitions Phase 1 → 2 at turn 9+ when ignored 3+ times (via response history)', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ ignores: 3 }),
+      arc: { ignores: 3 },
       responseHistory: [makeResponse('ignore'), makeResponse('ignore'), makeResponse('ignore')],
     });
     const state = makeState({ turn: 9, antagonists: { marcus_webb: marcus } });
@@ -204,7 +234,7 @@ describe('9.1 evaluateMarcusPhaseTransition — phase transitions', () => {
 
   it('transitions Phase 2 → 3 at turn 20+ with 4+ Phase 2 events fired', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, phaseEventsFired: 4 }),
+      arc: { phase: 2, phaseEventsFired: 4 },
     });
     const state = makeState({ turn: 20, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
@@ -214,7 +244,7 @@ describe('9.1 evaluateMarcusPhaseTransition — phase transitions', () => {
 
   it('does NOT transition Phase 2 → 3 before 4 Phase 2 events', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, phaseEventsFired: 3 }),
+      arc: { phase: 2, phaseEventsFired: 3 },
     });
     const state = makeState({ turn: 25, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
@@ -223,16 +253,16 @@ describe('9.1 evaluateMarcusPhaseTransition — phase transitions', () => {
 
   it('transitions Phase 3 → 4 at turn 36+ and sets a resolution type', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 3, confrontations: 5, ignores: 2 }),
+      arc: { phase: 3, confrontations: 5, ignores: 2 },
     });
     const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
     expect(getMarcus(next)!.arcPhase).toBe(4);
-    expect(getMarcus(next)!.arcState!.resolutionType).not.toBeNull();
+    expect(getMarcus(next)!.resolutionType).not.toBeNull();
   });
 
   it('is a no-op when Marcus is inactive', () => {
-    const marcus = makeMarcus({ active: false, arcState: makeArcState({ ignores: 9 }) });
+    const marcus = makeMarcus({ active: false, arc: { ignores: 9 } });
     const state = makeState({ turn: 30, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
     expect(getMarcus(next)!.arcPhase).toBe(1);
@@ -242,34 +272,34 @@ describe('9.1 evaluateMarcusPhaseTransition — phase transitions', () => {
 describe('9.1 Phase 4 resolution branch derives from response pattern', () => {
   it('reluctant_ally when co-opted and 4+ confrontations', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 3, confrontations: 4, coOpted: true }),
+      arc: { phase: 3, confrontations: 4, coOpted: true },
     });
     const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
-    expect(getMarcus(next)!.arcState!.resolutionType).toBe('reluctant_ally');
+    expect(getMarcus(next)!.resolutionType).toBe('reluctant_ally');
   });
 
   it('election_threat when ignored > 60% and not co-opted', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 3, confrontations: 2, ignores: 6, coOpted: false }),
+      arc: { phase: 3, confrontations: 2, ignores: 6, coOpted: false },
     });
     const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
-    expect(getMarcus(next)!.arcState!.resolutionType).toBe('election_threat');
+    expect(getMarcus(next)!.resolutionType).toBe('election_threat');
   });
 
   it('cynicism_engine for inconsistent (mixed) responses', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 3, confrontations: 3, ignores: 3, coOpted: false }),
+      arc: { phase: 3, confrontations: 3, ignores: 3, coOpted: false },
     });
     const state = makeState({ turn: 36, antagonists: { marcus_webb: marcus } });
     const next = evaluateMarcusPhaseTransition(state);
-    expect(getMarcus(next)!.arcState!.resolutionType).toBe('cynicism_engine');
+    expect(getMarcus(next)!.resolutionType).toBe('cynicism_engine');
   });
 });
 
 describe('9.1 response-history tracking via reducer (RESPOND_EVENT)', () => {
-  function stateWithMarcusEvent(choiceId: string, eventType: string, marcusOverrides: Partial<Antagonist> = {}) {
+  function stateWithMarcusEvent(choiceId: string, eventType: string, marcusOverrides: Partial<Antagonist> & { arc?: ArcShape } = {}) {
     const marcus = makeMarcus(marcusOverrides);
     const event = {
       id: 'evt-marcus-1',
@@ -306,15 +336,15 @@ describe('9.1 response-history tracking via reducer (RESPOND_EVENT)', () => {
     const state = stateWithMarcusEvent('ignore', 'marcus_webb_potshot_priorities');
     const next = gameReducer(state, { type: 'RESPOND_EVENT', eventId: 'evt-marcus-1', choiceId: 'ignore' });
     expect(getMarcus(next)!.responseHistory![0].kind).toBe('ignore');
-    // arcState ignore counter also advances (maintained by applyEventChoice).
-    expect(getMarcus(next)!.arcState!.ignores).toBe(1);
+    // The derived ignore tally advances with the logged response.
+    expect(tallyResponses(getMarcus(next)!.responseHistory!).ignores).toBe(1);
   });
 
-  it('records a co_opt response with kind=co_opt and flips arcState.coOpted', () => {
-    const state = stateWithMarcusEvent('co_opt', 'marcus_webb_council_run', { arcState: makeArcState({ phase: 3 }) });
+  it('records a co_opt response with kind=co_opt and derives coOpted', () => {
+    const state = stateWithMarcusEvent('co_opt', 'marcus_webb_council_run', { arc: { phase: 3 } });
     const next = gameReducer(state, { type: 'RESPOND_EVENT', eventId: 'evt-marcus-1', choiceId: 'co_opt' });
     expect(getMarcus(next)!.responseHistory![0].kind).toBe('co_opt');
-    expect(getMarcus(next)!.arcState!.coOpted).toBe(true);
+    expect(tallyResponses(getMarcus(next)!.responseHistory!).coOpted).toBe(true);
   });
 
   it('does NOT record responses for non-Marcus events', () => {
@@ -409,7 +439,7 @@ describe('9.2 selectMarcusEvent — Phase 1 variety + choices', () => {
 describe('9.2 selectMarcusEvent — Phase 2 weaponizes ignored proposals (interpolation)', () => {
   it('interpolates real neighborhood + leader names from a high-pressure proposal', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     const state = makeState({
       turn: 12,
@@ -433,7 +463,7 @@ describe('9.2 selectMarcusEvent — Phase 2 weaponizes ignored proposals (interp
 
   it('reveals the Sterling Cross funding connection on first Phase 2 event when Sterling is active', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: false }),
+      arc: { phase: 2, sterlingConnectionRevealed: false },
     });
     const state = makeState({
       turn: 10,
@@ -446,7 +476,7 @@ describe('9.2 selectMarcusEvent — Phase 2 weaponizes ignored proposals (interp
 
   it('names a neglected neighborhood + its leader when no high-pressure proposal exists', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     // Default tiles have no active/completed projects → first such tile is "neglected".
     // Heal north_end (Marcus's childhood tile) so the motivation event yields and a
@@ -470,7 +500,7 @@ describe('9.2 selectMarcusEvent — Phase 2 weaponizes ignored proposals (interp
 describe('9.2 selectMarcusEvent — childhood motivation layer (spec 4.6)', () => {
   it('fires the childhood-motivation event when north_end is distressed (default state)', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     // Default north_end starts distressed (vacancy 55% > 50%, eco 9% < 30%).
     const state = makeState({ turn: 12, antagonists: { marcus_webb: marcus }, activeProposals: [] });
@@ -488,7 +518,7 @@ describe('9.2 selectMarcusEvent — childhood motivation layer (spec 4.6)', () =
 
   it('does NOT fire the motivation event when the childhood tile is healthy', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     const base = makeState({ turn: 12, antagonists: { marcus_webb: marcus }, activeProposals: [] });
     const state: GameState = {
@@ -502,7 +532,7 @@ describe('9.2 selectMarcusEvent — childhood motivation layer (spec 4.6)', () =
   it('honors a tileTargets override for the childhood neighborhood', () => {
     const marcus = makeMarcus({
       tileTargets: ['fitzgerald'],
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     // fitzgerald is also distressed by default (vacancy 65%); heal north_end so it
     // can't be the source.
@@ -518,7 +548,7 @@ describe('9.2 selectMarcusEvent — childhood motivation layer (spec 4.6)', () =
 
   it('yields to a high-pressure ignored proposal over the motivation event', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 2, sterlingConnectionRevealed: true }),
+      arc: { phase: 2, sterlingConnectionRevealed: true },
     });
     const state = makeState({
       turn: 12,
@@ -535,7 +565,7 @@ describe('9.2 selectMarcusEvent — childhood motivation layer (spec 4.6)', () =
 describe('9.2 selectMarcusEvent — Phase 3 & 4 pools', () => {
   it('Phase 3 first event is the council-run announcement with a co_opt option', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 3, phaseEventsFired: 0, confrontations: 1 }),
+      arc: { phase: 3, phaseEventsFired: 0, confrontations: 1 },
     });
     const state = makeState({ turn: 22, antagonists: { marcus_webb: marcus } });
     const event = selectMarcusEvent(state)!;
@@ -545,7 +575,7 @@ describe('9.2 selectMarcusEvent — Phase 3 & 4 pools', () => {
 
   it('Phase 4 reluctant_ally event offers a net-positive choice', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 4, resolutionType: 'reluctant_ally' }),
+      arc: { phase: 4, resolutionType: 'reluctant_ally' },
     });
     const state = makeState({ turn: 38, antagonists: { marcus_webb: marcus } });
     const event = selectMarcusEvent(state)!;
@@ -555,7 +585,7 @@ describe('9.2 selectMarcusEvent — Phase 3 & 4 pools', () => {
 
   it('Phase 4 election_threat event creates a sustained Will drain', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 4, resolutionType: 'election_threat' }),
+      arc: { phase: 4, resolutionType: 'election_threat' },
     });
     const state = makeState({ turn: 38, antagonists: { marcus_webb: marcus } });
     const event = selectMarcusEvent(state)!;
@@ -572,12 +602,11 @@ describe('9.2 processMarcusArc fires exactly one event and bumps the phase count
     const marcusEvents = next.eventQueue.filter(e => e.type.startsWith('marcus_webb_'));
     expect(marcusEvents).toHaveLength(1);
     expect(getMarcus(next)!.phaseEventCount).toBe(1);
-    expect(getMarcus(next)!.arcState!.phaseEventsFired).toBe(1);
   });
 
   it('transitions phase AND fires the new phase event in one pass', () => {
     const marcus = makeMarcus({
-      arcState: makeArcState({ phase: 1, ignores: 3 }),
+      arc: { phase: 1, ignores: 3 },
       responseHistory: [makeResponse('ignore'), makeResponse('ignore'), makeResponse('ignore')],
     });
     const state = makeState({ turn: 9, antagonists: { marcus_webb: marcus }, eventQueue: [] });
@@ -606,7 +635,7 @@ describe('9.5 resolve pipeline integration', () => {
     let state = makeState({ turn: 8, eventQueue: [] });
     // Seed an ignore-heavy history so the turn-9 transition trigger fires.
     const marcus = makeMarcus({
-      arcState: makeArcState({ ignores: 3 }),
+      arc: { ignores: 3 },
       responseHistory: [makeResponse('ignore'), makeResponse('ignore'), makeResponse('ignore')],
     });
     state = { ...state, antagonists: { ...state.antagonists, marcus_webb: marcus } };
@@ -618,18 +647,20 @@ describe('9.5 resolve pipeline integration', () => {
     expect(resolved.antagonists.marcus_webb.arcPhase).toBe(2);
   });
 
-  it('keeps flat fields and legacy arcState in sync after a resolve', () => {
+  it('keeps the flat arc fields coherent after a resolve (single source of truth)', () => {
     const state = makeState({ turn: 3, eventQueue: [] });
     const resolved = resolveTurn(state, () => 0.999);
     const m = resolved.antagonists.marcus_webb;
-    expect(m.arcPhase).toBe(m.arcState!.phase);
-    expect(m.phaseEventCount).toBe(m.arcState!.phaseEventsFired);
+    // After one resolve at turn 3 Marcus is still Phase 1 and has fired one event.
+    expect(m.arcPhase).toBe(1);
+    expect(m.escalationLevel).toBe((m.arcPhase ?? 1) - 1);
+    expect(m.phaseEventCount).toBe(1);
   });
 
   it('end-to-end: respond to Marcus event then resolve — response is logged and arc advances', () => {
     // Phase 1 Marcus, set up so the next resolve will transition him to phase 2.
     let state = makeState({ turn: 9, eventQueue: [] });
-    const marcus = makeMarcus({ arcState: makeArcState({ ignores: 2 }), responseHistory: [makeResponse('ignore'), makeResponse('ignore')] });
+    const marcus = makeMarcus({ arc: { ignores: 2 }, responseHistory: [makeResponse('ignore'), makeResponse('ignore')] });
     state = { ...state, antagonists: { ...state.antagonists, marcus_webb: marcus } };
 
     // Fire a Marcus event into the queue, then have the player ignore it via reducer.

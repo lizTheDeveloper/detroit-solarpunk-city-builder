@@ -41,21 +41,12 @@ export const ANTAGONIST_DEFINITIONS: Record<string, Antagonist> = {
     // distress (eco < 30% or vacancy > 50%) his Phase 2+ events reveal that he
     // grew up there and offer the player a chance to address it directly.
     tileTargets: ['north_end'],
-    // --- Flat arc fields (canonical for the marcus-arc.ts system) ---
+    // --- Flat arc fields (the single source of truth for the Marcus arc) ---
     arcPhase: 1,
     responseHistory: [],
     phaseEventCount: 0,
     motivationRevealed: false,
-    // --- Legacy sub-object (kept in sync; consumed by events.ts builders) ---
-    arcState: {
-      phase: 1,
-      phaseEventsFired: 0,
-      confrontations: 0,
-      ignores: 0,
-      coOpted: false,
-      resolutionType: null,
-      sterlingConnectionRevealed: false,
-    },
+    resolutionType: null,
   },
   amanda_chen: {
     id: 'amanda_chen',

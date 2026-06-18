@@ -585,9 +585,9 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
     // Marcus Webb phase transition — runs AFTER proposal pressure/expiration has
     // been applied (in prepareTurn) so the transition can react to newly expired
     // and high-pressure proposals plus calendar neighborhood-neglect signals.
-    // This updates Marcus's flat arc fields (arcPhase/phaseEventCount/etc.) and
-    // keeps the legacy arcState in sync; escalateAntagonists then selects the
-    // single phase-appropriate event for the (possibly newly transitioned) phase.
+    // This updates Marcus's flat arc fields (arcPhase/phaseEventCount/etc.);
+    // escalateAntagonists then selects the single phase-appropriate event for the
+    // (possibly newly transitioned) phase.
     current = evaluateMarcusPhaseTransition(current);
 
     // Escalate active antagonists (Marcus event selection happens here, post-transition)

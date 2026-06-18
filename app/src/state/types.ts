@@ -164,20 +164,17 @@ export interface CouncilMember {
   tileIds: string[];
 }
 
-export interface AntagonistArcState {
-  phase: 1 | 2 | 3 | 4;
-  phaseEventsFired: number;
-  confrontations: number;
-  ignores: number;
-  coOpted: boolean;
-  resolutionType: 'reluctant_ally' | 'election_threat' | 'cynicism_engine' | null;
-  sterlingConnectionRevealed: boolean;
-}
+/** Frozen outcome of the Marcus arc, set once at the Phase 3→4 transition. */
+export type MarcusResolutionType =
+  | 'reluctant_ally'
+  | 'election_threat'
+  | 'cynicism_engine'
+  | null;
 
 /**
  * A single recorded player response to a Marcus Webb arc event.
- * Used to compute the confront/ignore ratio that drives phase transitions
- * and the Phase 4 resolution branch.
+ * This is the canonical log from which the confront/ignore tallies (driving
+ * phase transitions and the Phase 4 resolution branch) are derived.
  */
 export interface MarcusResponse {
   turn: number;
@@ -185,6 +182,13 @@ export interface MarcusResponse {
   choiceId: string;
   /** Bucketed interpretation of the choice for ratio math. */
   kind: 'confront' | 'ignore' | 'co_opt' | 'strategic';
+  /**
+   * Whether the choice's effects were actually applied. A choice whose
+   * requirements (min will/budget/trust) were unmet is still logged, but it
+   * does NOT count toward the confront/ignore tallies — matching the legacy
+   * behavior where blocked choices skipped the arc counters. Defaults to true.
+   */
+  applied?: boolean;
 }
 
 export interface Antagonist {
@@ -197,10 +201,12 @@ export interface Antagonist {
   active: boolean;
   lastEscalationTurn: number;
   tileTargets: string[];
-  arcState?: AntagonistArcState;
-  // --- Marcus Webb arc (flat fields) ---
+  // --- Marcus Webb arc (flat fields — the single source of truth) ---
   // These are optional/defaulted so other antagonists keep working unchanged.
-  // Marcus's definition initializes them; the marcus-arc.ts system reads/writes them.
+  // Marcus's definition initializes them; marcus-arc.ts is the state-machine home
+  // and events.ts reads/writes them when building and tracking arc events. The
+  // confront/ignore/co-opt tallies are DERIVED from responseHistory (see
+  // marcus-arc.ts `tallyResponses`), not stored.
   /** Current arc phase: 1 Gadfly, 2 Demagogue, 3 Power Broker, 4 Resolution. */
   arcPhase?: 1 | 2 | 3 | 4;
   /** Chronological log of player responses to Marcus events. */
@@ -209,6 +215,8 @@ export interface Antagonist {
   phaseEventCount?: number;
   /** Whether the Sterling Cross funding motivation has been surfaced. */
   motivationRevealed?: boolean;
+  /** Resolution branch, frozen once at the Phase 3→4 transition. */
+  resolutionType?: MarcusResolutionType;
 }
 
 export interface PolicyDefinition {
