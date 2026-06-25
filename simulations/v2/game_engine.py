@@ -93,15 +93,15 @@ COMMUNITY_LEADERS = [
 ]
 
 COUNCIL_MEMBERS = [
-    ('Marlena Calloway', 60, 'progressive'),
-    ('JT Thibodeaux', 20, 'moderate'),
-    ('Denise Okonkwo', 40, 'progressive'),
-    ('Victor Marek', 10, 'moderate'),
-    ('Pat Lundgren', -30, 'conservative'),
-    ('Tomoko Reyes', 50, 'progressive'),
-    ('Bobby Slade', -15, 'moderate_conservative'),
-    ('Aaliyah Foster', 5, 'moderate'),
-    ('Frank Bukowski', -50, 'conservative'),
+    ('James Tate', 60, 'progressive'),
+    ('Angela Whitfield-Calloway', 10, 'moderate'),
+    ('Scott Benson', 40, 'progressive'),
+    ('Denzel Anton McCampbell', 25, 'moderate'),
+    ('Renata Miller', 20, 'moderate'),
+    ('Gabriela Santiago-Romero', 50, 'progressive'),
+    ('Latisha Johnson', 15, 'moderate'),
+    ('Coleman Young II', 45, 'progressive'),
+    ('Mary Waters', 20, 'moderate'),
 ]
 
 AI_CITIES = {

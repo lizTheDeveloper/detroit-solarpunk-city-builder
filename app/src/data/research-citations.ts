@@ -160,7 +160,7 @@ export const RESEARCH_CITATIONS = {
   // ─── POLITICS & ELECTIONS ───────────────────────────────────────────
   politics: {
     electionThreshold: {
-      value: 'Duggan 2013: 55% (contested). 2017: 72% (comfortable). 2021: 75% (blowout)',
+      value: 'Duggan 2013: 55% (contested). 2017: 72% (comfortable). 2021: 75% (blowout). Sheffield 2025: 77% (mandate)',
       source: 'Ballotpedia, Wikipedia Detroit mayoral elections',
       gameImplication: 'Trust 50% + some allies = barely win. Trust < 50% = lose.',
     },

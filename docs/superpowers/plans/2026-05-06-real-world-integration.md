@@ -2546,11 +2546,11 @@ export const detroitPackage: CityPackage = {
   ],
   characters: [], // existing characters in data/content/ — migrated separately
   powerStructure: {
-    mayor: { name: 'Mike Duggan', contact: 'https://detroitmi.gov/government/mayors-office', since: '2014' },
+    mayor: { name: 'Mary Sheffield', contact: 'https://detroitmi.gov/government/mayors-office', since: '2026' },
     council: [
-      { name: 'District 1', neighborhoods: ['brightmoor'], pedagogicalNote: 'Represents the most vacant neighborhoods — vacancy policy decisions start here' },
-      { name: 'District 5', neighborhoods: ['corktown', 'southwest-detroit'], pedagogicalNote: 'Bridging gentrification pressure in Corktown with industrial pollution in Southwest' },
-      { name: 'District 7', neighborhoods: ['hamtramck'], pedagogicalNote: 'Hamtramck is an independent city within Detroit metro — different governance structure' },
+      { name: 'District 1 — James Tate', neighborhoods: ['brightmoor'], pedagogicalNote: 'Represents the most vacant neighborhoods — vacancy policy decisions start here' },
+      { name: 'District 5 — Renata Miller', neighborhoods: ['corktown', 'southwest-detroit'], pedagogicalNote: 'Bridging gentrification pressure in Corktown with industrial pollution in Southwest' },
+      { name: 'District 7 — Denzel Anton McCampbell', neighborhoods: ['hamtramck'], pedagogicalNote: 'Hamtramck is an independent city within Detroit metro — different governance structure' },
     ],
     agencies: [
       { name: 'Detroit Water and Sewerage Department', responsibility: 'Water rates, infrastructure, stormwater', relevantArcs: ['water-pfas', 'infrastructure-debt'], pedagogicalNote: 'Controls water shut-offs and infrastructure investment. DWSD merged into GLWA for regional water but Detroit retains local distribution.' },

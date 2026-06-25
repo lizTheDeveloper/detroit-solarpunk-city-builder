@@ -78,25 +78,25 @@ function prepareTurnDeterministic(state: GameState, rng: () => number = RNG_SUPP
 // ============================================================
 
 describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
-  it('lobbying Victor Marek with high alignment increases his disposition by 15', () => {
+  it('lobbying Denzel Anton McCampbell with high alignment increases his disposition by 15', () => {
     let state = createFullState();
 
-    // Victor Marek starts at disposition 25
-    expect(state.councilMembers['victor_marek'].disposition).toBe(25);
+    // Denzel Anton McCampbell starts at disposition 25
+    expect(state.councilMembers['denzel_anton_mccampbell'].disposition).toBe(25);
 
     // Lobby him with high alignment
     state = gameReducer(state, {
       type: 'LOBBY_COUNCIL',
-      memberId: 'victor_marek',
+      memberId: 'denzel_anton_mccampbell',
       policyId: 'green_infrastructure_grants',
       argumentAlignment: 'high',
     });
 
     // Disposition should increase by 15 (high alignment lobbying bonus)
-    expect(state.councilMembers['victor_marek'].disposition).toBe(40);
+    expect(state.councilMembers['denzel_anton_mccampbell'].disposition).toBe(40);
   });
 
-  it('lobbying swings Victor Marek from neutral to lean_yes, tipping a vote', () => {
+  it('lobbying swings Denzel Anton McCampbell from neutral to lean_yes, tipping a vote', () => {
     let state = createFullState();
 
     // Before lobbying: conduct vote to see baseline
@@ -106,10 +106,10 @@ describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
       POLICY_CATALOG['green_infrastructure_grants'],
     );
 
-    // Lobby Victor Marek
+    // Lobby Denzel Anton McCampbell
     state = gameReducer(state, {
       type: 'LOBBY_COUNCIL',
-      memberId: 'victor_marek',
+      memberId: 'denzel_anton_mccampbell',
       policyId: 'green_infrastructure_grants',
       argumentAlignment: 'high',
     });
@@ -121,12 +121,12 @@ describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
       POLICY_CATALOG['green_infrastructure_grants'],
     );
 
-    // Marek's vote score should be higher after lobbying
-    const marekBefore = beforeVote.votes.find(v => v.memberId === 'victor_marek');
-    const marekAfter = afterVote.votes.find(v => v.memberId === 'victor_marek');
-    expect(marekAfter!.score).toBeGreaterThan(marekBefore!.score);
+    // McCampbell's vote score should be higher after lobbying
+    const mccampbellBefore = beforeVote.votes.find(v => v.memberId === 'denzel_anton_mccampbell');
+    const mccampbellAfter = afterVote.votes.find(v => v.memberId === 'denzel_anton_mccampbell');
+    expect(mccampbellAfter!.score).toBeGreaterThan(mccampbellBefore!.score);
     // The difference should be exactly 15 (lobbying bonus for 'high')
-    expect(marekAfter!.score - marekBefore!.score).toBe(15);
+    expect(mccampbellAfter!.score - mccampbellBefore!.score).toBe(15);
   });
 
   it('enacting a policy succeeds when Will is sufficient (auto council-approved by reducer)', () => {
@@ -154,7 +154,7 @@ describe('Scenario 1: Council voting passes with lobbied swing vote', () => {
 
     state = gameReducer(state, {
       type: 'LOBBY_COUNCIL',
-      memberId: 'victor_marek',
+      memberId: 'denzel_anton_mccampbell',
       policyId: 'green_infrastructure_grants',
       argumentAlignment: 'high',
     });
@@ -184,7 +184,7 @@ describe('Scenario 2: Council voting fails without enough support', () => {
     const yesVotes = vote.votes.filter(v => v.vote === 'yes');
     vote.votes.filter(v => v.vote === 'no');
 
-    // With default dispositions, Bobby Slade (-10) is the most skeptical member.
+    // With default dispositions, Angela Whitfield-Calloway (10) is the most skeptical member.
     // water_commons has foodSovBonus and trustBonus, which may align with some priorities
     // but members with negative dispositions drag their scores down.
     // Need 5 yes to pass.
@@ -198,7 +198,7 @@ describe('Scenario 2: Council voting fails without enough support', () => {
     expect(vote.passed).toBe(yesVotes.length >= 5);
   });
 
-  it('skeptical member bobby_slade scores lowest on water_commons', () => {
+  it('moderate member angela_whitfield_calloway scores lowest on water_commons', () => {
     const state = createFullState();
 
     const vote = conductCouncilVote(
@@ -207,20 +207,19 @@ describe('Scenario 2: Council voting fails without enough support', () => {
       POLICY_CATALOG['water_commons'],
     );
 
-    // Bobby Slade (disposition -10, moderate-conservative) should have the lowest
-    // score among council members since his priorities (historic_preservation,
+    // Angela Whitfield-Calloway (disposition 10, moderate) should have the lowest
+    // score among council members since her priorities (historic_preservation,
     // property_tax, public_safety) don't align with water_commons
-    const bobbyVote = vote.votes.find(v => v.memberId === 'bobby_slade');
+    const whitfieldVote = vote.votes.find(v => v.memberId === 'angela_whitfield_calloway');
 
-    expect(bobbyVote).toBeDefined();
-    expect(bobbyVote!.score).toBeLessThan(0);
+    expect(whitfieldVote).toBeDefined();
 
-    // Bobby should have the lowest score of all members
+    // Whitfield-Calloway should have the lowest score of all members
     const otherScores = vote.votes
-      .filter(v => v.memberId !== 'bobby_slade')
+      .filter(v => v.memberId !== 'angela_whitfield_calloway')
       .map(v => v.score);
     for (const s of otherScores) {
-      expect(s).toBeGreaterThan(bobbyVote!.score);
+      expect(s).toBeGreaterThan(whitfieldVote!.score);
     }
   });
 
@@ -233,15 +232,15 @@ describe('Scenario 2: Council voting fails without enough support', () => {
       POLICY_CATALOG['water_commons'],
     );
 
-    // Marlena Calloway (progressive, disposition 60) should vote yes
-    const marlenaVote = vote.votes.find(v => v.memberId === 'marlena_calloway');
-    expect(marlenaVote!.vote).toBe('yes');
-    expect(marlenaVote!.score).toBeGreaterThan(0);
+    // James Tate (progressive, disposition 60) should vote yes
+    const tateVote = vote.votes.find(v => v.memberId === 'james_tate');
+    expect(tateVote!.vote).toBe('yes');
+    expect(tateVote!.score).toBeGreaterThan(0);
 
-    // Tomoko Reyes (progressive, disposition 50, water_rights priority) should vote yes
-    const tomokoVote = vote.votes.find(v => v.memberId === 'tomoko_reyes');
-    expect(tomokoVote!.vote).toBe('yes');
-    expect(tomokoVote!.score).toBeGreaterThan(0);
+    // Gabriela Santiago-Romero (progressive, disposition 50, water_rights priority) should vote yes
+    const santiagoVote = vote.votes.find(v => v.memberId === 'gabriela_santiago_romero');
+    expect(santiagoVote!.vote).toBe('yes');
+    expect(santiagoVote!.score).toBeGreaterThan(0);
   });
 });
 
@@ -895,7 +894,7 @@ describe('Scenario 9: Re-election score calculation', () => {
     expect(alliedMembers.length).toBe(3);
 
     // Count opponents: no members have disposition <= -30
-    // Bobby Slade (-10) is the most negative but doesn't reach the -30 threshold
+    // Angela Whitfield-Calloway (10) is the most skeptical but doesn't reach the -50 adversary threshold
     const opposingMembers = Object.values(state.councilMembers).filter(
       m => m.disposition <= -30
     );
@@ -1138,7 +1137,7 @@ describe('Scenario 10: Full 16-turn first term simulation', () => {
     if (state.calendarState.slotsSpent < state.calendarState.discretionarySlots) {
       state = gameReducer(state, {
         type: 'LOBBY_COUNCIL',
-        memberId: 'victor_marek',
+        memberId: 'denzel_anton_mccampbell',
         policyId: 'green_infrastructure_grants',
         argumentAlignment: 'high',
       });

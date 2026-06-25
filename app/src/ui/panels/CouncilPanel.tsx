@@ -55,7 +55,9 @@ function CouncilMemberCard({ member }: { member: CouncilMember }) {
         </span>
       </div>
       <div className="council-member-district">
-        District {member.districtNumber}: {member.district}
+        {member.districtNumber === 0
+          ? `At-Large · ${member.district}`
+          : `District ${member.districtNumber}: ${member.district}`}
       </div>
       <div className="council-disposition-row">
         <DispositionBar value={member.disposition} />

@@ -1,0 +1,4 @@
+# Dependencies for scripts/update-civic-data.py
+# Install with: cd city_builder && python3 -m venv scripts/venv && scripts/venv/bin/pip install -r scripts/requirements.txt
+requests
+beautifulsoup4

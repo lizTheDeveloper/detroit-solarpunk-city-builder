@@ -152,24 +152,25 @@ export const detroitPackage: CityPackage = {
   characters: [],
   powerStructure: {
     mayor: {
-      name: 'Mike Duggan',
+      name: 'Mary Sheffield',
       contact: 'https://detroitmi.gov/government/mayors-office',
-      since: '2014',
+      since: '2026',
+      wikidataId: 'Q131761007',
     },
     council: [
       {
-        name: 'District 1',
+        name: 'District 1 — James Tate',
         neighborhoods: ['brightmoor'],
         pedagogicalNote: 'Represents the most vacant neighborhoods',
       },
       {
-        name: 'District 5',
+        name: 'District 5 — Renata Miller',
         neighborhoods: ['corktown', 'southwest-detroit'],
         pedagogicalNote:
           'Bridging gentrification pressure in Corktown with industrial pollution in Southwest',
       },
       {
-        name: 'District 7',
+        name: 'District 7 — Denzel Anton McCampbell',
         neighborhoods: ['hamtramck'],
         pedagogicalNote: 'Hamtramck is an independent city within Detroit metro',
       },
