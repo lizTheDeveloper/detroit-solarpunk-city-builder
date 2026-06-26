@@ -17,6 +17,8 @@ import { applyRestDay } from '../systems/burnout';
 import { applyDelegationToCalendar, canUnlockTier, DELEGATION_TIERS } from '../systems/delegation';
 import { advanceContact, canAdvanceContact } from '../systems/strategic-contacts';
 import { applyMentorMeeting, isMentorAvailable } from '../data/characters/mentors';
+import { getCity } from '../city/registry';
+import { createNewGame } from './create-game';
 
 function countAllActiveProjects(state: GameState): number {
   let count = 0;
@@ -546,6 +548,18 @@ export function gameReducer(
           viewState: action.viewState,
         },
       };
+    case 'SWITCH_CITY': {
+      const cityPackage = getCity(action.citySlug);
+      if (!cityPackage) {
+        console.warn(`City not found in registry: ${action.citySlug}`);
+        return state;
+      }
+      const freshState = createNewGame(action.citySlug);
+      return {
+        ...freshState,
+        tutorialState: state.tutorialState, // preserve tutorial progress
+      };
+    }
     case 'END_TURN':
       return handleEndTurn(state);
     case 'PREPARE_TURN':

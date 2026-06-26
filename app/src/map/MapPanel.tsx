@@ -61,6 +61,7 @@ function buildHeadlinePins(headlines: Headline[], centroids: Record<string, [num
 }
 
 interface MapPanelProps {
+  citySlug: string;
   onSelectTile: (tileId: string) => void;
   onSelectBlock?: (blockId: string, neighborhoodId: string) => void;
   selectedTileId: string | null;
@@ -69,8 +70,12 @@ interface MapPanelProps {
   headlines?: Headline[];
 }
 
-export default function MapPanel({ onSelectTile, onSelectBlock, selectedTileId, selectedBlockId, tileHealthMap = {}, headlines = [] }: MapPanelProps) {
-  const [viewState, setViewState] = useState<MapViewState>(DETROIT_CENTER);
+export default function MapPanel({ citySlug, onSelectTile, onSelectBlock, selectedTileId, selectedBlockId, tileHealthMap = {}, headlines = [] }: MapPanelProps) {
+  const [viewState, setViewState] = useState<MapViewState>({
+    longitude: DETROIT_CENTER.longitude,
+    latitude: DETROIT_CENTER.latitude,
+    zoom: DETROIT_CENTER.zoom,
+  });
   const [neighborhoodsData, setNeighborhoodsData] = useState<any>(EMPTY_FC);
   const [blocksData, setBlocksData] = useState<object | null>(null);
   const [tileUrls, setTileUrls] = useState<string[] | null>(null);
@@ -89,18 +94,18 @@ export default function MapPanel({ onSelectTile, onSelectBlock, selectedTileId, 
   );
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data/detroit-neighborhoods.geojson`)
+    fetch(`${import.meta.env.BASE_URL}data/cities/${citySlug}/neighborhoods.geojson`)
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setNeighborhoodsData(data); })
       .catch(() => {});
-  }, []);
+  }, [citySlug]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data/detroit-blocks.geojson`)
+    fetch(`${import.meta.env.BASE_URL}data/cities/${citySlug}/blocks.geojson`)
       .then(res => { if (res.ok) return res.json(); return null; })
       .then(data => { if (data) setBlocksData(data); })
       .catch(() => {});
-  }, []);
+  }, [citySlug]);
 
   const centroids = useMemo(() => computeCentroids(neighborhoodsData.features), [neighborhoodsData]);
   const headlinePins = useMemo(() => buildHeadlinePins(headlines, centroids), [headlines, centroids]);

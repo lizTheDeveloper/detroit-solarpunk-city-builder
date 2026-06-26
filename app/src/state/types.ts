@@ -1,4 +1,5 @@
 import type { ActiveArc, DelayedConsequence, SerializedDependencyWeb } from './crisis-types';
+import type { CityPackage } from '../city/types';
 
 // Re-export crisis types for convenience
 export type { ActiveArc, DelayedConsequence, SerializedDependencyWeb, ArcStage, DependencyWeb, ConsequenceEffect, ArcConfig, PipelineArcState } from './crisis-types';
@@ -162,6 +163,8 @@ export interface CouncilMember {
   disposition: number;
   backstory: string;
   tileIds: string[];
+  wikidataId?: string;
+  profileUrl?: string;
 }
 
 /** Frozen outcome of the Marcus arc, set once at the Phase 3→4 transition. */
@@ -433,6 +436,8 @@ export interface TurnSummary {
 
 export interface GameState {
   version: 2;
+  selectedCity: string;
+  currentCityPackage: CityPackage;
   turn: number;
   month: number; // 1-12
   season: Season;
@@ -505,7 +510,8 @@ export type GameAction =
   | { type: 'STRATEGIC_CONTACT_ADVANCE'; contactId: string }
   | { type: 'MENTOR_MEETING'; mentorId: string }
   | { type: 'MAP_SELECT_BLOCK'; blockId: string; neighborhoodId: string }
-  | { type: 'MAP_SET_VIEW'; viewState: { longitude: number; latitude: number; zoom: number } };
+  | { type: 'MAP_SET_VIEW'; viewState: { longitude: number; latitude: number; zoom: number } }
+  | { type: 'SWITCH_CITY'; citySlug: string };
 
 // Beyond the Map types
 export type CityRelationship = 'neutral' | 'cooperative' | 'allied';

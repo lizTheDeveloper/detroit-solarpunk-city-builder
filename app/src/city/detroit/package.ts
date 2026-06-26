@@ -1,4 +1,4 @@
-import type { CityPackage } from './types';
+import type { CityPackage } from '../types';
 import type { FeatureCollection, Polygon } from 'geojson';
 
 // Placeholder empty FeatureCollections — real GeoJSON loaded at runtime by the map panel

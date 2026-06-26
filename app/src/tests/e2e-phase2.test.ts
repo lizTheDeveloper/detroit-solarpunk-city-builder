@@ -189,12 +189,11 @@ describe('Scenario 2: Council voting fails without enough support', () => {
     // but members with negative dispositions drag their scores down.
     // Need 5 yes to pass.
 
-    // Verify the vote either passed or failed - the important thing is we can
-    // observe the voting mechanics working correctly
-    expect(vote.votes).toHaveLength(7);
+    // Verify the vote has all 9 council members voting
+    expect(vote.votes).toHaveLength(9);
     expect(vote.policyId).toBe('water_commons');
 
-    // The vote result reflects whether 5+ members voted yes
+    // The vote result reflects whether 5+ members voted yes (majority of 9)
     expect(vote.passed).toBe(yesVotes.length >= 5);
   });
 
@@ -795,13 +794,13 @@ describe('Scenario 9: Re-election score calculation', () => {
     const score = calculateReElectionScore(state);
 
     // Score starts at trust (55)
-    // Then adds/subtracts for council members with disposition >= 30 or <= -30
-    // Council: Marlena +3 (60), Denise +3 (40), Tomoko +3 (50) = +9 allies
-    //          No members have disposition <= -30, so no opponents
-    // Other members: JT (20), Victor (25), Bobby (-10), Aaliyah (15) = neutral
+    // Then adds/subtracts for council members with disposition >= 30 or <= -10
+    // Council: Tate +3 (60), Benson +3 (40), Santiago-Romero +3 (50), Young II +3 (45) = +12 allies
+    //          No members have disposition <= -10, so no opponents
+    // Other members: Whitfield-Calloway (10), Johnson (15), Miller (20), McCampbell (25), Waters (20) = neutral
     // Leaders: all below 40 trust by default, so no advocate/critic bonuses
-    // Net: 55 + 9 = 64
-    expect(score).toBe(64);
+    // Net: 55 + 12 = 67
+    expect(score).toBe(67);
   });
 
   it('winning scenario: score >= 50 with good relationships', () => {
@@ -887,22 +886,23 @@ describe('Scenario 9: Re-election score calculation', () => {
       meters: { ...createNewGame().meters, communityTrust: 0 },
     });
 
-    // Count allies: Marlena (60), Denise (40), Tomoko (50) = 3 allies
+    // Council members with disposition >= 30 are allies:
+    // Tate (60), Benson (40), Santiago-Romero (50), Young II (45)
     const alliedMembers = Object.values(state.councilMembers).filter(
       m => m.disposition >= 30
     );
-    expect(alliedMembers.length).toBe(3);
+    expect(alliedMembers.length).toBe(4);
 
-    // Count opponents: no members have disposition <= -30
-    // Angela Whitfield-Calloway (10) is the most skeptical but doesn't reach the -50 adversary threshold
+    // Count opponents: no members have disposition <= -10
+    // Angela Whitfield-Calloway (10) is the most skeptical but doesn't reach the adversary threshold
     const opposingMembers = Object.values(state.councilMembers).filter(
-      m => m.disposition <= -30
+      m => m.disposition <= -10
     );
     expect(opposingMembers.length).toBe(0);
 
     const score = calculateReElectionScore(state);
-    // 0 + 3*3 - 0*3 = 0 + 9 - 0 = 9
-    expect(score).toBe(9);
+    // 0 + 4*3 - 0*3 = 0 + 12 - 0 = 12
+    expect(score).toBe(12);
   });
 
   it('leader advocates (trust >= 40) each add +5', () => {

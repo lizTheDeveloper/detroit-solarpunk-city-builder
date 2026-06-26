@@ -68,7 +68,7 @@ export interface PowerStructureEntry {
 }
 
 export interface CityPowerStructure {
-  mayor: { name: string; contact?: string; since?: string };
+  mayor: { name: string; contact?: string; since?: string; wikidataId?: string };
   council: PowerStructureEntry[];
   agencies: PowerStructureEntry[];
   utilityCompanies: PowerStructureEntry[];

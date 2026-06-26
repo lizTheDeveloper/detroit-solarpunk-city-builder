@@ -1,5 +1,3 @@
-import type { District } from '../../state/types';
-
 export interface District {
   number: number;
   name: string;

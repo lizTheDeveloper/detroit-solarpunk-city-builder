@@ -30,34 +30,34 @@ vi.mock('react-map-gl/maplibre', () => {
 
 describe('MapPanel', () => {
   it('renders a map panel', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByTestId('map-panel')).toBeDefined();
   });
 
   it('shows CITY MAP header', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByText('CITY MAP')).toBeDefined();
   });
 
   it('renders map container', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByTestId('map-container')).toBeDefined();
   });
 
   it('renders neighborhoods source and layers', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByTestId('source-neighborhoods')).toBeDefined();
     expect(screen.getByTestId('layer-neighborhood-fill')).toBeDefined();
     expect(screen.getByTestId('layer-neighborhood-borders')).toBeDefined();
   });
 
   it('renders navigation control', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByTestId('nav-control')).toBeDefined();
   });
 
   it('displays coordinates', () => {
-    render(<MapPanel onSelectTile={() => {}} selectedTileId={null} />);
+    render(<MapPanel citySlug="detroit" onSelectTile={() => {}} selectedTileId={null} />);
     expect(screen.getByText('42.3314, -83.0458')).toBeDefined();
   });
 });

@@ -8,9 +8,7 @@ import { prepareTurn } from '@/systems/resolve';
 import { autoSave, loadGame, createUndoStack, pushState, undo, canUndo } from '@/systems/persistence';
 import { PROJECT_CATALOG } from '@/data/content/project-catalog';
 import { LEADER_DEFINITIONS } from '@/data/content/leaders';
-import { initializeArcsFromPipeline } from '@/state/initialize-arcs-from-pipeline';
 import {
-  initAnalytics,
   trackGameAction,
   trackSessionEnd,
   trackTabOpen,
@@ -47,6 +45,8 @@ import { CalendarBar } from '@/ui/components/CalendarBar';
 import { CalendarGrid } from '@/ui/components/CalendarGrid';
 import MapPanel from '@/map/MapPanel';
 import BlockDetailPanel from '@/ui/panels/BlockDetailPanel';
+import CitySelectionScreen from '@/ui/CitySelectionScreen';
+import '@/ui/CitySelectionScreen.css';
 import { useHeadlines } from '@/hooks/useHeadlines';
 
 type ContentTab = 'map' | 'tiles' | 'calendar' | 'budget' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
@@ -58,8 +58,8 @@ type RightPanel =
   | { kind: 'block-detail'; tileId: string; blockId: string };
 
 /** Create initial game state with leader definitions applied and first proposals generated. */
-function initGame(): GameState {
-  const base = createNewGame();
+function initGame(citySlug: string = 'detroit'): GameState {
+  const base = createNewGame(citySlug);
 
   // Apply full leader definitions (name, neighborhood, backstory, priorities, etc.)
   const leaders = { ...base.leaders };
@@ -75,7 +75,8 @@ function initGame(): GameState {
 }
 
 export default function App() {
-  const [state, setState] = useState<GameState>(initGame);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [state, setState] = useState<GameState | null>(null);
   const [rightPanel, setRightPanel] = useState<RightPanel>({ kind: 'none' });
   const [showTurnSummary, setShowTurnSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<ContentTab>('map');
@@ -83,27 +84,27 @@ export default function App() {
   const [conversation, setConversation] = useState<{ characterId: string; interactionType: string; message: string; proposalId?: string } | null>(null);
   const { headlines } = useHeadlines(20);
 
-  useEffect(() => {
-    initAnalytics();
-    trackFunnelStep('game_started');
+  const handleSelectCity = useCallback((citySlug: string) => {
+    setSelectedCity(citySlug);
+    setState(initGame(citySlug));
+    undoStackRef.current = createUndoStack();
   }, []);
-
-  useEffect(() => {
-    initializeArcsFromPipeline(state).then((updated) => {
-      if (updated !== state) setState(updated);
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const stateRef = { current: state };
     stateRef.current = state;
-    const handleBeforeUnload = () => trackSessionEnd(stateRef.current);
+    const handleBeforeUnload = () => {
+      if (stateRef.current) {
+        trackSessionEnd(stateRef.current);
+      }
+    };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state]);
 
   const dispatch = useCallback((action: GameAction) => {
     setState((prev) => {
+      if (!prev) return prev;
       const next = gameReducer(prev, action, PROJECT_CATALOG);
       trackGameAction(action, prev, next);
       return next;
@@ -137,6 +138,7 @@ export default function App() {
 
   const handleEndTurn = useCallback(() => {
     setState((prev) => {
+      if (!prev) return prev;
       undoStackRef.current = pushState(undoStackRef.current, prev);
 
       const events = generateEvents(prev, Math.random);
@@ -160,6 +162,7 @@ export default function App() {
 
   const handleResolveAfterEvents = useCallback(() => {
     setState((prev) => {
+      if (!prev) return prev;
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
       trackGameAction({ type: 'END_TURN' }, prev, afterEnd);
       const ready = prepareTurn(afterEnd);
@@ -206,9 +209,27 @@ export default function App() {
     ? ('blockId' in rightPanel ? rightPanel.blockId : null)
     : null;
 
-  const eventCount = state.eventQueue.length;
+  const eventCount = state?.eventQueue.length ?? 0;
 
-  const cal = state.calendarState;
+  const cal = state?.calendarState ?? {
+    discretionarySlots: 3,
+    slotsSpent: 0,
+    totalSlots: 3,
+    fixedSlots: 0,
+    overscheduleAmount: 0,
+    overscheduleLimit: 5,
+    burnoutBuffer: 0,
+    burnoutBufferMax: 0,
+    burnoutState: 'fresh' as const,
+    consecutiveRecoveryMonths: 0,
+    interactionsThisMonth: {},
+    lastInteractionMonth: {},
+    monthNumber: 1,
+    delegationTier: 0,
+    crisisSlotTax: 0,
+    neighborhoodTimeAllocation: {},
+    leaderTrustGrantedThisMonth: {}
+  };
   const slotsRemaining = cal.discretionarySlots - cal.slotsSpent;
 
   const TABS: { id: ContentTab; label: string; badge?: number }[] = [
@@ -226,6 +247,11 @@ export default function App() {
     { id: 'saves', label: 'Save/Load' },
     { id: 'settings', label: 'Settings' },
   ];
+
+  // Show city selection screen if no city selected yet
+  if (!selectedCity || !state) {
+    return <CitySelectionScreen onSelectCity={handleSelectCity} />;
+  }
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>
@@ -268,6 +294,7 @@ export default function App() {
             {activeTab === 'map' && (
               <div className="map-container">
                 <MapPanel
+                  citySlug={state.selectedCity}
                   onSelectTile={handleSelectTile}
                   onSelectBlock={handleSelectBlock}
                   selectedTileId={selectedTileId}
@@ -375,8 +402,12 @@ export default function App() {
           />
         )}
         {showTurnSummary && <TurnSummary onDismiss={handleDismissSummary} />}
-        <TutorialTooltip onStateUpdate={setState} />
-        <AdvisorToast onStateUpdate={setState} />
+        {state && (
+          <>
+            <TutorialTooltip onStateUpdate={setState as any} />
+            <AdvisorToast onStateUpdate={setState as any} />
+          </>
+        )}
       </div>
     </GameContext.Provider>
   );

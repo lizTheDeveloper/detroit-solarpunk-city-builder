@@ -21,6 +21,8 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
 function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
   return {
     version: 2,
+    selectedCity: 'detroit',
+    currentCityPackage: {} as any, // Mock city package for tests
     turn: 10,
     month: 4,
     season: 'spring',

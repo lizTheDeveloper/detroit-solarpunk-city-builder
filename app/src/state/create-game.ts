@@ -1,6 +1,7 @@
 import type { GameState, Tile, CommunityLeader, PublicOpinion, TutorialState, AdvisorState } from './types';
 import { createInitialCalendarState } from './migration';
 import type { ActiveArc, SerializedDependencyWeb } from './crisis-types';
+import { getCity } from '../city/registry';
 import { COUNCIL_MEMBERS } from '../data/content/council-members';
 import { LEADER_DEFINITIONS } from '../data/content/leaders';
 import { ANTAGONIST_DEFINITIONS } from '../data/content/antagonists';
@@ -43,12 +44,19 @@ function makeLeader(
   };
 }
 
-export function createNewGame(): GameState {
+export function createNewGame(citySlug: string = 'detroit'): GameState {
+  const cityPackage = getCity(citySlug);
+  if (!cityPackage) {
+    throw new Error(`City not found in registry: ${citySlug}`);
+  }
+
   const communityTrust = 50;
   const startMonth = new Date().getMonth() + 1; // 1-12
 
   return {
     version: 2,
+    selectedCity: citySlug,
+    currentCityPackage: cityPackage,
     turn: 1,
     month: startMonth,
     season: getSeason(startMonth),
