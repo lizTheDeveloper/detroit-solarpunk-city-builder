@@ -1,5 +1,6 @@
 import type { CityPackage } from './types';
 import { detroitPackage } from './detroit';
+import minneapolisPackage from './minneapolis/package';
 
 /**
  * Registry of all available city packages.
@@ -12,8 +13,7 @@ import { detroitPackage } from './detroit';
  */
 const cityRegistry: Record<string, CityPackage> = {
   detroit: detroitPackage,
-  // Future cities:
-  // minneapolis: minneapolisPackage,
+  minneapolis: minneapolisPackage,
 };
 
 /**

@@ -10,9 +10,16 @@ describe('registry', () => {
       expect(detroit!.meta.state).toBe('MI');
     });
 
-    it('returns undefined for unknown city', () => {
+    it('returns Minneapolis package for "minneapolis" slug', () => {
       const minneapolis = getCity('minneapolis');
-      expect(minneapolis).toBeUndefined();
+      expect(minneapolis).toBeDefined();
+      expect(minneapolis!.meta.cityName).toBe('Minneapolis');
+      expect(minneapolis!.meta.state).toBe('MN');
+    });
+
+    it('returns undefined for unknown city', () => {
+      const chicago = getCity('chicago');
+      expect(chicago).toBeUndefined();
     });
   });
 
@@ -21,11 +28,12 @@ describe('registry', () => {
       const cities = listCities();
       expect(Array.isArray(cities)).toBe(true);
       expect(cities).toContain('detroit');
+      expect(cities).toContain('minneapolis');
     });
 
     it('includes all expected cities', () => {
       const cities = listCities();
-      expect(cities.length).toBeGreaterThanOrEqual(1);
+      expect(cities.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -34,9 +42,13 @@ describe('registry', () => {
       expect(hasCity('detroit')).toBe(true);
     });
 
+    it('returns true for Minneapolis', () => {
+      expect(hasCity('minneapolis')).toBe(true);
+    });
+
     it('returns false for unknown city', () => {
-      expect(hasCity('minneapolis')).toBe(false);
       expect(hasCity('chicago')).toBe(false);
+      expect(hasCity('portland')).toBe(false);
     });
   });
 });

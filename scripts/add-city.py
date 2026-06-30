@@ -73,7 +73,7 @@ def execute_sparql(query: str) -> list[dict]:
         sparql = SPARQLWrapper(SPARQL_ENDPOINT)
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
-        sparql.addHttpHeader("User-Agent", USER_AGENT)
+        sparql.addCustomHttpHeader("User-Agent", USER_AGENT)
         results = sparql.query().convert()
         return results["results"]["bindings"]
     else:
@@ -669,15 +669,31 @@ For Census API key (free):
     print(f"\n[4/6] Querying Census API...")
     census_data = get_census_data(city_name, state, census_key)
     
-    # Step 5: Generate geography GeoJSON (if not skipped)
+    # Step 5: Generate geography GeoJSON
     print(f"\n[5/6] Generating geography GeoJSON...")
     if skip_geojson:
         print(f"  Skipping GeoJSON generation (--skip-geojson flag)")
         neighborhoods = []
+        geojson_path = None
     else:
-        # In full implementation, would query OpenStreetMap
-        # For now, create placeholder
-        print(f"  Creating placeholder GeoJSON (real data requires OpenStreetMap integration)")
+        # Call the geojson fetcher script
+        import subprocess
+        fetcher = Path(__file__).parent / "fetch-city-geojson.py"
+        if fetcher.exists():
+            print(f"  Running {fetcher.name}...")
+            result = subprocess.run(
+                [sys.executable, str(fetcher), city_name, "--state", state],
+                capture_output=True,
+                text=True,
+            )
+            # Print the fetcher output
+            for line in result.stdout.splitlines():
+                print(f"    {line}")
+            if result.returncode != 0:
+                print(f"  ⚠ GeoJSON fetcher failed: {result.stderr[:200]}")
+            geojson_path = PUBLIC_DATA_DIR / slug / "neighborhoods.geojson"
+        else:
+            print(f"  ⚠ fetch-city-geojson.py not found, creating placeholder")
         neighborhoods = []
     
     # Step 6: Generate and write files
