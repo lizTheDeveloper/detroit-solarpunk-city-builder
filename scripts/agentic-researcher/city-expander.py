@@ -31,28 +31,53 @@ class CharacterResearcher:
         self.city = city
         self.state = state
 
-    def search_climate_activists(self, num_results: int = 15) -> List[Dict]:
-        """Search for climate activists and community leaders using multiple query patterns."""
+    def search_climate_activists(self, num_results: int = 80) -> List[Dict]:
+        """Search for climate activists and community leaders using multiple query patterns.
+
+        Uses people-focused queries designed to surface named individuals rather than
+        organization landing pages. Each query targets a different way that real people
+        appear in search results (profiles, interviews, bylines, announcements).
+        """
         print(f"\nSearching for climate activists in {self.city}...")
 
         if not HAS_DDGS:
             print("  ✗ DDGS not installed. Run: pip install ddgs")
             return []
 
-        # Multiple search queries to find diverse characters
+        # People-focused queries: each targets a different way individuals appear online.
+        # Quoted phrases force exact matches, reducing noise from organization pages.
         queries = [
-            f"{self.city} {self.state} climate activist OR sustainability OR community organizer",
-            f"{self.city} {self.state} environmental justice OR housing activist",
-            f"{self.city} {self.state} food justice OR mutual aid OR community garden leader",
-            f'{self.city} {self.state} "sustainable" OR "equity" initiative founder director',
-            f"{self.city} neighborhood association leader OR community coalition",
-            f'"{self.city}" activist "founded" OR "leads" OR "organizes"',
-            f'{self.city} city council climate policy advocate',
+            # Profiles and features of local activists
+            f'"{self.city}" "{self.state}" "climate activist" profile OR interview',
+            # Named directors/organizers at local organizations
+            f'"{self.city}" "{self.state}" "executive director" OR "coordinator" climate OR sustainability',
+            # Community organizers explicitly named
+            f'"{self.city}" "{self.state}" "community organizer" OR "grassroots organizer"',
+            # People founding or leading initiatives
+            f'"{self.city}" "founded" OR "co-founded" OR "leads" climate OR sustainability OR "mutual aid"',
+            # Local news bylines - journalists covering climate often name sources
+            f'"{self.city}" "{self.state}" climate OR environment OR sustainability "says" OR "according to"',
+            # Housing/food/environmental justice advocates
+            f'"{self.city}" "{self.state}" "environmental justice" OR "housing activist" OR "food justice"',
+            # People named in local government/advocacy roles
+            f'{self.city} {self.state} "climate" OR "sustainability" "appointed" OR "named" OR "joins"',
+            # Broader catch for local community leaders
+            f'"{self.city}" activist OR advocate OR organizer profile',
+            # Staff/leadership/team pages of local orgs
+            f'"{self.city}" "{self.state}" staff OR team OR leadership climate OR sustainability OR "nonprofit"',
+            # Local news coverage of activists/organizers
+            f'"{self.city}" "{self.state}" news activist OR organizer OR advocate OR leader OR champion',
+            # LinkedIn profiles of local climate/sustainability professionals
+            f'site:linkedin.com "{self.city}" "{self.state}" climate OR sustainability OR "environmental"',
+            # Neighborhood/community leaders
+            f'"{self.city}" "{self.state}" "neighborhood" OR "community" "president" OR "chair" OR "coordinator"',
         ]
 
+        # Fetch more results per query to ensure we cast a wide net
+        per_query = max(5, num_results // len(queries))
         all_results = []
         for query in queries:
-            results = self._search_web(query, num_results // len(queries))
+            results = self._search_web(query, per_query)
             all_results.extend(results)
             time.sleep(0.3)  # Avoid rate limiting
 
@@ -61,8 +86,8 @@ class CharacterResearcher:
         characters = []
         seen = set()
         for result in all_results:
-            char_data = self._extract_character(result)
-            if char_data:
+            char_list = self._extract_characters(result)
+            for char_data in char_list:
                 name_key = f"{char_data['name']}|{char_data['role']}"
                 if name_key not in seen:
                     seen.add(name_key)
@@ -119,48 +144,160 @@ class CharacterResearcher:
             print(f"  ✗ Search error for '{query}': {e}")
             return []
 
-    def _extract_character(self, result: Dict) -> Optional[Dict]:
-        """Extract character data from a search result."""
+    def _extract_characters(self, result: Dict) -> List[Dict]:
+        """Extract character data from a search result.
+
+        Returns a list of all people found in the result (may be more than one
+        if the result mentions multiple named individuals).
+        """
         name = result.get("title", "")
         url = result.get("href", "")
         snippet = result.get("body", "")
 
         if not name or not snippet:
-            return None
+            return []
 
         # Skip wiki lists, disambiguation pages
         title_lower = name.lower()
         if "list of" in title_lower or "disambiguation" in title_lower:
-            return None
+            return []
 
-        # Try to extract person name from journalist attribution patterns
+        # City-relevance check: the result should reference our target city
+        # or state somewhere in the title/URL/snippet.
+        city_l = self.city.lower()
+        state_l = self.state.lower()
+        combined = f"{title_lower} {url.lower()} {snippet.lower()}"
+        if city_l not in combined and state_l not in combined:
+            return []
+        if city_l not in combined and state_l in combined:
+            local_cues = [self.city.lower(), f'{self.city.lower()}, {state_l}',
+                          'local', 'community', 'city of']
+            if not any(cue in combined for cue in local_cues if cue != city_l):
+                return []
+
+        # Try to extract ALL person names from the result.
+        # We use the primary extraction method first, then scan for additional
+        # names in the snippet using the common-first-name heuristic.
+        characters = []
+        seen_names = set()
+
+        # Primary extraction (uses structured regex patterns)
         person_name = self._extract_person_name(snippet, name)
-        role = self._extract_role(snippet, person_name)
-        organization = self._extract_organization(snippet, person_name)
-
         if person_name:
-            return {
+            role = self._extract_role(snippet, person_name)
+            organization = self._extract_organization(snippet, person_name)
+            characters.append({
                 "name": person_name,
                 "role": role,
                 "organization": organization,
                 "description": self._clean_snippet(snippet),
                 "url": url
-            }
-        return None
+            })
+            seen_names.add(person_name.lower())
+
+        # Secondary extraction: find additional named people in the snippet
+        # using the common-first-name heuristic. We look for names that appear
+        # AFTER the first extracted name (to avoid duplicating).
+        if person_name and person_name.lower() in snippet.lower():
+            idx = snippet.lower().index(person_name.lower())
+            remaining = snippet[idx + len(person_name) + 1:]
+        else:
+            remaining = snippet
+
+        additional = self._find_all_names(remaining)
+        for alt_name in additional:
+            if alt_name.lower() not in seen_names:
+                seen_names.add(alt_name.lower())
+                role = self._extract_role(snippet, alt_name)
+                organization = self._extract_organization(snippet, alt_name)
+                characters.append({
+                    "name": alt_name,
+                    "role": role,
+                    "organization": organization,
+                    "description": self._clean_snippet(snippet),
+                    "url": url
+                })
+
+        return characters
+
+    def _find_all_names(self, text: str) -> List[str]:
+        """Find all plausible person names in a text snippet using the
+        common-first-name heuristic. Returns a list of names found.
+
+        Names must appear near a city/state reference to avoid including
+        tangential mentions of people who aren't local to the target city.
+        """
+        names = []
+        _F = r'[A-Z][a-z]+'
+        # Last name must be at least 3 characters to avoid truncated names
+        # like "Mc" or "De" (which are name prefixes, not full surnames)
+        _L = r'[A-Z][a-z]{2,}(?:-[A-Z][a-z]{2,})*'
+        pattern = rf'\b({_F})\s+({_L})\b'
+
+        # City/state references for proximity check
+        city_refs = [self.city.lower(), self.state.lower(),
+                     self.state.lower()[:2]]  # state abbreviation
+
+        for match in re.finditer(pattern, text):
+            first = match.group(1).lower()
+            full = f"{match.group(1)} {match.group(2)}"
+            if not self._is_person_name(full):
+                continue
+
+            # Reject if preceded by title-like words (determiners)
+            start = match.start()
+            preceding = text[max(0, start - 20):start].strip().lower()
+            if preceding.endswith(('the ', 'our ', 'your ', 'a ', 'an ')):
+                continue
+
+            # Accept only if the first name is in our known-names list
+            if first not in self._COMMON_FIRST_NAMES:
+                continue
+
+            # Require the name to appear near a city/state reference
+            # (within 150 chars) to avoid tangential mentions
+            context_start = max(0, match.start() - 150)
+            context_end = min(len(text), match.end() + 150)
+            context = text[context_start:context_end].lower()
+            if not any(ref in context for ref in city_refs):
+                continue
+
+            names.append(full)
+        return names
 
     def _extract_person_name(self, snippet: str, title: str) -> Optional[str]:
-        """Extract person name using journalist attribution patterns."""
+        """Extract person name using multiple strategies.
+
+        Priority order:
+        1. Role-attributed names ("Name, a climate activist...")
+        2. Quote/said attribution ("...said Name", "Name said")
+        3. "Name is [role]" and "Name, [role] at [org]" patterns
+        4. "Name from/of Organization" patterns
+        5. Byline patterns ("By Name")
+        6. Common-first-name heuristic (falls back to known first names)
+        7. Title-as-name fallback (only if title looks like a pure person name)
+        """
+        # Reusable sub-patterns for person names, including hyphenated surnames.
+        #   FIRST   = "Karin"
+        #   LAST    = "Power" or "Halloran-Steiner"
+        #   NAME2   = "FIRST LAST" (2-word name; handles hyphens in surname)
+        #   NAME23  = "FIRST [MIDDLE] LAST" (2- or 3-word)
+        _F = r'[A-Z][a-z]+'                                       # first word
+        _L = r'[A-Z][a-z]+(?:-[A-Z][a-z]+)*'                       # last (may be hyphenated)
+        _NAME2 = rf'{_F}\s+{_L}'                                   # exactly 2 words
+        _NAME23 = rf'{_F}(?:\s+{_F})?\s+{_L}'                      # 2 or 3 words
+
         # Combine snippet and title for better matching
         text = f"{snippet} {title}"
 
-        # Common journalist attribution patterns
-        # Priority 1: Specific role patterns
+        # ------------------------------------------------------------------
+        # Priority 1: Specific role patterns – "Name, a climate activist..."
+        # ------------------------------------------------------------------
         role_patterns = [
-            r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*(?:a\s+)?(?:climate|sustainability|environmental|community)\s+activist',
-            r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*(?:a\s+)?(?:founder|director|organizer|coordinator|leader)',
-            r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*(?:who|the)\s+(?:leads|runs|organizes|founded|started)',
+            rf'({_NAME23}),\s*(?:a\s+)?(?:climate|sustainability|environmental|community)\s+activist',
+            rf'({_NAME23}),\s*(?:a\s+)?(?:founder|director|organizer|coordinator|leader)',
+            rf'({_NAME23}),\s*(?:who|the)\s+(?:leads|runs|organizes|founded|started)',
         ]
-
         for pattern in role_patterns:
             match = re.search(pattern, text)
             if match:
@@ -168,27 +305,90 @@ class CharacterResearcher:
                 if self._is_person_name(name):
                     return name
 
-        # Priority 2: Quote attribution patterns
+        # ------------------------------------------------------------------
+        # Priority 2: Quote/attribution patterns
+        # ------------------------------------------------------------------
         quote_patterns = [
-            r'"[^"]*",\s*said\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
-            r'says\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
-            r'explains\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
-            r'according\s+to\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            rf'"[^"]*",?\s*said\s+({_NAME23})',
+            rf'(?:^|[\.\?!]\s+)(?P<n>{_NAME23})\s+said\b',
+            rf'(?P<n>{_NAME23})\s+says?\b',
+            rf'(?P<n>{_NAME23})\s+(?:told|noted|added|stressed|argued|explained|claims?)\b',
+            rf'says?\s+({_NAME23})\b',
+            rf'explains?\s+({_NAME23})',
+            rf'according\s+to\s+({_NAME23})',
+            rf',\s*({_NAME23})\s+said\b',
+            rf',\s*({_NAME23})\s*(?:told|noted|added|stressed|argued)\b',
         ]
-
         for pattern in quote_patterns:
+            match = re.search(pattern, text)
+            if match:
+                # Use named group 'n' if present, else group 1
+                name = match.lastindex is not None
+                name = match.group('n') if 'n' in match.groupdict() else match.group(1)
+                if self._is_person_name(name):
+                    return name
+
+        # ------------------------------------------------------------------
+        # Priority 3: "Name is [role]" / "Name, [role] at [org]"
+        # ------------------------------------------------------------------
+        is_role_patterns = [
+            rf'({_NAME23})\s+is\s+(?:a\s+|the\s+)?(?:local\s+)?(?:climate|sustainability|environmental|community|housing|food|environment|social|racial|economic)\s+\w+',
+            rf'({_NAME23}),\s*(?:a\s+)?\w+\s+(?:activist|organizer|director|founder|leader|advocate|educator|researcher|engineer|consultant|coordinator|manager|analyst|chair|president|mayor)\b',
+            rf'({_NAME23})\s+(?:serves?|works?)\s+(?:as|for)\s',
+            rf'({_NAME23})\s+(?:of|at|from)\s+[A-Z]\w+(?:\s+[A-Z]\w+)*(?:\s+(?:Institute|Foundation|Center|Coalition|Alliance|Network|Project|Collaborative|Collective|Org|Commission|Society|Council))\b',
+        ]
+        for pattern in is_role_patterns:
             match = re.search(pattern, text)
             if match:
                 name = match.group(1)
                 if self._is_person_name(name):
                     return name
 
-        # Priority 3: Generic name patterns
-        generic_patterns = [
-            r'([A-Z][a-z]+\s+[A-Z][a-z]+)\s*(?:,|is|was|will|has|have)',
-            r'(?:says|said|explains|notes),\s*([A-Z][a-z]+\s+[A-Z][a-z]+)',
+        # ------------------------------------------------------------------
+        # Priority 3b: Role-title then name: "lawmaker Karin Power",
+        # "director Name", "advocate Name", etc.
+        # ------------------------------------------------------------------
+        role_prefix_patterns = [
+            rf'(?:lawmaker|mayor|councilor|council\s+member|senator|representative|commissioner|director|coordinator|organizer|advocate|activist|leader|founder|professor|teacher|resident|student|volunteer|member|manager|president|chair)\s+({_NAME23})\b',
         ]
+        for pattern in role_prefix_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                name = match.group(1)
+                if self._is_person_name(name):
+                    return name
 
+        # ------------------------------------------------------------------
+        # Priority 3c: "Name from OrganizationName" (simple form)
+        # e.g. "Samantha Kirsch from Give A Fudge Consulting"
+        # ------------------------------------------------------------------
+        name_from_org = rf'({_NAME23})\s+from\s+([A-Z]\w+)'
+        for match in re.finditer(name_from_org, text):
+            name = match.group(1)
+            if self._is_person_name(name):
+                return name
+
+        # ------------------------------------------------------------------
+        # Priority 4: Byline patterns – "By First Last"
+        # ------------------------------------------------------------------
+        byline_patterns = [
+            rf'(?:^|\s)by\s+({_NAME23})\b',
+            rf'(?:Published|Written|Reported)\s+(?:by|for)\s+({_NAME23})',
+        ]
+        for pattern in byline_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                name = match.group(1)
+                if self._is_person_name(name):
+                    return name
+
+        # ------------------------------------------------------------------
+        # Priority 5: Generic "Name is/was/has" patterns (careful)
+        # ------------------------------------------------------------------
+        generic_patterns = [
+            rf'({_NAME23})\s*(?:,|was|has)\b',
+            rf'(?:says|said|explains|notes),?\s+({_NAME23})',
+        ]
         for pattern in generic_patterns:
             match = re.search(pattern, text)
             if match:
@@ -196,13 +396,110 @@ class CharacterResearcher:
                 if self._is_person_name(name) and len(name.split()) >= 2:
                     return name
 
-        # Fallback: check if title itself is a person name
-        title_match = re.search(r'^([A-Z][a-z]+\s+[A-Z][a-z]+)', title)
+        # ------------------------------------------------------------------
+        # Priority 6: Common-first-name heuristic
+        # Scan the text for sequences that start with a known first name
+        # followed by one capitalized word (likely a surname).
+        # This catches names in contexts the regex patterns above miss.
+        # ------------------------------------------------------------------
+        found = self._name_by_first_name_heuristic(text)
+        if found:
+            return found
+
+        # ------------------------------------------------------------------
+        # Priority 7: Title-as-name fallback
+        # ------------------------------------------------------------------
+        clean_title = title.split(',')[0].split(' - ')[0].split(' | ')[0].split(' – ')[0]
+        clean_title = re.sub(r'\s*[-–]\s*.*$', '', clean_title)
+        # Allow hyphenated surnames in the title check
+        title_match = re.match(rf'^({_NAME23})$', clean_title.strip())
         if title_match:
             name = title_match.group(1)
+            # Strip common titles that precede the real name
+            title_prefixes = (
+                'Mayor ', 'Senator ', 'Governor ', 'Dr. ', 'Dr ',
+                'Professor ', 'Prof. ', 'Prof ', 'Rev. ', 'Rev ',
+                'Judge ', 'Chief ', 'Captain ', 'General ',
+                'Representative ', 'Commissioner ', 'Councilor ',
+            )
+            for prefix in title_prefixes:
+                if name.startswith(prefix):
+                    name = name[len(prefix):]
+                    break
             if self._is_person_name(name):
                 return name
 
+        return None
+
+    # Common first names in the US (top ~200, covers the vast majority of hits)
+    _COMMON_FIRST_NAMES = {
+        'james', 'john', 'robert', 'michael', 'david', 'william', 'richard',
+        'joseph', 'thomas', 'charles', 'christopher', 'daniel', 'matthew',
+        'anthony', 'mark', 'donald', 'steven', 'paul', 'andrew', 'joshua',
+        'kenneth', 'kevin', 'brian', 'george', 'timothy', 'ronald', 'edward',
+        'jason', 'jeffrey', 'ryan', 'jacob', 'gary', 'nicholas', 'eric',
+        'jonathan', 'stephen', 'larry', 'justin', 'scott', 'brandon',
+        'benjamin', 'samuel', 'raymond', 'gregory', 'frank', 'alexander',
+        'patrick', 'jack', 'dennis', 'jerry', 'tyler', 'aaron', 'jose',
+        'adam', 'nathan', 'henry', 'peter', 'zachary', 'douglas', 'harold',
+        'mary', 'patricia', 'jennifer', 'linda', 'barbara', 'elizabeth',
+        'susan', 'jessica', 'sarah', 'karen', 'lisa', 'nancy', 'betty',
+        'margaret', 'sandra', 'ashley', 'dorothy', 'kimberly', 'emily',
+        'donna', 'michelle', 'carol', 'amanda', 'melissa', 'deborah',
+        'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia', 'kathleen',
+        'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma',
+        'nicole', 'helen', 'samantha', 'katherine', 'christine', 'debra',
+        'rachel', 'carolyn', 'janet', 'catherine', 'maria', 'heather',
+        'diane', 'ruth', 'julie', 'olivia', 'joyce', 'virginia', 'victoria',
+        'kelly', 'lauren', 'christina', 'joan', 'evelyn', 'judith', 'megan',
+        'andrea', 'cheryl', 'hannah', 'jacqueline', 'martha', 'gloria',
+        'teresa', 'ann', 'sara', 'madison', 'frances', 'kathryn', 'janice',
+        'jean', 'abigail', 'alice', 'judy', 'sophia', 'grace', 'denise',
+        'amber', 'doris', 'marilyn', 'danielle', 'beverly', 'isabella',
+        'theresa', 'diana', 'natalie', 'brittany', 'charlotte', 'marie',
+        'alexis', 'lori', 'lillian', 'robin', 'evangeline', 'dee', 'ukiah',
+        'kari', 'laurie', 'stacey', 'brandy', 'rita', 'tammy', 'gina',
+        'kristin', 'caitlin', 'cassidy', 'molly', 'allison', 'haley',
+        'jillian', 'bethany', 'darcy', 'krystal', 'brianna', 'yessenia',
+        'jaime', 'baylee', 'sydnee', 'macey', 'morgann', 'jasmyn',
+        'karin', 'deepa', 'aisha', 'fatima', 'xiomara', 'priya', 'mei',
+        'yuki', 'hana', 'lucia', 'isabela', 'camila', 'valentina',
+        'sriya', 'ananya', 'bhumi', 'niharika', 'rashida', 'ayana',
+        'tiana', 'zaria', 'kiara', 'imani', 'aaliyah', 'nadia', 'amara',
+        'lena', 'maya', 'nina', 'lena', 'sage', 'river', 'river',
+        'charlie', 'anthony', 'ted', 'dan', 'matt', 'joe', 'bob', 'tom',
+        'ben', 'sam', 'nick', 'chris', 'alex', 'max', 'leo', 'ian',
+        'seth', 'eli', 'omar', 'kai', 'avi', 'noah', 'luke', 'jake',
+        'greta', 'ruby', 'iris', 'luna', 'ivy', 'lea', 'zoe', 'mia',
+        'mia', 'ava', 'ella', 'lily', 'ella', 'nora', 'clara', 'rosa',
+        'alma', 'luz', 'carmen', 'elena', 'pilar', 'ines', 'lola',
+        'omar', 'raul', 'hector', 'luis', 'carlos', 'miguel', 'diego',
+        'jorge', 'pedro', 'raul', 'felix', 'armando', 'esteban', 'ramon',
+    }
+
+    def _name_by_first_name_heuristic(self, text: str) -> Optional[str]:
+        """Scan text looking for a known first name followed by a capitalized
+        surname. This is a fallback heuristic used when the more structured
+        regex patterns fail.  We only trust the hit if:
+          - The first name is in our _COMMON_FIRST_NAMES list
+          - The next word is capitalized (likely a surname)
+          - The surrounding context looks like a mention (not a command/title)
+        """
+        # Look for: known_first_name CapitalizedWord
+        pattern = rf'\b([A-Z][a-z]+)\s+([A-Z][a-z]+(?:-[A-Z][a-z]+)*)\b'
+        for match in re.finditer(pattern, text):
+            first = match.group(1).lower()
+            last = match.group(2)
+            full_name = f"{match.group(1)} {last}"
+            if first in self._COMMON_FIRST_NAMES and self._is_person_name(full_name):
+                # Extra check: the word before the first name shouldn't be
+                # something that indicates this is a title or heading, not a
+                # person reference. E.g. skip if preceded by "The", "Our", etc.
+                start = match.start()
+                preceding = text[max(0, start - 20):start].strip().lower()
+                if preceding.endswith(('the ', 'our ', 'your ')):
+                    continue
+                return full_name
         return None
 
     def _is_organization_name(self, name: str) -> bool:
@@ -225,33 +522,45 @@ class CharacterResearcher:
         - Both words start with capital letters
         - Not contain any organization keywords
         - Not contain common geographic/program/generic terms
+        - Not be composed of common English words that aren't typically first names
+
+        Hyphenated surnames (e.g. "Halloran-Steiner") count as one word.
         """
-        # Must be 2-3 words
+        # Split, but keep hyphenated surnames as single tokens for word-counting
+        # e.g. "Ukiah Halloran-Steiner" -> ["Ukiah", "Halloran-Steiner"]
         words = name.split()
         if len(words) < 2 or len(words) > 3:
             return False
-        
-        # Both words should be capitalized
+
+        # Both/all words should be capitalized
         for word in words:
             if not word[0].isupper():
                 return False
-        
+
+        # Reject truncated surnames that are known prefixes (not complete surnames)
+        name_prefixes = {'Mc', 'Mac', 'De', 'Di', 'Da', 'La', 'Le', 'Lo',
+                         'O', 'Van', 'Von', 'St'}
+        if words[-1] in name_prefixes:
+            return False
+
         # Reject if it's an organization name
         if self._is_organization_name(name):
             return False
-        
-        # Reject common non-person phrases
+
+        name_lower = name.lower()
+
+        # Keywords that indicate the name is NOT a person.
+        # Check is done per-word (not substring) to avoid false rejections
+        # for words like "power" which is also a common surname (e.g. "Karin Power").
+        # We only reject if a non-person keyword appears as a FULL word in the name.
         non_person_keywords = [
-            # Geographic features
-            'field', 'lake', 'river', 'mountain', 'park', 'valley', 'hill',
-            'island', 'beach', 'forest', 'desert', 'bay', 'coast', 'creek',
-            # Programs and initiatives
+            # Programs and initiatives (unlikely to be a name component)
             'cooling', 'heating', 'system', 'network', 'initiative', 'project',
-            'program', 'fund', 'fund', 'trust', 'fund',
-            # Common generic terms
+            'program', 'fund', 'trust',
+            # Generic terms that aren't typical name words
             'metro', 'chamber', 'climate', 'action', 'sustainability', 'method',
-            'unity', 'solar', 'wind', 'energy', 'power', 'water', 'air',
-            # Instructions and verbs that shouldn't be in names
+            'unity', 'solar', 'wind', 'energy', 'water',
+            # Instructions and verbs
             'do', 'this', 'make', 'go', 'get', 'take', 'come', 'see', 'look',
             # Organization types
             'foundation', 'institute', 'center', 'society', 'council',
@@ -259,13 +568,144 @@ class CharacterResearcher:
             'league', 'department', 'bureau', 'agency', 'commission',
             'project', 'team', 'group', 'organization', 'corporation',
             'inc', 'llc', 'corp', 'company', 'services', 'solutions',
+            # Movement / organizational nouns
+            'movement', 'front', 'coalition', 'harbor', 'cleanup',
+            'relief', 'response', 'force', 'watch', 'squad',
         ]
-        
-        name_lower = name.lower()
+
+        # Check each word individually (not the whole name as a substring)
+        lower_words = [w.lower() for w in name.split()]
         for keyword in non_person_keywords:
-            if keyword in name_lower:
+            if keyword in lower_words:
                 return False
-        
+
+        # Reject names where the first word is a common English word that is
+        # almost never a human first name. This catches things like
+        # "About Neighborhood", "Building Stronger", "Top Portland",
+        # "Environmental Justice", etc.
+        first_word = words[0].lower()
+        non_name_first_words = {
+            # Articles / determiners
+            'the', 'a', 'an', 'this', 'that', 'these', 'those',
+            # Prepositions
+            'about', 'after', 'before', 'between', 'from', 'into', 'through',
+            'under', 'over', 'above', 'below', 'across', 'along', 'around',
+            'behind', 'beside', 'beyond', 'during', 'near', 'toward', 'upon',
+            'within', 'without', 'in', 'on', 'at', 'by', 'of', 'to', 'for',
+            'with', 'as', 'if', 'or', 'and', 'but', 'nor', 'so', 'yet',
+            'up', 'down', 'out', 'off', 'then', 'than', 'when', 'once',
+            # Verbs (common ones that appear in headlines)
+            'building', 'launch', 'launches', 'organize', 'volunteers',
+            'opens', 'starts', 'creates', 'leads', 'fights', 'saves',
+            'grows', 'growing', 'helps', 'joins', 'finds', 'makes', 'takes',
+            'brings', 'calls', 'works', 'runs', 'serves', 'stands',
+            'rises', 'holds', 'sets', 'wins', 'gives', 'tells',
+            'testifies', 'urges', 'demands', 'proposes', 'announces',
+            'declares', 'reveals', 'warns', 'pushes', 'fights',
+            'plans', 'seeks', 'backs', 'opposes', 'joins', 'leaves',
+            # Adjectives / adverbs
+            'new', 'now', 'top', 'best', 'big', 'local', 'strong',
+            'stronger', 'greater', 'united', 'whole',
+            'free', 'open', 'green', 'clean', 'bright',
+            # Environmental / social-issue adjectives (these modify nouns;
+            # they're almost never first names)
+            'environmental', 'sustainable', 'sustainability', 'social',
+            'racial', 'economic', 'political', 'cultural', 'global',
+            # Other common non-name words
+            'how', 'why', 'what', 'when', 'where', 'which',
+            'city', 'state', 'portland', 'community', 'neighborhood',
+            'executive', 'director', 'organizer', 'activist', 'volunteer',
+            'solar', 'urban', 'rural', 'public', 'private',
+            'food', 'housing', 'health', 'mutual', 'grassroots',
+            'people', 'workers', 'students', 'residents', 'families',
+            'sunrise', 'forward', 'together', 'every', 'each',
+            # Geographic features that could start a title but aren't names
+            'field', 'lake', 'river', 'mountain', 'park', 'valley',
+            'hill', 'island', 'beach', 'forest', 'desert', 'bay',
+            'coast', 'creek', 'ocean',
+            # Common generic nouns that start headlines
+            'power', 'air', 'justice', 'equity', 'rights', 'policy',
+            'oil', 'gas', 'coal', 'tech', 'data', 'news',
+            # Titles that precede real names (should be stripped, not treated
+            # as part of the name)
+            'mayor', 'senator', 'governor', 'president', 'councilor',
+            'representative', 'commissioner', 'minister', 'chief',
+            'professor', 'doctor', 'dr', 'rev', 'reverend',
+            'judge', 'general', 'captain', 'colonel', 'sheriff',
+            # More common non-name words
+            'national', 'state', 'federal', 'international', 'global',
+            'northern', 'southern', 'eastern', 'western', 'central',
+            'any', 'some', 'many', 'most', 'all', 'each', 'every',
+            'our', 'my', 'his', 'her', 'their', 'its',
+            # Job posting / web UI words (these start many false-positive results)
+            'job', 'apply', 'sign', 'read', 'learn', 'view', 'get',
+            'join', 'find', 'click', 'see', 'contact', 'follow',
+            'subscribe', 'register', 'download', 'check', 'shop',
+            'buy', 'order', 'visit', 'call', 'email', 'send',
+            'share', 'print', 'post', 'submit', 'upload', 'browse',
+            'search', 'explore', 'discover', 'try', 'start', 'begin',
+            # County / region / government names that aren't people
+            'multnomah', 'washington', 'clackamas', 'clark', 'lane',
+            'marion', 'deschutes', 'jackson', 'benton', 'linn',
+            'city', 'county', 'office', 'department', 'bureau',
+            'street', 'avenue', 'block', 'road', 'drive', 'way',
+            'home', 'house', 'place', 'building', 'center',
+            # Directional words and nationalities (organization/name fragments)
+            'north', 'south', 'east', 'west', 'central',
+            'american', 'japanese', 'chinese', 'korean', 'latin',
+            'african', 'european', 'asian', 'pacific', 'arab',
+            'indigenous', 'native', 'hispanic', 'latino',
+            # Additional organization / movement terms
+            'roots', 'rising', 'power', 'united',
+            'community', 'neighborhood', 'portland', 'oregon',
+        }
+        if first_word in non_name_first_words:
+            return False
+
+        # Reject names where the last word is a common non-surname word
+        last_word = words[-1].lower()
+        non_name_last_words = {
+            'california', 'oregon', 'portland', 'seattle', 'chicago',
+            'boston', 'austin', 'denver', 'miami', 'detroit',
+            'movement', 'coalition', 'front', 'network', 'initiative',
+            'project', 'program', 'harbor', 'cleanup', 'garden',
+            'collective', 'alliance', 'association', 'foundation',
+            'institute', 'center', 'council', 'committee',
+            'solutions', 'services', 'partners', 'group', 'team',
+            'organize', 'me', 'us', 'we', 'they',
+            # Job listing / UI words that appear as the last word of titles
+            'listing', 'now', 'more', 'here', 'today', 'free',
+            'online', 'available', 'open', 'close', 'register',
+            'subscribe', 'apply', 'join', 'learn', 'read', 'view',
+            'sign', 'contact',
+            # Organization-name suffixes (these indicate the two-word phrase
+            # is an organization, not a person)
+            'house', 'houses', 'garden', 'gardens', 'home', 'homes',
+            'kitchen', 'kitchens', 'burger', 'cafe', 'bakery', 'shop',
+            'bar', 'grill', 'pub', 'restaurant',
+        }
+        if last_word in non_name_last_words:
+            return False
+
+        # Reject truncated names (e.g., "Grassroots Activ" where last word
+        # looks like a truncated common word rather than a surname)
+        if len(words[-1]) <= 4 and not words[-1].lower().endswith(('ez', 'an', 'in', 'er', 'or', 'us')):
+            # Very short last words that don't look like real surnames
+            # Allow names like "Lee", "Chen", "Cruz", "Rey" etc.
+            pass  # This is too aggressive; rely on the word lists above instead
+
+        # Reject names where the name contains words that are clearly
+        # action verbs used as imperatives or participles in headlines
+        second_word = words[1].lower() if len(words) > 1 else ''
+        action_second_words = {
+            'stronger', 'better', 'together', 'forward', 'back', 'ahead',
+            'up', 'down', 'out', 'off', 'on', 'over', 'away',
+            'launch', 'launches', 'organize', 'volunteers',
+            'community', 'people', 'works', 'cafe', 'coalition',
+        }
+        if second_word in action_second_words:
+            return False
+
         return True
 
     def _extract_role(self, snippet: str, person_name: Optional[str]) -> str:
@@ -862,7 +1302,7 @@ def research_city(city: str, state: str, output_json: bool = False) -> Dict:
     # 2. Research characters
     print("\n[2/3] Researching community characters...")
     researcher = CharacterResearcher(city, state)
-    characters = researcher.search_climate_activists(num_results=10)
+    characters = researcher.search_climate_activists(num_results=80)
     research["characters"] = characters
 
     # 3. Research movements
