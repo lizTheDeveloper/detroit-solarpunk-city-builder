@@ -15,13 +15,11 @@ import json
 import re
 import sys
 import time
-import urllib.request
-import urllib.parse
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
-# Use the web scraper
-sys.path.insert(0, str(Path(__file__).parent.parent / "web-scraper"))
+# Import web scraper
+sys.path.insert(0, str(Path(__file__).parent / "web-scraper"))
 from web_scraper import web_scraper
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -159,36 +157,151 @@ class CharacterResearcher:
         
         return movements
     
+    # --- Character extraction helpers ---
+
+    # Words that signal an organization, not a person
+    _ORG_KEYWORDS = {
+        "network", "coalition", "office", "initiative", "foundation",
+        "institute", "center", "council", "committee", "alliance",
+        "association", "society", "union", "federation", "board",
+        "department", "agency", "authority", "commission", "project",
+        "program", "collective", "cooperative", "corp", "inc", "llc",
+        "sustainability", "climate", "energy", "renewable", "green",
+        "solar", "environmental", "ecological", "conservation",
+        # Government / institutional
+        "county", "city", "state", "municipal", "metro", "regional",
+        "district", "ward", "precinct",
+        # Business-sounding adjectives rarely used as first names
+        "sustainable", "simpl", "simplicity", "organic", "clean",
+        "advanced", "future", "urban", "rural", "global",
+    }
+
+    # Words that signal a headline / article title, not a person name
+    _HEADLINE_KEYWORDS = {
+        "how", "why", "what", "when", "where", "who", "which",
+        "their", "your", "this", "that", "the", "these",
+        "could", "would", "should", "will", "does",
+        "join", "join", "launch", "announces", "debuts", "unveils",
+        "releases", "opens", "starts", "begins", "launches",
+        "advocate", "advocates", "leader", "leaders", "activist", "activists",
+        "community", "meeting", "event", "plan", "plans",
+        "taking", "making", "building", "growing", "moving",
+        "new", "first", "local", "state", "regional", "national",
+    }
+
+    def _is_valid_person_name(self, name: str) -> bool:
+        """Return True if *name* looks like a real person's name."""
+        words = name.strip().split()
+
+        # Must be 2 or 3 words (First Last, or First Middle Last)
+        if len(words) < 2 or len(words) > 3:
+            return False
+
+        # Every word must start with an uppercase letter followed by lowercase
+        for w in words:
+            if not re.match(r'^[A-Z][a-z]+$', w):
+                return False
+
+        # Reject if any word is an org keyword or headline keyword
+        lower_words = {w.lower() for w in words}
+        if lower_words & self._ORG_KEYWORDS:
+            return False
+        if lower_words & self._HEADLINE_KEYWORDS:
+            return False
+
+        return True
+
+    def _extract_names_from_snippet(self, snippet: str) -> List[str]:
+        """
+        Use journalist-attribution regex patterns to pull person names
+        out of a search-result snippet.  Returns a deduplicated list
+        in the order they were found.
+        """
+        if not snippet:
+            return []
+
+        # Patterns designed to catch common attribution forms
+        patterns = [
+            # "...," said FIRST LAST
+            r'"[^"]*",\s*said\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            # said FIRST LAST,
+            r'said\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            # according to FIRST LAST
+            r'according\s+to\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            # FIRST LAST, a/an ROLE
+            r'\b([A-Z][a-z]+\s+[A-Z][a-z]+),\s+(?:a|an)\s+',
+            # FIRST LAST is the/a/an ROLE
+            r'\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+is\s+(?:the\s+|a\s+|an\s+)',
+            # FIRST LAST, director/organizer/activist/founder of
+            r'\b([A-Z][a-z]+\s+[A-Z][a-z]+),\s+(?:director|organizer|activist|founder|coordinator|leader|researcher|manager|chair|president|CEO|advocate|coordinator)\b',
+            # ...told FIRST LAST
+            r'told\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            # FIRST LAST said/told
+            r'\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:said|told)\b',
+            # by FIRST LAST
+            r'\bby\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+            # with FIRST LAST
+            r'\bwith\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',
+        ]
+
+        seen: set = set()
+        names: List[str] = []
+
+        for pattern in patterns:
+            for m in re.finditer(pattern, snippet):
+                candidate = m.group(1).strip()
+                if candidate in seen:
+                    continue
+                if self._is_valid_person_name(candidate):
+                    seen.add(candidate)
+                    names.append(candidate)
+
+        return names
+
+    def _extract_context_around_name(self, snippet: str, name: str) -> str:
+        """Return ~120 chars of snippet surrounding the first occurrence of *name*."""
+        idx = snippet.find(name)
+        if idx == -1:
+            return snippet[:200]
+        start = max(0, idx - 40)
+        end = min(len(snippet), idx + 80)
+        return snippet[start:end].strip()
+
     def _extract_character(self, article: Dict) -> Optional[Dict]:
         """Extract character info from an article."""
         title = article.get("title", "")
         snippet = article.get("snippet", "")
         url = article.get("url", "")
-        
+
         # Skip generic Wikipedia/disambiguation pages
         if "disambiguation" in title.lower() or "list of" in title.lower():
             return None
-        
-        # Try to extract name from title (e.g., "Jane Smith - Portland Climate Leader")
-        import re
-        name_match = re.search(r'^([A-Z][a-z]+(?: [A-Z][a-z]+){1,3})', title)
-        if not name_match:
-            name_match = re.search(r'^([A-Z][a-z]+(?: [A-Z][a-z]+){1,3})', snippet)
-        
-        if not name_match:
+
+        # --- Step 1: try to pull a person name from the snippet ---
+        name = None
+        names_from_snippet = self._extract_names_from_snippet(snippet)
+        if names_from_snippet:
+            name = names_from_snippet[0]
+
+        # --- Step 2: fall back to the title, but only if it passes validation
+        #          AND also appears in the snippet (proving it's discussed,
+        #          not just a decorative title) ---
+        if name is None:
+            title_match = re.search(r'([A-Z][a-z]+\s+[A-Z][a-z]+)', title)
+            if title_match and self._is_valid_person_name(title_match.group(1)):
+                candidate = title_match.group(1)
+                if candidate in snippet:
+                    name = candidate
+
+        if not name:
             return None
-        
-        name = name_match.group(1)
-        
-        # Skip if name looks generic or incomplete
-        if len(name.split()) < 2:
-            return None
-        
-        # Extract role/organization from snippet
-        role = self._extract_role(snippet)
-        org = self._extract_organization(article, snippet)
+
+        # --- Step 3: derive role, org, neighborhood ---
+        context = self._extract_context_around_name(snippet, name)
+        role = self._extract_role(snippet, name)
+        org = self._extract_organization(article, snippet, name)
         neighborhood = self._guess_neighborhood(article)
-        
+
         return {
             "name": name,
             "role": role,
@@ -198,8 +311,8 @@ class CharacterResearcher:
             "description": snippet[:200]
         }
     
-    def _extract_role(self, snippet: str) -> str:
-        """Extract role/title from snippet."""
+    def _extract_role(self, snippet: str, name: str = None) -> str:
+        """Extract role/title from snippet, preferring context near *name*."""
         # Look for common role patterns
         roles = [
             (r'founder(?:,| of)', 'founder'),
@@ -209,17 +322,51 @@ class CharacterResearcher:
             (r'activist(?:,| in)', 'activist'),
             (r'leader(?: of|,)', 'leader'),
             (r'researcher(?: at| for)', 'researcher'),
-            (r'manager(?: at| of)', 'manager')
+            (r'manager(?: at| of)', 'manager'),
+            (r'advocate(?:,| for)', 'advocate'),
+            (r'chair(?: of|,)', 'chair'),
+            (r'president(?: of|,)', 'president'),
+            (r'CEO(?:,| at)', 'CEO'),
         ]
-        
+
+        # If we know the person's name, focus on the text around them
+        search_text = snippet
+        if name:
+            context = self._extract_context_around_name(snippet, name)
+            # Search context first so nearby roles take priority
+            search_text = context
+
         for pattern, role in roles:
-            if re.search(pattern, snippet, re.IGNORECASE):
+            if re.search(pattern, search_text, re.IGNORECASE):
                 return role
-        
+
+        # Fallback: search the full snippet
+        if name:
+            for pattern, role in roles:
+                if re.search(pattern, snippet, re.IGNORECASE):
+                    return role
+
         return "community leader"
-    
-    def _extract_organization(self, article: Dict, snippet: str) -> str:
-        """Extract organization from article."""
+
+    def _extract_organization(self, article: Dict, snippet: str, name: str = None) -> str:
+        """Extract organization from article, trying snippet context first."""
+        # Try to find an organization name near the person's name in the snippet
+        if name:
+            context = self._extract_context_around_name(snippet, name)
+            # Common patterns: "...FirstName, ROLE at ORGANIZATION"
+            # "...FirstName, ROLE of ORGANIZATION"
+            org_patterns = [
+                r'(?:at|of|for)\s+([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*){1,4})',
+                r'"([^"]+)"',  # organization in quotes
+            ]
+            for pat in org_patterns:
+                m = re.search(pat, context)
+                if m:
+                    candidate = m.group(1).strip()
+                    # Make sure it doesn't match the person's own name
+                    if candidate != name and len(candidate.split()) >= 2:
+                        return candidate
+
         # Try URL domain as fallback
         if article.get("url"):
             from urllib.parse import urlparse
@@ -228,7 +375,7 @@ class CharacterResearcher:
                 domain = domain[4:]
             if domain not in ["wikipedia.org", "linkedin.com", "twitter.com"]:
                 return domain.replace(".", " ").title()
-        
+
         return "Local Organization"
     
     def _guess_neighborhood(self, article: Dict) -> str:
