@@ -10,7 +10,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import the module with hyphen
 import importlib.util
-spec = importlib.util.spec_from_file_location("city_expander", "city-expander.py")
+test_dir = os.path.dirname(os.path.abspath(__file__))
+city_expander_path = os.path.join(test_dir, "city-expander.py")
+spec = importlib.util.spec_from_file_location("city_expander", city_expander_path)
 city_expander = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(city_expander)
 
@@ -23,17 +25,15 @@ def test_governance_analysis():
     """Test that we can analyze a city's governance structure."""
     print("Testing governance analysis...")
     governance = GovernanceStructure("Portland", "OR")
-    
+
     structure = governance.analyze()
     print(f"  Governance structure: {structure['governance_type']}")
     print(f"  Council size: {structure['council_size']}")
-    print(f"  Council structure: {structure['council_structure']}")
-    print(f"  Key position: {structure['key_position']}")
-    
+    print(f"  Key officials: {structure['key_officials']}")
+
     assert 'governance_type' in structure
     assert 'council_size' in structure
-    assert 'council_structure' in structure
-    assert 'key_position' in structure
+    assert 'key_officials' in structure
     print("  ✓ Governance analysis passed\n")
 
 def test_character_discovery():
@@ -44,16 +44,22 @@ def test_character_discovery():
     characters = researcher.search_climate_activists()
     print(f"  Found {len(characters)} potential characters")
     
-    for char in characters[:3]:
+    for char in characters:
         print(f"    - {char['name']}: {char['role']} @ {char['organization']}")
         print(f"      Neighborhood: {char.get('neighborhood', 'N/A')}")
         print(f"      Description: {char.get('description', 'N/A')[:60]}...")
     
-    assert isinstance(characters, list)
-    if characters:
-        assert 'name' in characters[0]
-        assert 'role' in characters[0]
-        assert 'organization' in characters[0]
+    # Require at least 1 character to ensure extraction is working
+    assert isinstance(characters, list), "Characters should be a list"
+    assert len(characters) >= 1, f"Expected at least 1 character, found {len(characters)}"
+    
+    # Validate structure of each character
+    for char in characters:
+        assert 'name' in char, "Character missing 'name' field"
+        assert 'role' in char, "Character missing 'role' field"
+        assert 'organization' in char, "Character missing 'organization' field"
+        assert len(char['name'].split()) >= 2, f"Character name '{char['name']}' doesn't look like a full name"
+    
     print("  ✓ Character discovery passed\n")
 
 def test_movement_mapping():
