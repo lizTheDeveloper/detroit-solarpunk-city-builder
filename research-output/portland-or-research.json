@@ -1,0 +1,87 @@
+{
+  "city": "Portland",
+  "state": "OR",
+  "governance": {
+    "city": "Portland",
+    "state": "OR",
+    "governance_type": "mayor-council",
+    "council_size": 12,
+    "council_structure": "mixed",
+    "key_position": "mayor"
+  },
+  "characters": [
+    {
+      "name": "Sustainable Simplicity",
+      "role": "community leader",
+      "organization": "Sustainablesimplicityorganizing Com",
+      "neighborhood": "",
+      "url": "https://www.sustainablesimplicityorganizing.com/",
+      "description": "Hi. I\u2019m a Portland-based professional organizer helping overwhelmed homes and businesses declutter with sustainability at the center. My eco-friendly approach creates calmer homes while reducing waste"
+    },
+    {
+      "name": "Renewable Northwest",
+      "role": "community leader",
+      "organization": "Renewablenw Org",
+      "neighborhood": "",
+      "url": "https://renewablenw.org/",
+      "description": "Renewable Northwest is a renewable energy advocacy organization. With a granular focus on policy and regulatory proceedings in Oregon, Washington, Idaho and Montana, we are relentless in our effort to"
+    },
+    {
+      "name": "Clean Energy Advocacy",
+      "role": "community leader",
+      "organization": "Enercitycollaborative Org",
+      "neighborhood": "",
+      "url": "https://www.enercitycollaborative.org/advocacy",
+      "description": "EnerCity Collaborative, a Portland-based nonprofit, supports and advocates for clean energy policies that are inclusive of under-represented communities."
+    },
+    {
+      "name": "Housing Justice",
+      "role": "community leader",
+      "organization": "Opalpdx Org",
+      "neighborhood": "",
+      "url": "https://www.opalpdx.org/",
+      "description": "Housing Justice \u2013 Safe, accessible, affordable, dignified, and stable housing choice is a human right! OPAL is a 501(c)(3) nonprofit organization, and contributions are tax-deductible. The OPAL office"
+    }
+  ],
+  "movements": [
+    {
+      "name": "Community Garden Volunteer Information | Portland.gov",
+      "description": "If you are interested in becoming a garden manager at your community garden, please contact the Community Gardens office at pkcomgard@portlandoregon .",
+      "url": "https://www.portland.gov/parks/community-gardens/volunteer-information",
+      "type": "community garden"
+    },
+    {
+      "name": "Opinion: Mutual aid is shaping a new future for Portland -",
+      "description": "Portland\u2019s mutual aid fed and provided equipment for thousands in the streets in front of the city\u2019s justice center.",
+      "url": "https://www.oregonlive.com/opinion/2021/03/opinion-mutual-aid-is-shaping-a-new-future-for-portland.html",
+      "type": "mutual aid"
+    },
+    {
+      "name": "Coalition of Oregon Land Trusts",
+      "description": "The Coalition of Oregon Land Trusts invites you to celebrate the release of our 2026 State of the Lands report! This annual reflection on the collecti",
+      "url": "https://oregonlandtrusts.org/",
+      "type": "community land trust"
+    },
+    {
+      "name": "Cooperative Purchasing | Urban Solar | Portland, OR \u2014",
+      "description": "Cooperative Purchasing ... Why Urban Solar ... Why do agencies choose cooperative purchasing?",
+      "url": "https://www.urbansolarcorp.com/cooperative-purchasing",
+      "type": "renewable energy coop"
+    },
+    {
+      "name": "Urban Farmer | Modern & Farm to Table Steakhouse",
+      "description": "Urban Farmer is a modern steakhouse with locally sourced produce and the freshest butcher cuts focusing on sustainability and craveable dishes.",
+      "url": "https://www.urbanfarmersteakhouse.com/",
+      "type": "urban farming"
+    }
+  ],
+  "suggested_roles": [
+    "mayor-ally",
+    "opposition-councilor",
+    "community-activist",
+    "neighborhood-association-leader",
+    "district-representative",
+    "citywide-coalition-builder"
+  ],
+  "generated_at": "2026-06-30T12:41:08Z"
+}
