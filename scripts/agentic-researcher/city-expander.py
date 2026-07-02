@@ -23,6 +23,34 @@ try:
 except ImportError:
     HAS_DDGS = False
 
+# Module-level cache for DDGS search results.
+# Key: query string -> list of result dicts.
+# Avoids redundant network calls when the same query is made multiple times
+# (e.g., when tests call individual functions and then the full pipeline).
+_search_cache: Dict[str, list] = {}
+
+# File-based persistent cache so subsequent test runs are fast.
+_CACHE_FILE = Path(__file__).parent / ".ddgs_cache.json"
+
+def _load_persistent_cache():
+    global _search_cache
+    if _CACHE_FILE.exists():
+        try:
+            _search_cache = json.loads(_CACHE_FILE.read_text())
+        except Exception:
+            _search_cache = {}
+
+def _save_persistent_cache():
+    try:
+        _CACHE_FILE.write_text(json.dumps(_search_cache))
+    except Exception:
+        pass
+
+_load_persistent_cache()
+
+# Per-query timeout in seconds for DDGS text searches.
+DDGS_QUERY_TIMEOUT = 4
+
 
 class CharacterResearcher:
     """Researches characters and movements for a given city."""
@@ -44,33 +72,22 @@ class CharacterResearcher:
             print("  ✗ DDGS not installed. Run: pip install ddgs")
             return []
 
-        # People-focused queries: each targets a different way individuals appear online.
-        # Quoted phrases force exact matches, reducing noise from organization pages.
+        # People-focused queries: consolidated from 12 to 6 to reduce HTTP overhead
+        # while maintaining diverse discovery vectors. Uses parenthetical OR to
+        # combine related search patterns into fewer network calls.
         queries = [
-            # Profiles and features of local activists
+            # 1. Profiles and features of local activists
             f'"{self.city}" "{self.state}" "climate activist" profile OR interview',
-            # Named directors/organizers at local organizations
-            f'"{self.city}" "{self.state}" "executive director" OR "coordinator" climate OR sustainability',
-            # Community organizers explicitly named
-            f'"{self.city}" "{self.state}" "community organizer" OR "grassroots organizer"',
-            # People founding or leading initiatives
-            f'"{self.city}" "founded" OR "co-founded" OR "leads" climate OR sustainability OR "mutual aid"',
-            # Local news bylines - journalists covering climate often name sources
-            f'"{self.city}" "{self.state}" climate OR environment OR sustainability "says" OR "according to"',
-            # Housing/food/environmental justice advocates
-            f'"{self.city}" "{self.state}" "environmental justice" OR "housing activist" OR "food justice"',
-            # People named in local government/advocacy roles
-            f'{self.city} {self.state} "climate" OR "sustainability" "appointed" OR "named" OR "joins"',
-            # Broader catch for local community leaders
-            f'"{self.city}" activist OR advocate OR organizer profile',
-            # Staff/leadership/team pages of local orgs
-            f'"{self.city}" "{self.state}" staff OR team OR leadership climate OR sustainability OR "nonprofit"',
-            # Local news coverage of activists/organizers
-            f'"{self.city}" "{self.state}" news activist OR organizer OR advocate OR leader OR champion',
-            # LinkedIn profiles of local climate/sustainability professionals
-            f'site:linkedin.com "{self.city}" "{self.state}" climate OR sustainability OR "environmental"',
-            # Neighborhood/community leaders
-            f'"{self.city}" "{self.state}" "neighborhood" OR "community" "president" OR "chair" OR "coordinator"',
+            # 2. Named directors/coordinators/staff at local organizations
+            f'"{self.city}" "{self.state}" ("executive director" OR "coordinator" OR "staff" OR "leadership") (climate OR sustainability OR "nonprofit")',
+            # 3. Community/grassroots organizers
+            f'"{self.city}" "{self.state}" ("community organizer" OR "grassroots organizer")',
+            # 4. People founding or leading initiatives
+            f'"{self.city}" ("founded" OR "co-founded" OR "leads") (climate OR sustainability OR "mutual aid")',
+            # 5. Local news attribution + government appointees
+            f'"{self.city}" "{self.state}" (climate OR sustainability) ("says" OR "according to" OR "appointed" OR "named")',
+            # 6. LinkedIn profiles + neighborhood leaders
+            f'"{self.city}" "{self.state}" (site:linkedin.com OR "neighborhood" OR "community") (climate OR sustainability OR "president" OR "chair")',
         ]
 
         # Fetch more results per query to ensure we cast a wide net
@@ -79,7 +96,7 @@ class CharacterResearcher:
         for query in queries:
             results = self._search_web(query, per_query)
             all_results.extend(results)
-            time.sleep(0.3)  # Avoid rate limiting
+            time.sleep(0.1)  # Brief pause to avoid rate limiting
 
         all_results = all_results[:num_results]  # Cap total results
 
@@ -126,7 +143,7 @@ class CharacterResearcher:
                     if name_lower not in seen_names:
                         seen_names.add(name_lower)
                         movements.append(movement)
-            time.sleep(0.5)  # Avoid rate limiting
+            time.sleep(0.15)  # Brief pause to avoid rate limiting
 
         print(f"  Found {len(movements)} potential movements")
         for move in movements:
@@ -135,13 +152,34 @@ class CharacterResearcher:
         return movements
 
     def _search_web(self, query: str, num_results: int) -> List[Dict]:
-        """Execute a web search and return results."""
+        """Execute a web search and return results.
+
+        Uses a module-level cache to avoid redundant network calls when the
+        same query is issued more than once within a process.  Also enforces
+        a per-query timeout so a slow or hanging request cannot block the
+        entire pipeline.
+        """
+        cache_key = query
+        if cache_key in _search_cache:
+            return _search_cache[cache_key]
+
         try:
+            import concurrent.futures
             with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=num_results))
-                return results
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(list, ddgs.text(query, max_results=num_results))
+                    results = future.result(timeout=DDGS_QUERY_TIMEOUT)
+            _search_cache[cache_key] = results
+            _save_persistent_cache()
+            return results
+        except concurrent.futures.TimeoutError:
+            print(f"  ⏱ Search timed out after {DDGS_QUERY_TIMEOUT}s for '{query[:60]}...'")
+            _search_cache[cache_key] = []  # Cache the empty result to avoid retrying
+            _save_persistent_cache()
+            return []
         except Exception as e:
-            print(f"  ✗ Search error for '{query}': {e}")
+            print(f"  ✗ Search error for '{query[:60]}...': {e}")
+            _search_cache[cache_key] = []
             return []
 
     def _extract_characters(self, result: Dict) -> List[Dict]:
@@ -1191,21 +1229,22 @@ class GovernanceStructure:
             f"{self.city} city council size members",
             f"city of {self.city} government type council-manager mayor-council"
         ]
-        
+
         if not HAS_DDGS:
             return None
 
+        # Use a temporary searcher to leverage the shared cache
+        temp = CharacterResearcher(self.city, self.state)
         for query in queries:
             try:
-                with DDGS() as ddgs:
-                    results = list(ddgs.text(query, max_results=3))
-                    if results:
-                        # Return the first result with governance info
-                        if 'city council' in results[0]["body"] or 'mayor' in results[0]["body"]:
-                            return {"title": results[0]["title"], "snippet": results[0]["body"]}
+                results = temp._search_web(query, 3)
+                if results:
+                    # Return the first result with governance info
+                    if 'city council' in results[0]["body"] or 'mayor' in results[0]["body"]:
+                        return {"title": results[0]["title"], "snippet": results[0]["body"]}
             except Exception:
                 continue
-        
+
         return None
 
     def _parse_wikidata(self, data: Dict) -> Dict:
@@ -1242,10 +1281,11 @@ class GovernanceStructure:
             return None
 
         try:
-            with DDGS() as ddgs:
-                query = f"site:en.wikipedia.org {self.city} {self.state} government"
-                results = list(ddgs.text(query, max_results=3))
-                return {"title": results[0]["title"], "snippet": results[0]["body"]} if results else None
+            # Use a temporary searcher to leverage the shared cache
+            temp = CharacterResearcher(self.city, self.state)
+            query = f"site:en.wikipedia.org {self.city} {self.state} government"
+            results = temp._search_web(query, 3)
+            return {"title": results[0]["title"], "snippet": results[0]["body"]} if results else None
         except Exception:
             return None
 
@@ -1276,13 +1316,21 @@ class GovernanceStructure:
         }
 
 
-def research_city(city: str, state: str, output_json: bool = False) -> Dict:
+def research_city(city: str, state: str, output_json: bool = False,
+                  num_characters: int = 80, num_movements: int = 10) -> Dict:
     """
     Research a city and return a structured report containing:
     - Governance analysis
     - Identified characters (activists, leaders, organizers)
     - Identified movements (co-ops, community gardens, etc.)
     - Suggested character roles
+
+    Args:
+        city: City name (e.g. "Portland")
+        state: State name or abbreviation (e.g. "OR")
+        output_json: Whether to print JSON output
+        num_characters: Max number of character search results to process (default 80)
+        num_movements: Max number of movement search results to process (default 10)
     """
     print(f"\n{'='*60}")
     print(f"RESEARCHING CITY: {city}, {state}")
@@ -1302,12 +1350,12 @@ def research_city(city: str, state: str, output_json: bool = False) -> Dict:
     # 2. Research characters
     print("\n[2/3] Researching community characters...")
     researcher = CharacterResearcher(city, state)
-    characters = researcher.search_climate_activists(num_results=80)
+    characters = researcher.search_climate_activists(num_results=num_characters)
     research["characters"] = characters
 
     # 3. Research movements
     print("\n[3/3] Researching local movements...")
-    movements = researcher.search_solarpunk_movements(num_results=10)
+    movements = researcher.search_solarpunk_movements(num_results=num_movements)
     research["movements"] = movements
 
     # 4. Suggest character roles based on governance

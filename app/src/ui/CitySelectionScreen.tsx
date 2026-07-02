@@ -1,4 +1,6 @@
 import { listCities } from '@/city/registry';
+import { getCity } from '@/city/registry';
+import type { CityPackage } from '@/city/types';
 
 interface CitySelectionScreenProps {
   onSelectCity: (citySlug: string) => void;
@@ -6,6 +8,14 @@ interface CitySelectionScreenProps {
 
 export default function CitySelectionScreen({ onSelectCity }: CitySelectionScreenProps) {
   const cities = listCities();
+
+  const getCityDescription = (citySlug: string, city: CityPackage): string => {
+    const descriptions: Record<string, string> = {
+      detroit: "Transform the Motor City from post-industrial decline to solarpunk utopia. Navigate neighborhood politics, environmental justice, and community-led development.",
+      minneapolis: "Shape the future of Minneapolis through housing justice, transit equity, and police abolition. Engage with Indigenous activists, tenant unions, and environmental justice organizers in a city grappling with rapid change.",
+    };
+    return descriptions[citySlug] || `Explore ${city.meta.cityName} and build sustainable community initiatives.`;
+  };
 
   return (
     <div className="city-selection-screen">
@@ -16,16 +26,8 @@ export default function CitySelectionScreen({ onSelectCity }: CitySelectionScree
 
       <div className="city-selection-grid">
         {cities.map((citySlug) => {
-          const cityNames: Record<string, { name: string; state: string; description: string }> = {
-            detroit: {
-              name: 'Detroit',
-              state: 'Michigan',
-              description: 'Transform the Motor City from post-industrial decline to solarpunk utopia. Navigate neighborhood politics, environmental justice, and community-led development.',
-            },
-            // Future cities can be added here
-          };
-
-          const cityInfo = cityNames[citySlug];
+          const city = getCity(citySlug);
+          if (!city) return null;
 
           return (
             <button
@@ -34,9 +36,23 @@ export default function CitySelectionScreen({ onSelectCity }: CitySelectionScree
               onClick={() => onSelectCity(citySlug)}
               data-testid={`city-card-${citySlug}`}
             >
-              <h2>{cityInfo.name}</h2>
-              <p className="city-state">{cityInfo.state}</p>
-              <p className="city-description">{cityInfo.description}</p>
+              <h2>{city.meta.cityName}</h2>
+              <p className="city-state">{city.meta.state}</p>
+              <div className="city-meta">
+                <span className="city-population">
+                  Pop: {city.calibration.population?.value?.toLocaleString() || 'Unknown'}
+                </span>
+                {city.calibration.medianIncome?.value && (
+                  <span className="city-income">
+                    Income: ${city.calibration.medianIncome.value.toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <p className="city-description">{getCityDescription(citySlug, city)}</p>
+              <div className="city-features">
+                <span className="city-arc-count">{city.crisisArcs.length} crisis arcs</span>
+                <span className="city-character-count">{city.characters.length} characters</span>
+              </div>
               <div className="city-card-action">Start Campaign →</div>
             </button>
           );
