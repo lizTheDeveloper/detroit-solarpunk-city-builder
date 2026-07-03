@@ -11,43 +11,19 @@
   },
   "characters": [
     {
-      "name": "Sustainable Simplicity",
-      "role": "community leader",
-      "organization": "Sustainablesimplicityorganizing Com",
+      "name": "Adah Crandall",
+      "role": "activist",
+      "organization": "Wweek Com",
       "neighborhood": "",
-      "url": "https://www.sustainablesimplicityorganizing.com/",
-      "description": "Hi. I\u2019m a Portland-based professional organizer helping overwhelmed homes and businesses declutter with sustainability at the center. My eco-friendly approach creates calmer homes while reducing waste"
-    },
-    {
-      "name": "Renewable Northwest",
-      "role": "community leader",
-      "organization": "Renewablenw Org",
-      "neighborhood": "",
-      "url": "https://renewablenw.org/",
-      "description": "Renewable Northwest is a renewable energy advocacy organization. With a granular focus on policy and regulatory proceedings in Oregon, Washington, Idaho and Montana, we are relentless in our effort to"
-    },
-    {
-      "name": "Clean Energy Advocacy",
-      "role": "community leader",
-      "organization": "Enercitycollaborative Org",
-      "neighborhood": "",
-      "url": "https://www.enercitycollaborative.org/advocacy",
-      "description": "EnerCity Collaborative, a Portland-based nonprofit, supports and advocates for clean energy policies that are inclusive of under-represented communities."
-    },
-    {
-      "name": "Housing Justice",
-      "role": "community leader",
-      "organization": "Opalpdx Org",
-      "neighborhood": "",
-      "url": "https://www.opalpdx.org/",
-      "description": "Housing Justice \u2013 Safe, accessible, affordable, dignified, and stable housing choice is a human right! OPAL is a 501(c)(3) nonprofit organization, and contributions are tax-deductible. The OPAL office"
+      "url": "https://www.wweek.com/news/2024/04/15/portland-climate-action-leader-arrested-outside-veep-kamala-harris-los-angeles-home/",
+      "description": "Adah Crandall, a Portland climate activist, and five of her colleagues in the Sunrise Movement were arrested today after they blocked the street in front of Vice President Kamala Harris\u2019 Los Angeles h"
     }
   ],
   "movements": [
     {
-      "name": "Community Garden Volunteer Information | Portland.gov",
-      "description": "If you are interested in becoming a garden manager at your community garden, please contact the Community Gardens office at pkcomgard@portlandoregon .",
-      "url": "https://www.portland.gov/parks/community-gardens/volunteer-information",
+      "name": "Community gardening in the United States - Wikipedia",
+      "description": "Community garden, Denver, Colorado. Community gardens in the United States benefit both gardeners and society at large. Community gardens provide fres",
+      "url": "https://en.wikipedia.org/wiki/Community_gardening_in_the_United_States",
       "type": "community garden"
     },
     {
@@ -57,9 +33,9 @@
       "type": "mutual aid"
     },
     {
-      "name": "Coalition of Oregon Land Trusts",
-      "description": "The Coalition of Oregon Land Trusts invites you to celebrate the release of our 2026 State of the Lands report! This annual reflection on the collecti",
-      "url": "https://oregonlandtrusts.org/",
+      "name": "Lasting affordability and community land trusts - Habitat ...",
+      "description": "Oct 1, 2024 \u00b7 Proud Ground started in 1999 as the Portland Community Land Trust. Over the last 25 years, Proud Ground has helped more than 650 familie",
+      "url": "https://habitatportlandregion.org/learn-about-community-land-trust/",
       "type": "community land trust"
     },
     {
@@ -83,5 +59,5 @@
     "district-representative",
     "citywide-coalition-builder"
   ],
-  "generated_at": "2026-06-30T12:41:08Z"
+  "generated_at": "2026-07-01T00:17:46Z"
 }

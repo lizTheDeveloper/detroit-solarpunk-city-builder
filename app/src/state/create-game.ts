@@ -51,7 +51,7 @@ export function createNewGame(citySlug: string = 'detroit'): GameState {
   }
 
   const communityTrust = 50;
-  const startMonth = new Date().getMonth() + 1; // 1-12
+  const startMonth = 5; // Always start in May (spring) - month 5
 
   return {
     version: 2,

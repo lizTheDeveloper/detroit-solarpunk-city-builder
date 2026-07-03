@@ -18,7 +18,9 @@ describe('createNewGame', () => {
       expect(state.turn).toBe(1);
     });
 
-    it('starts in spring', () => {
+    it('starts in spring (month set to 5)', () => {
+      // Month is set to 5 (May) to ensure deterministic starting season
+      expect(state.month).toBe(5);
       expect(state.season).toBe('spring');
     });
 

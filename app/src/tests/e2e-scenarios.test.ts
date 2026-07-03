@@ -921,6 +921,7 @@ describe('Scenario 11: Starting Conditions Match Spec', () => {
   it('turn starts at 1, season spring, year 1', () => {
     const state = createNewGame();
     expect(state.turn).toBe(1);
+    expect(state.month).toBe(5); // Month should be 5 (May = spring)
     expect(state.season).toBe('spring');
     expect(state.year).toBe(1);
   });

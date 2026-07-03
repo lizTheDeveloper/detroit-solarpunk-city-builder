@@ -2,6 +2,7 @@ import type { GameState, Season, Stage } from '../state/types';
 
 export interface SaveMetadata {
   slot: string;
+  citySlug: string;
   turn: number;
   season: Season;
   year: number;
@@ -16,34 +17,48 @@ export interface UndoStack {
 
 type Storage = Pick<typeof localStorage, 'getItem' | 'setItem' | 'removeItem' | 'length' | 'key'>;
 
-const SAVE_PREFIX = 'detroit_solarpunk_save_';
-const META_PREFIX = 'detroit_solarpunk_meta_';
+// City-scoped save/load system
+// Each city has its own save namespace to prevent conflicts
+
+function getSavePrefix(citySlug: string): string {
+  return `${citySlug}_solarpunk_save_`;
+}
+
+function getMetaPrefix(citySlug: string): string {
+  return `${citySlug}_solarpunk_meta_`;
+}
+
 const CURRENT_VERSION = 2;
 
 export function saveGame(
   state: GameState,
+  citySlug: string,
   slot: string = 'auto',
   storage: Storage = window.localStorage,
 ): void {
-  const key = `${SAVE_PREFIX}${slot}`;
-  storage.setItem(key, JSON.stringify(state));
-
+  const saveKey = `${getSavePrefix(citySlug)}${slot}`;
+  const metaKey = `${getMetaPrefix(citySlug)}${slot}`;
+  
+  storage.setItem(saveKey, JSON.stringify(state));
+  
   const metadata: SaveMetadata = {
     slot,
+    citySlug,
     turn: state.turn,
     season: state.season,
     year: state.year,
     stage: state.stage,
     savedAt: new Date().toISOString(),
   };
-  storage.setItem(`${META_PREFIX}${slot}`, JSON.stringify(metadata));
+  storage.setItem(metaKey, JSON.stringify(metadata));
 }
 
 export function loadGame(
+  citySlug: string,
   slot: string = 'auto',
   storage: Storage = window.localStorage,
 ): GameState | null {
-  const key = `${SAVE_PREFIX}${slot}`;
+  const key = `${getSavePrefix(citySlug)}${slot}`;
   const raw = storage.getItem(key);
   if (raw === null) return null;
 
@@ -57,19 +72,25 @@ export function loadGame(
 }
 
 export function listSaves(
+  citySlug?: string,
   storage: Storage = window.localStorage,
 ): SaveMetadata[] {
+  // When citySlug is specified, filter to that city's prefix.
+  // When undefined, scan ALL keys but only treat "_solarpunk_meta_" keys as metadata.
+  const metaPrefix = citySlug ? getMetaPrefix(citySlug) : '';
   const results: SaveMetadata[] = [];
   for (let i = 0; i < storage.length; i++) {
     const key = storage.key(i);
-    if (key && key.startsWith(META_PREFIX)) {
-      const raw = storage.getItem(key);
-      if (raw) {
-        try {
-          results.push(JSON.parse(raw) as SaveMetadata);
-        } catch {
-          // skip malformed entries
-        }
+    if (!key) continue;
+    // Skip save keys - only include metadata keys
+    const isMetaKey = citySlug ? key.startsWith(metaPrefix) : key.includes('_solarpunk_meta_');
+    if (!isMetaKey) continue;
+    const raw = storage.getItem(key);
+    if (raw) {
+      try {
+        results.push(JSON.parse(raw) as SaveMetadata);
+      } catch {
+        // skip malformed entries
       }
     }
   }
@@ -77,18 +98,20 @@ export function listSaves(
 }
 
 export function deleteSave(
+  citySlug: string,
   slot: string,
   storage: Storage = window.localStorage,
 ): void {
-  storage.removeItem(`${SAVE_PREFIX}${slot}`);
-  storage.removeItem(`${META_PREFIX}${slot}`);
+  storage.removeItem(`${getSavePrefix(citySlug)}${slot}`);
+  storage.removeItem(`${getMetaPrefix(citySlug)}${slot}`);
 }
 
 export function autoSave(
   state: GameState,
+  citySlug: string,
   storage: Storage = window.localStorage,
 ): void {
-  saveGame(state, 'auto', storage);
+  saveGame(state, citySlug, 'auto', storage);
 }
 
 export function createUndoStack(): UndoStack {

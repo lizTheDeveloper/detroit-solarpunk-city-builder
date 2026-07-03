@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useGame } from '@/state/store';
 import { saveGame, loadGame, listSaves, deleteSave } from '@/systems/persistence';
 import type { SaveMetadata } from '@/systems/persistence';
@@ -10,17 +10,26 @@ interface SaveLoadPanelProps {
 
 export default function SaveLoadPanel({ onLoad }: SaveLoadPanelProps) {
   const { state } = useGame();
-  const [saves, setSaves] = useState<SaveMetadata[]>(() => listSaves());
+  const citySlug = state?.selectedCity || 'detroit';
+  
+  const [saves, setSaves] = useState<SaveMetadata[]>(() => listSaves(citySlug));
   const [saveSlot, setSaveSlot] = useState('');
   const [message, setMessage] = useState('');
 
+  // Refresh saves whenever citySlug changes
+  const prevCitySlugRef = useMemo(() => ({ current: citySlug }), []);
+  if (prevCitySlugRef.current !== citySlug) {
+    prevCitySlugRef.current = citySlug;
+    setSaves(listSaves(citySlug));
+  }
+
   function refreshSaves() {
-    setSaves(listSaves());
+    setSaves(listSaves(citySlug));
   }
 
   function handleSave() {
     const slot = saveSlot.trim() || `manual_${Date.now()}`;
-    saveGame(state, slot);
+    saveGame(state, citySlug, slot);
     trackSaveGame(slot);
     setMessage(`Saved to "${slot}"`);
     setSaveSlot('');
@@ -28,14 +37,14 @@ export default function SaveLoadPanel({ onLoad }: SaveLoadPanelProps) {
   }
 
   function handleQuickSave() {
-    saveGame(state, 'quicksave');
+    saveGame(state, citySlug, 'quicksave');
     trackSaveGame('quicksave');
     setMessage('Quick saved!');
     refreshSaves();
   }
 
   function handleLoad(slot: string) {
-    const loaded = loadGame(slot);
+    const loaded = loadGame(citySlug, slot);
     if (loaded) {
       onLoad(slot);
       setMessage(`Loaded "${slot}"`);
@@ -45,7 +54,7 @@ export default function SaveLoadPanel({ onLoad }: SaveLoadPanelProps) {
   }
 
   function handleDelete(slot: string) {
-    deleteSave(slot);
+    deleteSave(citySlug, slot);
     setMessage(`Deleted "${slot}"`);
     refreshSaves();
   }

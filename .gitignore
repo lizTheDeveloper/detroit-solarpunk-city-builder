@@ -26,3 +26,4 @@ Thumbs.db
 
 # Build artifacts
 *.tsbuildinfo
+.ddgs_cache.json

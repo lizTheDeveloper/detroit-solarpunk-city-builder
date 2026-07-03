@@ -153,7 +153,7 @@ export default function App() {
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
       trackGameAction({ type: 'END_TURN' }, prev, afterEnd);
       const ready = prepareTurn(afterEnd);
-      autoSave(ready);
+      autoSave(ready, ready.selectedCity);
       trackStrategySnapshot(ready);
       return ready;
     });
@@ -166,7 +166,7 @@ export default function App() {
       const afterEnd = gameReducer(prev, { type: 'END_TURN' }, PROJECT_CATALOG);
       trackGameAction({ type: 'END_TURN' }, prev, afterEnd);
       const ready = prepareTurn(afterEnd);
-      autoSave(ready);
+      autoSave(ready, ready.selectedCity);
       trackStrategySnapshot(ready);
       return ready;
     });
@@ -184,12 +184,17 @@ export default function App() {
   }, []);
 
   const handleLoadSave = useCallback((slot: string) => {
-    const loaded = loadGame(slot);
-    if (loaded) {
-      setState(loaded);
-      trackLoadGame(slot);
-      trackFunnelStep('returning_player');
-    }
+    setState((currentState) => {
+      if (!currentState) return currentState;
+      const citySlug = (currentState.selectedCity || 'detroit');
+      const loaded = loadGame(citySlug, slot);
+      if (loaded) {
+        trackLoadGame(slot);
+        trackFunnelStep('returning_player');
+        return loaded;
+      }
+      return currentState;
+    });
   }, []);
 
   const handleDismissSummary = useCallback(() => {

@@ -150,3 +150,473 @@
     font-size: 1.5rem;
   }
 }
+
+/* Discovery button card */
+.city-card.discovery-card {
+  border: 2px dashed rgba(0, 255, 136, 0.4);
+  background: rgba(0, 255, 136, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.city-card.discovery-card:hover {
+  border-style: solid;
+  border-color: rgba(0, 255, 136, 0.8);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.discovery-icon {
+  font-size: 3rem;
+  color: #00ff88;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Status badges */
+.city-status-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  z-index: 2;
+}
+
+.city-status-badge.registered {
+  background: rgba(0, 255, 136, 0.2);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+}
+
+.city-status-badge.discovered {
+  background: rgba(255, 204, 0, 0.2);
+  border: 1px solid #ffcc00;
+  color: #ffcc00;
+}
+
+.city-status-badge.locked {
+  background: rgba(150, 150, 150, 0.2);
+  border: 1px solid #999;
+  color: #999;
+}
+
+/* City meta info (population, income) */
+.city-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #88aacc;
+  position: relative;
+  z-index: 1;
+}
+
+.city-meta .city-population,
+.city-meta .city-income {
+  padding: 0.25rem 0.75rem;
+  background: rgba(136, 204, 170, 0.1);
+  border-radius: 6px;
+}
+
+/* City features row (crisis arcs, characters) */
+.city-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.city-arc-count,
+.city-character-count {
+  padding: 0.35rem 0.75rem;
+  background: rgba(136, 204, 170, 0.15);
+  border: 1px solid rgba(136, 204, 170, 0.3);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #88caaa;
+}
+
+/* City stats (registered/discovered count) */
+.city-stats {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #6688aa;
+}
+
+.city-stats span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Discovery dialog overlay */
+.discovery-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 22, 40, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.discovery-dialog {
+  background: #0f1f3a;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 16px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.discovery-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  background: #0f1f3a;
+  border-radius: 16px 16px 0 0;
+  z-index: 2;
+}
+
+.discovery-dialog-header h2 {
+  color: #00ff88;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.discovery-close-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #88aacc;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.discovery-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.discovery-dialog-content {
+  padding: 1.5rem;
+}
+
+/* Discovery form */
+.discovery-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.discovery-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discovery-field label {
+  color: #88aacc;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.discovery-field input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.discovery-field input:focus {
+  outline: none;
+  border-color: #00ff88;
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+}
+
+.discovery-field input:disabled {
+  opacity: 0.5;
+}
+
+.discovery-discover-btn {
+  background: #00ff88;
+  color: #0a1628;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.discovery-discover-btn:hover:not(:disabled) {
+  background: #00dd77;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+}
+
+.discovery-discover-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.discovery-error {
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  color: #ff6666;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Discovery results */
+.discovery-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.discovery-result-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.discovery-result-header h3 {
+  color: #fff;
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.discovery-result-header p {
+  color: #88aacc;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.discovery-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discovery-section h4 {
+  color: #88aacc;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.discovery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.discovery-section .discovery-list p {
+  color: #6688aa;
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.discovery-movement-item,
+.discovery-character-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.discovery-movement-item:hover,
+.discovery-character-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Movement items */
+.discovery-movement-item {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.discovery-movement-item .name {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.discovery-movement-item .meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #88aacc;
+}
+
+.movement-type-tag {
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 4px;
+  color: #00ff88;
+  font-weight: 500;
+}
+
+.relevance-tag {
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 204, 0, 0.15);
+  border: 1px solid rgba(255, 204, 0, 0.3);
+  border-radius: 4px;
+  color: #ffcc00;
+  font-weight: 500;
+}
+
+/* Character items */
+.discovery-character-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.character-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ff88, #00ccff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0a1628;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.character-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.character-info .name-role {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.character-info .organization {
+  font-size: 0.8rem;
+  color: #88aacc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Discovery result footer */
+.discovery-result-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.discovery-cancel-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: #88aacc;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.discovery-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.discovery-register-btn {
+  background: #00ff88;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: #0a1628;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.discovery-register-btn:hover:not(:disabled) {
+  background: #00dd77;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+}
+
+.discovery-register-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

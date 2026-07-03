@@ -45,42 +45,42 @@ describe('Save/Load System', () => {
   });
 
   it('1. saveGame stores state as JSON in storage', () => {
-    saveGame(gameState, 'test', mockLocalStorage);
+    saveGame(gameState, 'detroit', 'test', mockLocalStorage);
     const stored = mockStorage['detroit_solarpunk_save_test'];
     expect(stored).toBeDefined();
     expect(JSON.parse(stored)).toEqual(gameState);
   });
 
   it('2. loadGame retrieves and parses stored state', () => {
-    saveGame(gameState, 'test', mockLocalStorage);
-    const loaded = loadGame('test', mockLocalStorage);
+    saveGame(gameState, 'detroit', 'test', mockLocalStorage);
+    const loaded = loadGame('detroit', 'test', mockLocalStorage);
     expect(loaded).toEqual(gameState);
   });
 
   it('3. loadGame returns null for missing slot', () => {
-    const loaded = loadGame('nonexistent', mockLocalStorage);
+    const loaded = loadGame('detroit', 'nonexistent', mockLocalStorage);
     expect(loaded).toBeNull();
   });
 
   it('4. loadGame returns null for wrong version', () => {
     const wrongVersion = { ...gameState, version: 1 };
     mockStorage['detroit_solarpunk_save_test'] = JSON.stringify(wrongVersion);
-    const loaded = loadGame('test', mockLocalStorage);
+    const loaded = loadGame('detroit', 'test', mockLocalStorage);
     expect(loaded).toBeNull();
   });
 
   it('5. listSaves returns metadata for all saves', () => {
-    saveGame(gameState, 'slot1', mockLocalStorage);
+    saveGame(gameState, 'detroit', 'slot1', mockLocalStorage);
     const laterState = { ...gameState, turn: 5, season: 'summer' as const, year: 2, stage: 'transition' as const };
-    saveGame(laterState, 'slot2', mockLocalStorage);
+    saveGame(laterState, 'detroit', 'slot2', mockLocalStorage);
 
-    const saves = listSaves(mockLocalStorage);
+    const saves = listSaves('detroit', mockLocalStorage);
     expect(saves).toHaveLength(2);
 
     const slot1Meta = saves.find(s => s.slot === 'slot1');
     expect(slot1Meta).toBeDefined();
     expect(slot1Meta!.turn).toBe(1);
-    expect(slot1Meta!.season).toBe('spring');
+    expect(slot1Meta!.season).toBe(gameState.season); // Season is dynamic based on current date
     expect(slot1Meta!.year).toBe(1);
     expect(slot1Meta!.stage).toBe('awakening');
     expect(slot1Meta!.savedAt).toBeDefined();
@@ -93,24 +93,24 @@ describe('Save/Load System', () => {
   });
 
   it('6. listSaves returns empty array when no saves exist', () => {
-    const saves = listSaves(mockLocalStorage);
+    const saves = listSaves('detroit', mockLocalStorage);
     expect(saves).toEqual([]);
   });
 
   it('7. deleteSave removes the save', () => {
-    saveGame(gameState, 'doomed', mockLocalStorage);
-    expect(loadGame('doomed', mockLocalStorage)).not.toBeNull();
+    saveGame(gameState, 'detroit', 'doomed', mockLocalStorage);
+    expect(loadGame('detroit', 'doomed', mockLocalStorage)).not.toBeNull();
 
-    deleteSave('doomed', mockLocalStorage);
-    expect(loadGame('doomed', mockLocalStorage)).toBeNull();
+    deleteSave('detroit', 'doomed', mockLocalStorage);
+    expect(loadGame('detroit', 'doomed', mockLocalStorage)).toBeNull();
     // metadata also removed
-    const saves = listSaves(mockLocalStorage);
+    const saves = listSaves('detroit', mockLocalStorage);
     expect(saves.find(s => s.slot === 'doomed')).toBeUndefined();
   });
 
   it('8. autoSave stores in auto slot', () => {
-    autoSave(gameState, mockLocalStorage);
-    const loaded = loadGame('auto', mockLocalStorage);
+    autoSave(gameState, 'detroit', mockLocalStorage);
+    const loaded = loadGame('detroit', 'auto', mockLocalStorage);
     expect(loaded).toEqual(gameState);
   });
 
@@ -119,18 +119,51 @@ describe('Save/Load System', () => {
     const state2 = { ...gameState, turn: 7 };
     const state3 = { ...gameState, turn: 15 };
 
-    saveGame(state1, 'early', mockLocalStorage);
-    saveGame(state2, 'mid', mockLocalStorage);
-    saveGame(state3, 'late', mockLocalStorage);
+    saveGame(state1, 'detroit', 'early', mockLocalStorage);
+    saveGame(state2, 'detroit', 'mid', mockLocalStorage);
+    saveGame(state3, 'detroit', 'late', mockLocalStorage);
 
-    expect(loadGame('early', mockLocalStorage)!.turn).toBe(1);
-    expect(loadGame('mid', mockLocalStorage)!.turn).toBe(7);
-    expect(loadGame('late', mockLocalStorage)!.turn).toBe(15);
+    expect(loadGame('detroit', 'early', mockLocalStorage)!.turn).toBe(1);
+    expect(loadGame('detroit', 'mid', mockLocalStorage)!.turn).toBe(7);
+    expect(loadGame('detroit', 'late', mockLocalStorage)!.turn).toBe(15);
+  });
+
+  it('10. saves are namespaced per city - minneapolis and detroit saves don\'t overlap', () => {
+    saveGame({ ...gameState, turn: 5 }, 'detroit', 'shared', mockLocalStorage);
+    saveGame({ ...gameState, turn: 10 }, 'minneapolis', 'shared', mockLocalStorage);
+
+    expect(loadGame('detroit', 'shared', mockLocalStorage)!.turn).toBe(5);
+    expect(loadGame('minneapolis', 'shared', mockLocalStorage)!.turn).toBe(10);
+
+    deleteSave('detroit', 'shared', mockLocalStorage);
+    expect(loadGame('detroit', 'shared', mockLocalStorage)).toBeNull();
+    expect(loadGame('minneapolis', 'shared', mockLocalStorage)!.turn).toBe(10);
+  });
+
+  it('11. listSaves filters by citySlug', () => {
+    saveGame(gameState, 'detroit', 'd-slot', mockLocalStorage);
+    saveGame(gameState, 'minneapolis', 'm-slot', mockLocalStorage);
+
+    const detroitSaves = listSaves('detroit', mockLocalStorage);
+    expect(detroitSaves).toHaveLength(1);
+    expect(detroitSaves[0].slot).toBe('d-slot');
+
+    const minneapolisSaves = listSaves('minneapolis', mockLocalStorage);
+    expect(minneapolisSaves).toHaveLength(1);
+    expect(minneapolisSaves[0].slot).toBe('m-slot');
+  });
+
+  it('12. listSaves with no citySlug returns all saves', () => {
+    saveGame(gameState, 'detroit', 'd-slot', mockLocalStorage);
+    saveGame(gameState, 'minneapolis', 'm-slot', mockLocalStorage);
+
+    const allSaves = listSaves(undefined, mockLocalStorage);
+    expect(allSaves).toHaveLength(2);
   });
 
   it('15. Full cycle: save -> load -> verify equality', () => {
-    saveGame(gameState, 'full_cycle', mockLocalStorage);
-    const loaded = loadGame('full_cycle', mockLocalStorage);
+    saveGame(gameState, 'detroit', 'full_cycle', mockLocalStorage);
+    const loaded = loadGame('detroit', 'full_cycle', mockLocalStorage);
     expect(loaded).toEqual(gameState);
     // Verify deep structure
     expect(loaded!.meters).toEqual(gameState.meters);

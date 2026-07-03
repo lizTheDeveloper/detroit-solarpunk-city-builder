@@ -1,0 +1,105 @@
+<h2>What should the map feel like in the game?</h2>
+<p class="subtitle">Same OSM data, very different aesthetics. Which direction fits the solarpunk vibe?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #1a1a2e; padding: 24px; min-height: 220px;">
+      <!-- Dark mode OSM style -->
+      <div style="position: relative; width: 100%; height: 200px; background: #0d1117; border-radius: 8px; overflow: hidden; font-family: monospace;">
+        <!-- Streets -->
+        <div style="position: absolute; top: 60px; left: 0; right: 0; height: 2px; background: #2ea04370;"></div>
+        <div style="position: absolute; top: 120px; left: 0; right: 0; height: 3px; background: #2ea043; opacity: 0.5;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 80px; width: 2px; background: #2ea04370;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 180px; width: 2px; background: #2ea04370;"></div>
+        <!-- Blocks -->
+        <div style="position: absolute; top: 20px; left: 20px; width: 50px; height: 30px; background: #1a2332; border: 1px solid #2ea04340;"></div>
+        <div style="position: absolute; top: 20px; left: 100px; width: 70px; height: 30px; background: #1a2332; border: 1px solid #2ea04340;"></div>
+        <div style="position: absolute; top: 75px; left: 20px; width: 50px; height: 35px; background: #2ea04320; border: 1px solid #2ea043;"></div>
+        <div style="position: absolute; top: 75px; left: 100px; width: 70px; height: 35px; background: #1a2332; border: 1px solid #2ea04340;"></div>
+        <!-- River -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(to bottom, transparent, #0e4a6e40);"></div>
+        <!-- Labels -->
+        <div style="position: absolute; top: 55px; left: 30px; color: #2ea043; font-size: 7px; opacity: 0.7;">LIVERNOIS</div>
+        <div style="position: absolute; top: 115px; left: 110px; color: #2ea043; font-size: 7px; opacity: 0.7;">MICHIGAN AVE</div>
+        <!-- Highlight -->
+        <div style="position: absolute; top: 75px; left: 20px; width: 50px; height: 35px; border: 2px solid #f0c040; box-shadow: 0 0 12px #f0c04060;"></div>
+        <div style="position: absolute; top: 68px; left: 22px; color: #f0c040; font-size: 7px;">SOLAR ARRAY</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Dark Terminal</h3>
+      <p>Green-on-dark hacker aesthetic. Streets glow like circuit traces. Selected blocks pulse. Feels like you're running the city from a command center. Matches the "Wire" panel vibe.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f5f0e8; padding: 24px; min-height: 220px;">
+      <!-- Watercolor/zine style -->
+      <div style="position: relative; width: 100%; height: 200px; background: #faf6ee; border-radius: 8px; overflow: hidden; font-family: 'Georgia', serif;">
+        <!-- Streets -->
+        <div style="position: absolute; top: 60px; left: 0; right: 0; height: 2px; background: #8b7355;"></div>
+        <div style="position: absolute; top: 120px; left: 0; right: 0; height: 3px; background: #8b7355;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 80px; width: 2px; background: #8b735570;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 180px; width: 2px; background: #8b735570;"></div>
+        <!-- Blocks with watercolor feel -->
+        <div style="position: absolute; top: 20px; left: 20px; width: 50px; height: 30px; background: #e8dcc8; border-radius: 2px;"></div>
+        <div style="position: absolute; top: 20px; left: 100px; width: 70px; height: 30px; background: #e8dcc8; border-radius: 2px;"></div>
+        <div style="position: absolute; top: 75px; left: 20px; width: 50px; height: 35px; background: #7cb342; border-radius: 2px; opacity: 0.6;"></div>
+        <div style="position: absolute; top: 75px; left: 100px; width: 70px; height: 35px; background: #e8dcc8; border-radius: 2px;"></div>
+        <!-- River -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(to bottom, transparent, #6baed640);"></div>
+        <!-- Hand-drawn labels -->
+        <div style="position: absolute; top: 55px; left: 25px; color: #5d4e37; font-size: 7px; font-style: italic;">Livernois</div>
+        <div style="position: absolute; top: 115px; left: 105px; color: #5d4e37; font-size: 7px; font-style: italic;">Michigan Ave</div>
+        <!-- Highlight -->
+        <div style="position: absolute; top: 75px; left: 20px; width: 50px; height: 35px; border: 2px dashed #d4a017;"></div>
+        <div style="position: absolute; top: 68px; left: 22px; color: #d4a017; font-size: 7px; font-weight: bold;">community solar</div>
+        <!-- Little sun doodle -->
+        <div style="position: absolute; top: 82px; left: 35px; width: 16px; height: 16px; border-radius: 50%; background: #f0c040; opacity: 0.5;"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Solarpunk Zine</h3>
+      <p>Warm paper tones, hand-drawn feel. Like a community organizing map pinned to a corkboard. Dashed lines, earthy colors, little icons for projects. Inviting, not intimidating.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0a192f; padding: 24px; min-height: 220px;">
+      <!-- Satellite/data viz hybrid -->
+      <div style="position: relative; width: 100%; height: 200px; background: #0f2027; border-radius: 8px; overflow: hidden; font-family: system-ui;">
+        <!-- Streets -->
+        <div style="position: absolute; top: 60px; left: 0; right: 0; height: 2px; background: #ffffff30;"></div>
+        <div style="position: absolute; top: 120px; left: 0; right: 0; height: 3px; background: #ffffff40;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 80px; width: 2px; background: #ffffff20;"></div>
+        <div style="position: absolute; top: 0; bottom: 0; left: 180px; width: 2px; background: #ffffff20;"></div>
+        <!-- Blocks with data heat -->
+        <div style="position: absolute; top: 20px; left: 20px; width: 50px; height: 30px; background: #ff634740; border: 1px solid #ff634760;"></div>
+        <div style="position: absolute; top: 20px; left: 100px; width: 70px; height: 30px; background: #ffa72640; border: 1px solid #ffa72660;"></div>
+        <div style="position: absolute; top: 75px; left: 20px; width: 50px; height: 35px; background: #2ea04360; border: 1px solid #2ea04380;"></div>
+        <div style="position: absolute; top: 75px; left: 100px; width: 70px; height: 35px; background: #ff634730; border: 1px solid #ff634750;"></div>
+        <!-- River -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(to bottom, transparent, #1e90ff30);"></div>
+        <!-- Labels -->
+        <div style="position: absolute; top: 55px; left: 30px; color: #ffffff80; font-size: 7px; text-transform: uppercase; letter-spacing: 1px;">Livernois</div>
+        <div style="position: absolute; top: 115px; left: 110px; color: #ffffff80; font-size: 7px; text-transform: uppercase; letter-spacing: 1px;">Michigan Ave</div>
+        <!-- Data overlay -->
+        <div style="position: absolute; top: 82px; left: 25px; color: #2ea043; font-size: 9px; font-weight: bold;">+12%</div>
+        <div style="position: absolute; top: 28px; left: 115px; color: #ff6347; font-size: 9px; font-weight: bold;">-8%</div>
+        <!-- Legend -->
+        <div style="position: absolute; bottom: 45px; right: 10px; display: flex; gap: 6px; align-items: center;">
+          <div style="width: 8px; height: 8px; background: #2ea043;"></div><span style="color: #ffffff60; font-size: 6px;">healthy</span>
+          <div style="width: 8px; height: 8px; background: #ff6347;"></div><span style="color: #ffffff60; font-size: 6px;">at risk</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Data Viz Overlay</h3>
+      <p>Dark satellite-view base with colored data heat maps. Blocks glow red/green based on metrics. Numbers float over zones. Feels like a city dashboard — powerful but clinical.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px; padding: 16px; border: 1px solid #333; border-radius: 8px;">
+  <p class="subtitle">Note: These are aesthetic directions for how we style the OSM tile layer + game overlays. The underlying data is the same real OpenStreetMap geometry regardless of which style we pick. You can also mix — e.g., dark base map with solarpunk-styled project overlays.</p>
+</div>
