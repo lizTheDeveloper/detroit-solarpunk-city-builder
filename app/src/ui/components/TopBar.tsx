@@ -1,7 +1,9 @@
 import { useGame } from '@/state/store';
 import { formatBudget } from '@/ui/format';
 import { totalAnnualExpenses, totalAnnualRevenue } from '@/data/content/budget-lines';
-import type { Season } from '@/state/types';
+import { calculateElectionScore } from '@/systems/reelection';
+import { STAGE_ORDER } from '@/systems/progression';
+import type { Season, Stage } from '@/state/types';
 
 const SEASON_ICONS: Record<Season, string> = {
   spring: '🌱',
@@ -36,6 +38,29 @@ export default function TopBar() {
     .reduce((sum, p) => sum + (p.cost / p.duration), 0);
   const monthlySurplus = monthlyRevenue - monthlyExpenses - projectCosts;
 
+  // Election score & stage requirements
+  const electionScore = calculateElectionScore(state);
+  const currentStage = state.stage;
+  const nextStageIndex = STAGE_ORDER.indexOf(currentStage) + 1;
+  const requirementsMet = currentStage === 'transition'
+    ? (state.meters.ecologicalHealth >= 35 ? 1 : 0) +
+      (state.meters.foodSovereignty >= 25 ? 1 : 0)
+    : currentStage === 'restoration'
+      ? (state.meters.ecologicalHealth >= 55 ? 1 : 0) +
+        (state.meters.foodSovereignty >= 40 ? 1 : 0) +
+        (state.meters.communityTrust >= 50 ? 1 : 0) +
+        (state.activePolicies.length >= 2 ? 1 : 0)
+      : currentStage === 'beyond'
+        ? (state.meters.ecologicalHealth >= 75 ? 1 : 0) +
+          (state.meters.foodSovereignty >= 60 ? 1 : 0) +
+          (state.meters.communityTrust >= 70 ? 1 : 0) +
+          (state.activePolicies.length >= 3 ? 1 : 0)
+        : 0;
+  const totalRequirements = currentStage === 'transition' ? 2
+    : currentStage === 'restoration' ? 4
+      : currentStage === 'beyond' ? 4
+        : 0;
+
   return (
     <div className="top-bar">
       <div className="top-bar-season">
@@ -46,7 +71,7 @@ export default function TopBar() {
         Year {state.year} / Turn {state.turn}
       </div>
       <div className="top-bar-stage">
-        Stage: {capitalize(state.stage)}
+        Stage: {capitalize(currentStage)} {totalRequirements > 0 ? `(${requirementsMet}/${totalRequirements})` : ''}
       </div>
       <div className="top-bar-stat top-bar-stat--budget">
         {formatBudget(state.meters.budget)}
@@ -54,7 +79,10 @@ export default function TopBar() {
           {monthlySurplus >= 0 ? '+' : ''}{formatBudget(Math.round(monthlySurplus * 10) / 10)}/mo
         </span>
       </div>
-      <div className="top-bar-stat">
+      <div className={`top-bar-stat ${electionScore.score >= 45 ? 'top-bar-stat--good' : 'top-bar-stat--warning'}`}>
+        Election: {Math.round(electionScore.score)}/45 {electionScore.score >= 45 ? '✓' : '⚠'}
+      </div>
+      <div className="top-bar-stat" title={slotsRemaining === 0 ? 'No actions remaining — end turn to rest and recover slots, or take a rest day' : `Spend a slot on proposals, projects, meetings, or lobbying`}>
         {slotsRemaining}/{slotsTotal} Slots
       </div>
       {activePolicyCount > 0 && (

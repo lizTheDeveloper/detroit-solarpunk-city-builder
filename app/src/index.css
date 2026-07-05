@@ -1322,6 +1322,16 @@ body {
   border-color: rgba(74, 222, 128, 0.3);
 }
 
+.top-bar-stat--warning {
+  color: var(--color-warning);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.top-bar-stat--good {
+  color: var(--color-accent);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
 /* ── Meter Subtext ── */
 
 .meter-subtext {
