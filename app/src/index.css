@@ -3042,3 +3042,480 @@ body {
   color: var(--color-negative);
   background: rgba(248, 113, 113, 0.1);
 }
+
+/* ── Election Threats Panel ─────────────────────────────────────────── */
+
+.election-threats-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.election-threats-panel h2 {
+  color: var(--color-accent);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.election-threats-panel .panel-subtitle {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+}
+
+.election-score-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.election-score-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.election-score-header .winning {
+  color: var(--color-accent);
+  font-size: 1.25rem;
+}
+
+.election-score-header .losing {
+  color: var(--color-negative);
+  font-size: 1.25rem;
+}
+
+.election-score-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.election-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-blue));
+  transition: width 0.3s ease;
+}
+
+.election-score-threshold {
+  display: flex;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.election-breakdown {
+  margin-bottom: 1.25rem;
+}
+
+.election-breakdown h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.breakdown-row.positive {
+  background: rgba(74, 222, 128, 0.08);
+  color: var(--color-positive);
+}
+
+.breakdown-row.negative {
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--color-negative);
+}
+
+.breakdown-row strong {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+.election-threats-section h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.threat-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--color-warning);
+  border-radius: 4px;
+  padding: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.threat-item.threat-high {
+  border-left-color: var(--color-negative);
+}
+
+.threat-item.threat-medium {
+  border-left-color: var(--color-warning);
+}
+
+.threat-item.threat-low {
+  border-left-color: var(--color-positive);
+}
+
+.threat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.threat-label {
+  font-size: 0.9375rem;
+}
+
+.threat-impact {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+.threat-impact.negative {
+  color: var(--color-negative);
+}
+
+.threat-impact.positive {
+  color: var(--color-positive);
+}
+
+.threat-explanation {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.threat-action {
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  line-height: 1.4;
+}
+
+.election-winning {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid var(--color-positive);
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-positive);
+}
+
+.calendar-portrait {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.875rem;
+  margin-top: 1.25rem;
+}
+
+.calendar-portrait h3 {
+  font-size: 0.9375rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.calendar-portrait p {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.election-imminent {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid var(--color-negative);
+  border-radius: 6px;
+  padding: 0.875rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.election-imminent strong {
+  color: var(--color-negative);
+}
+
+/* ── Stage Progress Panel ──────────────────────────────────────────── */
+
+.stage-progress-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.stage-progress-panel h2 {
+  color: var(--color-accent);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.stage-progress-panel .panel-subtitle {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.stage-timeline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.stage-timeline::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--border);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.stage-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+  background: var(--bg-panel);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.stage-indicator {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+}
+
+.stage-node.completed .stage-indicator {
+  background: var(--color-positive);
+  border-color: var(--color-positive);
+  color: var(--bg-panel);
+}
+
+.stage-node.current .stage-indicator {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--bg-panel);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+}
+
+.stage-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.stage-node.completed .stage-label,
+.stage-node.current .stage-label {
+  color: var(--text);
+}
+
+.stage-complete {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid var(--color-positive);
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stage-complete h3 {
+  color: var(--color-positive);
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.stage-complete p {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.next-stage-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.next-stage-section h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.next-stage-section h3 strong {
+  color: var(--color-accent);
+}
+
+.next-stage-description {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.requirement {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.requirement.met .req-check {
+  background: var(--color-positive);
+  color: var(--bg-panel);
+  border-color: var(--color-positive);
+}
+
+.requirement.unmet .req-check {
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.req-check {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.req-content {
+  flex: 1;
+}
+
+.req-label {
+  font-size: 0.875rem;
+  margin-bottom: 0.375rem;
+}
+
+.req-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.25rem;
+}
+
+.req-current {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.req-required {
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.req-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.req-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-blue));
+  transition: width 0.3s ease;
+}
+
+.requirement.met .req-fill {
+  background: var(--color-positive);
+}
+
+.req-gap {
+  font-size: 0.75rem;
+  color: var(--color-warning);
+  margin-top: 0.25rem;
+}
+
+.stage-hint {
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid var(--color-blue);
+  border-radius: 6px;
+  padding: 0.875rem;
+  margin-top: 1.25rem;
+}
+
+.stage-hint strong {
+  color: var(--color-blue);
+  font-size: 0.875rem;
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+.stage-hint p {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.current-stage-info {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.current-stage-info h3 {
+  font-size: 0.9375rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.current-stage-info p {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}

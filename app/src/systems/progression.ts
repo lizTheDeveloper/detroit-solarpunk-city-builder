@@ -10,7 +10,7 @@ export interface PathBonuses {
   dispositionBonusOnEnact: number;
 }
 
-const STAGE_ORDER: Stage[] = ['awakening', 'transition', 'restoration', 'beyond'];
+export const STAGE_ORDER: Stage[] = ['awakening', 'transition', 'restoration', 'beyond'];
 
 /**
  * Returns the stage the game should be in based on current meters and conditions.

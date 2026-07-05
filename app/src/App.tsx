@@ -35,6 +35,8 @@ import CharacterPanel from '@/ui/panels/CharacterPanel';
 import PolicyPanel from '@/ui/panels/PolicyPanel';
 import EventPanel from '@/ui/panels/EventPanel';
 import TensionPanel from '@/ui/panels/TensionPanel';
+import ElectionThreatsPanel from '@/ui/panels/ElectionThreatsPanel';
+import StageProgressPanel from '@/ui/panels/StageProgressPanel';
 import SaveLoadPanel from '@/ui/panels/SaveLoadPanel';
 import ConversationPanel from '@/ui/panels/ConversationPanel';
 import CoalitionPanel from '@/ui/panels/CoalitionPanel';
@@ -49,7 +51,7 @@ import CitySelectionScreen from '@/ui/CitySelectionScreen';
 import '@/ui/CitySelectionScreen.css';
 import { useHeadlines } from '@/hooks/useHeadlines';
 
-type ContentTab = 'map' | 'tiles' | 'calendar' | 'budget' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'saves' | 'settings';
+type ContentTab = 'map' | 'tiles' | 'calendar' | 'budget' | 'dashboard' | 'council' | 'characters' | 'coalitions' | 'policies' | 'events' | 'tensions' | 'election' | 'progress' | 'saves' | 'settings';
 
 type RightPanel =
   | { kind: 'none' }
@@ -249,6 +251,8 @@ export default function App() {
     { id: 'policies', label: 'Policies' },
     { id: 'events', label: 'Events', badge: eventCount > 0 ? eventCount : undefined },
     { id: 'tensions', label: 'Tensions' },
+    { id: 'election', label: 'Election' },
+    { id: 'progress', label: 'Progress' },
     { id: 'saves', label: 'Save/Load' },
     { id: 'settings', label: 'Settings' },
   ];
@@ -392,6 +396,8 @@ export default function App() {
             {activeTab === 'coalitions' && <CoalitionPanel />}
             {activeTab === 'policies' && <PolicyPanel />}
             {activeTab === 'tensions' && <TensionPanel />}
+            {activeTab === 'election' && <ElectionThreatsPanel />}
+            {activeTab === 'progress' && <StageProgressPanel />}
             {activeTab === 'saves' && <SaveLoadPanel onLoad={handleLoadSave} />}
             {activeTab === 'settings' && <LLMSettingsPanel />}
           </main>
