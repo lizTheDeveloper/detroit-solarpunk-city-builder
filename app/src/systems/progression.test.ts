@@ -24,6 +24,7 @@ function makeTestState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 2.8,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {},
     leaders: {},
@@ -61,6 +62,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     expect(checkStageTransition(state)).toBe('awakening');
@@ -76,6 +78,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     expect(checkStageTransition(state)).toBe('transition');
@@ -91,6 +94,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     expect(checkStageTransition(state)).toBe('transition');
@@ -106,6 +110,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     expect(checkStageTransition(state)).toBe('transition');
@@ -121,6 +126,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       activePolicies: [
         { definitionId: 'p1', enactedTurn: 5 },
@@ -140,6 +146,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       activePolicies: [{ definitionId: 'p1', enactedTurn: 5 }], // only 1 policy
     });
@@ -156,6 +163,7 @@ describe('checkStageTransition', () => {
         politicalWill: 20,
         budget: 0.5,
         climatePressure: 80,
+        discreteBudget: 0,
       },
       activePolicies: [],
     });
@@ -172,6 +180,7 @@ describe('checkStageTransition', () => {
         politicalWill: 60,
         budget: 5,
         climatePressure: 20,
+        discreteBudget: 0,
       },
       activePolicies: [
         { definitionId: 'p1', enactedTurn: 5 },
@@ -195,6 +204,7 @@ describe('detectSpecializationPath', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       tiles: {
         t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
@@ -213,6 +223,7 @@ describe('detectSpecializationPath', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       leaders: {
         l1: { id: 'l1', name: 'A', neighborhood: 'n1', tileIds: [], backstory: '', priorities: [], trust: 45, advocacyPower: 3, proposalCooldown: 0, consecutiveDeferrals: 0 },
@@ -232,6 +243,7 @@ describe('detectSpecializationPath', () => {
         politicalWill: 55,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       activePolicies: [
         { definitionId: 'p1', enactedTurn: 3 },
@@ -251,6 +263,7 @@ describe('detectSpecializationPath', () => {
         politicalWill: 30,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       activePolicies: [],
       leaders: {},
@@ -327,6 +340,7 @@ describe('applyProgressionEffects', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = applyProgressionEffects(state);
@@ -343,6 +357,7 @@ describe('applyProgressionEffects', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       tiles: {
         t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
@@ -363,6 +378,7 @@ describe('applyProgressionEffects', () => {
         politicalWill: 50,
         budget: 3,
         climatePressure: 25,
+        discreteBudget: 0,
       },
       tiles: {
         t1: { id: 't1', name: 'T1', completedProjects: ['food_forest', 'rain_garden', 'soil_remediation'], activeProjects: [], ecologicalHealth: 30, contamination: 0, gentrificationPressure: 0, reclaimed: false, zoning: 'residential' } as any,
@@ -384,6 +400,7 @@ describe('applyProgressionEffects', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     applyProgressionEffects(state);

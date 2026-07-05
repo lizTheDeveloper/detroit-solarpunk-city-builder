@@ -57,6 +57,7 @@ describe('calculateSpeedVsJustice', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({ id: 'a', gentrificationPressure: 50 }),
@@ -82,6 +83,7 @@ describe('calculateSpeedVsJustice', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -110,6 +112,7 @@ describe('calculateSpeedVsJustice', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -138,6 +141,7 @@ describe('calculateSpeedVsJustice', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -335,6 +339,7 @@ describe('getTensionSummary', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -362,6 +367,7 @@ describe('getTensionSummary', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -389,6 +395,7 @@ describe('getTensionSummary', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -426,6 +433,7 @@ describe('getTensionSummary', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({
@@ -467,6 +475,7 @@ describe('getTensionSummary', () => {
         politicalWill: 60,
         budget: 2.8,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       tiles: {
         a: makeTile({

@@ -478,11 +478,14 @@ export function resolveTurn(state: GameState, rng: () => number = Math.random): 
       }
 
       const netChange = monthlyRevenue - monthlyExpenses + projectRevenue - maintenanceDrain + policyBudgetBonus;
+      // Discrete budget increment: small amount based on trust and political will
+      const discreteBudgetIncrease = (current.meters.communityTrust * 0.1 + current.meters.politicalWill * 0.15) / 3;
       current = {
         ...current,
         meters: {
           ...current.meters,
           budget: current.meters.budget + netChange,
+          discreteBudget: Math.max(0, current.meters.discreteBudget + discreteBudgetIncrease),
         },
       };
     }

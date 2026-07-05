@@ -19,6 +19,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 4.2,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {
       tile_a: makeTile('tile_a', { adjacentTileIds: ['tile_b'] }),
@@ -84,6 +85,7 @@ describe('canStartProject', () => {
         politicalWill: 60,
         budget: 0.13,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'player-initiated');
@@ -101,6 +103,7 @@ describe('canStartProject', () => {
         politicalWill: 60,
         budget: 0.17,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'community-led');
@@ -118,6 +121,7 @@ describe('canStartProject', () => {
         politicalWill: 60,
         budget: 0.14 * 1.3, // exact value to avoid floating point mismatch
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'community-led');
@@ -228,6 +232,7 @@ describe('canStartProject', () => {
         politicalWill: 60,
         budget: 4.2,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'community-led');
@@ -244,6 +249,7 @@ describe('canStartProject', () => {
         politicalWill: 60,
         budget: 4.2,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'community-led');
@@ -809,7 +815,7 @@ describe('decayGentrification', () => {
 describe('direct-action mode', () => {
   it('requires trust >= 50', () => {
     const state = makeState({
-      meters: { communityTrust: 40, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 40, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'direct-action');
     expect(result.allowed).toBe(false);
@@ -818,7 +824,7 @@ describe('direct-action mode', () => {
 
   it('allows direct action when trust >= 50', () => {
     const state = makeState({
-      meters: { communityTrust: 55, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 55, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
     });
     const result = canStartProject(state, 'tile_a', 'rain_garden', 'direct-action');
     expect(result.allowed).toBe(true);
@@ -826,7 +832,7 @@ describe('direct-action mode', () => {
 
   it('costs almost nothing in budget (scavenged materials)', () => {
     const state = makeState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 0.05, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 0.05, discreteBudget: 0, climatePressure: 30 },
     });
     const after = startProject(state, 'tile_a', 'rain_garden', 'direct-action');
     expect(after.meters.budget).toBeCloseTo(0.03, 2);
@@ -834,7 +840,7 @@ describe('direct-action mode', () => {
 
   it('deducts 8 trust on start', () => {
     const state = makeState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
     });
     const after = startProject(state, 'tile_a', 'rain_garden', 'direct-action');
     expect(after.meters.communityTrust).toBe(52);
@@ -842,7 +848,7 @@ describe('direct-action mode', () => {
 
   it('angers all council members by -5 disposition', () => {
     const state = makeState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       councilMembers: {
         cm1: { id: 'cm1', name: 'Test', district: 'D1', districtNumber: 1, leaning: 'moderate', priorities: [], disposition: 20, backstory: '', tileIds: [] },
         cm2: { id: 'cm2', name: 'Test2', district: 'D2', districtNumber: 2, leaning: 'progressive', priorities: [], disposition: 10, backstory: '', tileIds: [] },
@@ -856,7 +862,7 @@ describe('direct-action mode', () => {
   it('halves project duration', () => {
     const state = makeState({
       season: 'winter', // no seasonal bonus
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
     });
     // food_forest baseDuration = 9, halved = 5 (ceil(9*0.5) = 5)
     const after = startProject(state, 'tile_a', 'food_forest', 'direct-action');
@@ -889,7 +895,7 @@ describe('direct-action mode', () => {
 
   it('grants bonus trust on completion', () => {
     const state = makeState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       tiles: {
         tile_a: makeTile('tile_a', {
           activeProjects: [{

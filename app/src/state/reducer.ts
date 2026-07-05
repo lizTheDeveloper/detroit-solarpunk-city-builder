@@ -48,8 +48,8 @@ function handleStartProject(
   const costMultiplier = action.mode === 'community-led' ? 1.3 : 1.0;
   const cost = projectDef.baseCost * costMultiplier;
 
-  // Budget check
-  if (state.meters.budget < cost) {
+  // Discrete budget check (only for player-initiated projects)
+  if (action.mode === 'player-initiated' && state.meters.discreteBudget < cost) {
     return state;
   }
 
@@ -72,7 +72,10 @@ function handleStartProject(
     ...state,
     meters: {
       ...state.meters,
-      budget: state.meters.budget - cost,
+      // Only deduct from discrete budget for player-initiated projects
+      discreteBudget: action.mode === 'player-initiated'
+        ? Math.max(0, state.meters.discreteBudget - cost)
+        : state.meters.discreteBudget,
     },
     tiles: {
       ...state.tiles,
@@ -113,7 +116,7 @@ function handleRespondProposal(
       const durationMod = neg ? neg.durationModifier : 0;
       const grossCost = projectDef.baseCost * baseCostMult;
       const cost = Math.max(0, grossCost - leaderContrib);
-      if (state.meters.budget < cost) return state;
+      if (state.meters.discreteBudget < cost) return state;
       const newProject: ActiveProject = {
         definitionId: proposal.projectDefinitionId,
         tileId: proposal.tileId,
@@ -132,7 +135,7 @@ function handleRespondProposal(
         activeProposals: remainingProposals,
         meters: {
           ...state.meters,
-          budget: state.meters.budget - cost,
+          discreteBudget: Math.max(0, state.meters.discreteBudget - cost),
         },
         tiles: {
           ...state.tiles,
@@ -163,7 +166,7 @@ function handleRespondProposal(
       const durationMod = neg ? neg.durationModifier : 0;
       const grossCost = projectDef.baseCost * baseCostMult;
       const cost = Math.max(0, grossCost - leaderContrib);
-      if (state.meters.budget < cost) return state;
+      if (state.meters.discreteBudget < cost) return state;
       const newProject: ActiveProject = {
         definitionId: proposal.projectDefinitionId,
         tileId: proposal.tileId,
@@ -181,7 +184,7 @@ function handleRespondProposal(
         activeProposals: remainingProposals,
         meters: {
           ...state.meters,
-          budget: state.meters.budget - cost,
+          discreteBudget: Math.max(0, state.meters.discreteBudget - cost),
         },
         tiles: {
           ...state.tiles,
@@ -420,7 +423,7 @@ function handleDelegationHire(
     calendarState: afterDelegation,
     meters: {
       ...state.meters,
-      budget: state.meters.budget - budgetCost,
+      discreteBudget: Math.max(0, state.meters.discreteBudget - budgetCost),
     },
   };
 }

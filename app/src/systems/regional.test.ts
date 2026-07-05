@@ -34,6 +34,7 @@ function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 5.0,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {},
     leaders: {},
@@ -370,6 +371,7 @@ describe('sendBudget', () => {
         politicalWill: 60,
         budget: 0.1,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
 
@@ -679,6 +681,7 @@ describe('checkWinCondition', () => {
         politicalWill: 60,
         budget: 60,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
 
@@ -700,6 +703,7 @@ describe('checkWinCondition', () => {
         politicalWill: 60,
         budget: 60,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
 
@@ -724,6 +728,7 @@ describe('checkWinCondition', () => {
         politicalWill: 60,
         budget: 60,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
 
@@ -741,6 +746,7 @@ describe('checkLossCondition', () => {
         politicalWill: 60,
         budget: 0,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
 
@@ -764,6 +770,7 @@ describe('checkLossCondition', () => {
         politicalWill: 60,
         budget: 3.0,
         climatePressure: 100,
+        discreteBudget: 0,
       },
     });
 
@@ -785,6 +792,7 @@ describe('checkLossCondition', () => {
         politicalWill: 60,
         budget: 3.0,
         climatePressure: 100,
+        discreteBudget: 0,
       },
     });
 

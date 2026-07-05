@@ -65,6 +65,7 @@ function clamp(meters: Meters): Meters {
     politicalWill: Math.max(0, Math.min(100, meters.politicalWill)),
     budget: Math.max(0, meters.budget),
     climatePressure: Math.max(0, Math.min(100, meters.climatePressure)),
+    discreteBudget: Math.max(0, Math.min(100, meters.discreteBudget)),
   };
 }
 
@@ -93,6 +94,7 @@ export function calculateProjections(state: GameState): ProjectionResult {
     politicalWill: [],
     budget: [],
     climatePressure: [],
+    discreteBudget: [],
   };
   const events: ProjectionEvent[] = [];
 

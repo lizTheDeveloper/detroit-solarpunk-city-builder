@@ -49,8 +49,9 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
     politicalWill: 25,
     budget: 1576,
     climatePressure: 30,
+    discreteBudget: 0,
     ...overrides,
-  };
+  } as Meters;
 }
 
 function makeProjectDef(overrides: Partial<ProjectDefinition> = {}): ProjectDefinition {

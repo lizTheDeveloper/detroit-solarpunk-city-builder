@@ -50,6 +50,7 @@ function makeState(communityOwnedCount: number): GameState {
       politicalWill: 40,
       budget: 1.0,
       climatePressure: 35,
+      discreteBudget: 0,
     },
     tiles,
     leaders: {},

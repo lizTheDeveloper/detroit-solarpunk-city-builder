@@ -67,7 +67,7 @@ describe('gameReducer', () => {
       // Give enough budget to cover the $2M solar_array project
       const richState: GameState = {
         ...state,
-        meters: { ...state.meters, budget: 5.0 },
+        meters: { ...state.meters, budget: 5.0, discreteBudget: 5.0 },
       };
       const action: GameAction = {
         type: 'START_PROJECT',
@@ -78,7 +78,7 @@ describe('gameReducer', () => {
 
       const result = gameReducer(richState, action, projects);
 
-      expect(result.meters.budget).toBeCloseTo(5.0 - 2.0);
+      expect(result.meters.discreteBudget).toBeCloseTo(5.0 - 2.0);
       expect(result.tiles['brightmoor'].activeProjects).toHaveLength(1);
       expect(result.tiles['brightmoor'].activeProjects[0]).toEqual({
         definitionId: 'solar_array',
@@ -95,7 +95,7 @@ describe('gameReducer', () => {
       // Give enough budget to cover the $2M * 1.3 solar_array community-led project
       const richState: GameState = {
         ...state,
-        meters: { ...state.meters, budget: 5.0 },
+        meters: { ...state.meters, budget: 5.0, discreteBudget: 5.0 },
       };
       const action: GameAction = {
         type: 'START_PROJECT',
@@ -107,7 +107,7 @@ describe('gameReducer', () => {
       const result = gameReducer(richState, action, projects);
 
       const expectedCost = 2.0 * 1.3;
-      expect(result.meters.budget).toBeCloseTo(5.0 - expectedCost);
+      expect(result.meters.discreteBudget).toBe(5.0); // community-led does not deduct from discreteBudget
       expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(expectedCost);
       expect(result.tiles['brightmoor'].activeProjects[0].mode).toBe('community-led');
     });
@@ -117,7 +117,7 @@ describe('gameReducer', () => {
       // Set budget very low
       const lowBudgetState: GameState = {
         ...state,
-        meters: { ...state.meters, budget: 0.5 },
+        meters: { ...state.meters, discreteBudget: 0.5 },
       };
       const action: GameAction = {
         type: 'START_PROJECT',
@@ -129,7 +129,7 @@ describe('gameReducer', () => {
       const result = gameReducer(lowBudgetState, action, projects);
 
       expect(result).toBe(lowBudgetState);
-      expect(result.meters.budget).toBe(0.5);
+      expect(result.meters.discreteBudget).toBe(0.5);
     });
 
     it('returns unchanged state if concurrent project limit is reached', () => {
@@ -253,7 +253,7 @@ describe('gameReducer', () => {
       const p = proposal ?? makeProposal();
       return {
         ...state,
-        meters: { ...state.meters, budget: 100 },
+        meters: { ...state.meters, budget: 100, discreteBudget: 100 },
         activeProposals: [p],
       };
     }
@@ -286,7 +286,7 @@ describe('gameReducer', () => {
         expect(result.tiles['brightmoor'].activeProjects).toHaveLength(1);
         expect(result.tiles['brightmoor'].activeProjects[0].mode).toBe('community-led');
         expect(result.tiles['brightmoor'].activeProjects[0].cost).toBeCloseTo(expectedCost);
-        expect(result.meters.budget).toBeCloseTo(100 - expectedCost);
+        expect(result.meters.discreteBudget).toBeCloseTo(100 - expectedCost);
       });
 
       it('removes proposal from activeProposals', () => {

@@ -121,7 +121,7 @@ export function checkTippingPoints(state: GameState): {
       tiles,
       meters: {
         ...updatedState.meters,
-        budget: updatedState.meters.budget - 0.5,
+        discreteBudget: Math.max(0, updatedState.meters.discreteBudget - 0.5),
       },
       eventCooldowns: {
         ...updatedState.eventCooldowns,

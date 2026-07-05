@@ -14,8 +14,9 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
     politicalWill: 40,
     budget: 5.0,
     climatePressure: 30,
+    discreteBudget: 0,
     ...overrides,
-  };
+  } as Meters;
 }
 
 function makeMinimalState(overrides: Partial<GameState> = {}): GameState {
@@ -461,7 +462,7 @@ describe('calculateProjections', () => {
 
     it('climatePressure stays clamped within 0-100', () => {
       const state = makeMinimalState({
-        meters: makeMeters({ climatePressure: 99.99 }),
+        meters: makeMeters({ discreteBudget: 0, climatePressure: 99.99 }),
       });
       const result = calculateProjections(state);
 

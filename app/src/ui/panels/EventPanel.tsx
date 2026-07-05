@@ -38,14 +38,14 @@ function EffectsPreview({ choice }: { choice: EventChoice }) {
   );
 }
 
-function RequirementsNotice({ choice, state }: { choice: EventChoice; state: { meters: { politicalWill: number; budget: number; communityTrust: number } } }) {
+function RequirementsNotice({ choice, state }: { choice: EventChoice; state: { meters: { politicalWill: number; discreteBudget: number; communityTrust: number } } }) {
   if (!choice.requirements) return null;
   const reqs = choice.requirements;
   const fails: string[] = [];
   if (reqs.minWill !== null && state.meters.politicalWill < reqs.minWill) {
     fails.push(`Will >= ${reqs.minWill}%`);
   }
-  if (reqs.minBudget !== null && state.meters.budget < reqs.minBudget) {
+  if (reqs.minBudget !== null && state.meters.discreteBudget < reqs.minBudget) {
     fails.push(`Budget >= $${reqs.minBudget}M`);
   }
   if (reqs.minTrust !== null && state.meters.communityTrust < reqs.minTrust) {
@@ -91,7 +91,7 @@ function EventCard({ event }: { event: GameEvent }) {
         {event.choices.map((choice) => {
           const meetsReqs = !choice.requirements || (
             (choice.requirements.minWill === null || state.meters.politicalWill >= choice.requirements.minWill) &&
-            (choice.requirements.minBudget === null || state.meters.budget >= choice.requirements.minBudget) &&
+            (choice.requirements.minBudget === null || state.meters.discreteBudget >= choice.requirements.minBudget) &&
             (choice.requirements.minTrust === null || state.meters.communityTrust >= choice.requirements.minTrust)
           );
 

@@ -2,8 +2,7 @@ import { useGame } from '@/state/store';
 import { formatBudget } from '@/ui/format';
 import { totalAnnualExpenses, totalAnnualRevenue } from '@/data/content/budget-lines';
 import { calculateElectionScore } from '@/systems/reelection';
-import { STAGE_ORDER } from '@/systems/progression';
-import type { Season, Stage } from '@/state/types';
+import type { Season } from '@/state/types';
 
 const SEASON_ICONS: Record<Season, string> = {
   spring: '🌱',
@@ -41,7 +40,6 @@ export default function TopBar() {
   // Election score & stage requirements
   const electionScore = calculateElectionScore(state);
   const currentStage = state.stage;
-  const nextStageIndex = STAGE_ORDER.indexOf(currentStage) + 1;
   const requirementsMet = currentStage === 'transition'
     ? (state.meters.ecologicalHealth >= 35 ? 1 : 0) +
       (state.meters.foodSovereignty >= 25 ? 1 : 0)
@@ -74,7 +72,7 @@ export default function TopBar() {
         Stage: {capitalize(currentStage)} {totalRequirements > 0 ? `(${requirementsMet}/${totalRequirements})` : ''}
       </div>
       <div className="top-bar-stat top-bar-stat--budget">
-        {formatBudget(state.meters.budget)}
+        Discrete: {formatBudget(state.meters.discreteBudget)}
         <span className={`top-bar-surplus ${monthlySurplus >= 0 ? 'top-bar-surplus--positive' : 'top-bar-surplus--negative'}`}>
           {monthlySurplus >= 0 ? '+' : ''}{formatBudget(Math.round(monthlySurplus * 10) / 10)}/mo
         </span>

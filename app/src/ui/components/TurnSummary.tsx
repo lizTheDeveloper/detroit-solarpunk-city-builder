@@ -10,6 +10,7 @@ const METER_LABELS: Record<keyof Meters, string> = {
   politicalWill: 'Political Will',
   budget: 'Budget',
   climatePressure: 'Climate Pressure',
+  discreteBudget: 'Discrete Budget',
 };
 
 interface TurnSummaryProps {

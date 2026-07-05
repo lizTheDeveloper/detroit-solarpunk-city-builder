@@ -16,8 +16,9 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
     politicalWill: 60,
     budget: 4.2,
     climatePressure: 30,
+    discreteBudget: 0,
     ...overrides,
-  };
+  } as Meters;
 }
 
 describe('applyMeterFeedback', () => {
@@ -352,8 +353,8 @@ describe('clampMeters', () => {
   });
 
   it('clamps climatePressure to 0-100', () => {
-    expect(clampMeters(makeMeters({ climatePressure: -5 })).climatePressure).toBe(0);
-    expect(clampMeters(makeMeters({ climatePressure: 150 })).climatePressure).toBe(100);
+    expect(clampMeters(makeMeters({ discreteBudget: 0, climatePressure: -5 })).climatePressure).toBe(0);
+    expect(clampMeters(makeMeters({ discreteBudget: 0, climatePressure: 150 })).climatePressure).toBe(100);
   });
 
   it('clamps budget to min 0 with no max', () => {

@@ -89,6 +89,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 10.0,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {
       brightmoor: makeTile(),

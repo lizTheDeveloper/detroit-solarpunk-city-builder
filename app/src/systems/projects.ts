@@ -63,7 +63,7 @@ export function canStartProject(
   const synergies = calculateSynergies(state, tileId, projectId);
   const byproductBonuses = calculateByproductBonuses(state, tileId, projectId);
   const cost = effectiveCost(def.baseCost * synergies.costMultiplier * byproductBonuses.costMultiplier, mode);
-  if (state.meters.budget < cost) {
+  if (state.meters.discreteBudget < cost) {
     return {
       allowed: false,
       reason: `Insufficient budget: need ${cost.toFixed(2)}M, have ${state.meters.budget.toFixed(2)}M`,
@@ -180,7 +180,7 @@ export function startProject(
 
   let newMeters = {
     ...state.meters,
-    budget: state.meters.budget - cost,
+    discreteBudget: Math.max(0, state.meters.discreteBudget - cost),
   };
 
   // Direct action: costs trust, angers council

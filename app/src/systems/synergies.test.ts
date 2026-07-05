@@ -29,7 +29,7 @@ function makeTile(overrides: Partial<Tile> = {}): Tile {
 function makeState(tiles: Record<string, Tile>): GameState {
   return {
     tiles,
-    meters: { communityTrust: 50, ecologicalHealth: 20, foodSovereignty: 10, politicalWill: 30, budget: 2, climatePressure: 20 },
+    meters: { communityTrust: 50, ecologicalHealth: 20, foodSovereignty: 10, politicalWill: 30, budget: 2, discreteBudget: 0, climatePressure: 20 },
   } as unknown as GameState;
 }
 

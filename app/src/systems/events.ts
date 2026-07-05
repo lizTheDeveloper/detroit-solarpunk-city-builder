@@ -400,7 +400,7 @@ const CRISIS_EVENTS: EventDef[] = [
     description:
       'Mass water shutoffs threaten vulnerable neighborhoods. The utility doesn\'t care.',
     baseProbability: () => 0.08,
-    condition: (state) => state.meters.budget < 1.0,
+    condition: (state) => state.meters.discreteBudget < 1.0,
     cooldownTurns: 4,
     needsTargetTile: false,
     choices: () => [
@@ -710,7 +710,7 @@ export function applyEventChoice(
     if (req.minWill !== null && state.meters.politicalWill < req.minWill) {
       return { state, deltas: [], applied: false };
     }
-    if (req.minBudget !== null && state.meters.budget < req.minBudget) {
+    if (req.minBudget !== null && state.meters.discreteBudget < req.minBudget) {
       return { state, deltas: [], applied: false };
     }
     if (req.minTrust !== null && state.meters.communityTrust < req.minTrust) {

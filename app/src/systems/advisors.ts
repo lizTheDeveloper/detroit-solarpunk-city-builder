@@ -68,7 +68,7 @@ export const ADVISOR_CONDITIONS: AdvisorCondition[] = [
     priority: 2,
     characterId: 'kez',
     characterName: 'Kezia "Kez" Monroe',
-    condition: (state) => state.meters.budget < 0.2,
+    condition: (state) => state.meters.discreteBudget < 0.2,
     message: (_state) =>
       "You're running out of money. When the budget dries up, it's the neighborhoods that get cut first. I've watched it happen. Find revenue or start making hard choices.",
   },

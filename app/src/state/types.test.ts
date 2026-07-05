@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState, Meters } from './types';
 
 describe('Type sanity checks', () => {
-  it('Meters has all 6 required fields', () => {
+  it('Meters has all 7 required fields', () => {
     const meters: Meters = {
       communityTrust: 50,
       ecologicalHealth: 15,
@@ -10,8 +10,9 @@ describe('Type sanity checks', () => {
       politicalWill: 60,
       budget: 4.2,
       climatePressure: 30,
+      discreteBudget: 0,
     };
-    expect(Object.keys(meters)).toHaveLength(6);
+    expect(Object.keys(meters)).toHaveLength(7);
   });
 
   it('GameState starting values match spec', () => {
@@ -30,6 +31,7 @@ describe('Type sanity checks', () => {
         politicalWill: 60,
         budget: 4.2,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     };
     expect(state.meters!.communityTrust).toBe(50);

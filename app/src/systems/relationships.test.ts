@@ -803,6 +803,7 @@ describe('calculateReElectionScore', () => {
         politicalWill: 60,
         budget: 5,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       councilMembers: {
         cm1: makeCouncilMember({ id: 'cm1', disposition: 40 }),
@@ -832,6 +833,7 @@ describe('calculateReElectionScore', () => {
         politicalWill: 30,
         budget: 2,
         climatePressure: 50,
+        discreteBudget: 0,
       },
       councilMembers: {
         cm1: makeCouncilMember({ id: 'cm1', disposition: -40 }),
@@ -871,6 +873,7 @@ describe('calculateReElectionScore', () => {
         politicalWill: 60,
         budget: 5,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       councilMembers: {},
       leaders: {},
@@ -914,6 +917,7 @@ describe('calculateReElectionScore', () => {
         politicalWill: 60,
         budget: 5,
         climatePressure: 30,
+        discreteBudget: 0,
       },
       councilMembers: {},
       leaders: {},

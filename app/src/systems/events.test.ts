@@ -62,7 +62,7 @@ describe('generateEvents', () => {
     // At climatePressure=0 → actual = 0.08 * (1 + 0) = 0.08
     // rng=0.10 > 0.08 → should NOT trigger
     const lowPressure = makeState({
-      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 0 },
+      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 0 },
       eventCooldowns: baseCooldowns,
     });
     const events1 = generateEvents(lowPressure, () => 0.10);
@@ -71,7 +71,7 @@ describe('generateEvents', () => {
     // At climatePressure=100 → actual = 0.08 * (1 + 1.0) = 0.16
     // rng=0.10 < 0.16 → should trigger
     const highPressure = makeState({
-      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 100 },
+      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 100 },
       eventCooldowns: baseCooldowns,
     });
     const events2 = generateEvents(highPressure, () => 0.10);
@@ -95,6 +95,7 @@ describe('generateEvents', () => {
         politicalWill: 60,
         budget: 0.5,
         climatePressure: 80,
+        discreteBudget: 0,
       },
     });
     const events = generateEvents(state, () => 0.001);
@@ -129,7 +130,7 @@ describe('generateEvents', () => {
 
     // Trust at 50 — should not generate (needs > 60)
     const lowTrust = makeState({
-      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       eventCooldowns: blockOthers,
     });
     const events1 = generateEvents(lowTrust, () => 0.001);
@@ -137,7 +138,7 @@ describe('generateEvents', () => {
 
     // Trust at 70 — should generate
     const highTrust = makeState({
-      meters: { communityTrust: 70, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 70, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       eventCooldowns: blockOthers,
     });
     const events2 = generateEvents(highTrust, () => 0.001);
@@ -151,7 +152,7 @@ describe('generateEvents', () => {
     expect(events1.some((e) => e.type === 'water_shutoff')).toBe(false);
 
     // Budget at 0.5 — should generate
-    const poor = makeState({ meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 0.5, climatePressure: 30 } });
+    const poor = makeState({ meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 0.5, discreteBudget: 0, climatePressure: 30 } });
     const events2 = generateEvents(poor, () => 0.001);
     expect(events2.some((e) => e.type === 'water_shutoff')).toBe(true);
   });
@@ -167,6 +168,7 @@ describe('generateEvents', () => {
         politicalWill: 60,
         budget: 0.5,
         climatePressure: 80,
+        discreteBudget: 0,
       },
     });
     const events = generateEvents(state, () => 0.001);
@@ -392,7 +394,7 @@ describe('checkAntagonistActivation', () => {
 
   it('16. Senator Voss activates when trust > 55', () => {
     const state = makeState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       antagonists: {
         senator_voss: makeAntagonist({
           id: 'senator_voss',
@@ -407,7 +409,7 @@ describe('checkAntagonistActivation', () => {
 
   it('Senator Voss stays inactive when trust <= 55', () => {
     const state = makeState({
-      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+      meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       antagonists: {
         senator_voss: makeAntagonist({
           id: 'senator_voss',

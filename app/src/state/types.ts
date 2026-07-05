@@ -79,6 +79,7 @@ export interface Meters {
   politicalWill: number;
   budget: number;
   climatePressure: number;
+  discreteBudget: number; // Mayor's discretionary funds
 }
 
 export interface Tile {

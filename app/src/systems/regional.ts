@@ -258,7 +258,7 @@ export function sendBudget(
   const cost = costs[size];
   const boost = boosts[size];
 
-  if (state.meters.budget < cost) return state;
+  if (state.meters.discreteBudget < cost) return state;
 
   // Find lowest meter
   const { ecologicalHealth, foodSovereignty, communityTrust } = city.meters;
@@ -289,7 +289,7 @@ export function sendBudget(
     ...state,
     meters: {
       ...state.meters,
-      budget: state.meters.budget - cost,
+      discreteBudget: Math.max(0, state.meters.discreteBudget - cost),
       politicalWill: Math.min(100, state.meters.politicalWill + 2),
     },
     regionalCities: {
@@ -316,7 +316,7 @@ export function sendTemplate(
   if (city.templatesReceived.includes(projectId)) return state;
 
   // Check budget
-  if (state.meters.budget < 0.1) return state;
+  if (state.meters.discreteBudget < 0.1) return state;
 
   const updatedCity: RegionalCity = {
     ...city,
@@ -334,7 +334,7 @@ export function sendTemplate(
     ...state,
     meters: {
       ...state.meters,
-      budget: state.meters.budget - 0.1,
+      discreteBudget: Math.max(0, state.meters.discreteBudget - 0.1),
     },
     regionalCities: {
       ...state.regionalCities,
@@ -551,7 +551,7 @@ export function checkWinCondition(state: GameState): WinCondition {
  */
 export function checkLossCondition(state: GameState): LossCondition {
   // Budget collapse
-  if (state.meters.budget <= 0) return 'budget_collapse';
+  if (state.meters.discreteBudget <= 0) return 'budget_collapse';
 
   // Climate catastrophe
   if (state.meters.climatePressure >= 100) {

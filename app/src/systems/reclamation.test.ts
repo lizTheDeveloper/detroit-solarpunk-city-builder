@@ -42,6 +42,7 @@ function makeState(_overrides: Partial<GameState> = {}): GameState {
       politicalWill: 25,
       budget: 1.5,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: { test_tile: makeTile() },
     leaders: {},

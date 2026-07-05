@@ -221,7 +221,7 @@ export function applyProposalResponse(
   // Start project if needed
   if (startProject) {
     const cost = def.baseCost * costMultiplier;
-    if (state.meters.budget < cost) return state;
+    if (state.meters.discreteBudget < cost) return state;
     const duration = communityLedDuration(def.baseDuration);
 
     const newProject: ActiveProject = {

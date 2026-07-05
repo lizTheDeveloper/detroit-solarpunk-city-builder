@@ -56,6 +56,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 4.2,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {
       brightmoor: makeTile('brightmoor'),
@@ -180,6 +181,7 @@ describe('resolveTurn', () => {
           politicalWill: 60,
           budget: 4.2,
           climatePressure: 99.9,
+          discreteBudget: 0,
         },
       });
       const result = resolveTurn(state, noFireRng);
@@ -251,7 +253,7 @@ describe('resolveTurn', () => {
   describe('meter feedback', () => {
     it('applies Will regeneration', () => {
       const state = makeState({
-        meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, climatePressure: 30 },
+        meters: { communityTrust: 50, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 4.2, discreteBudget: 0, climatePressure: 30 },
       });
       // trust=50: willRegen = 0.67 + max(0, (50-40)*0.033) = 1.0
       const result = resolveTurn(state, noFireRng);
@@ -268,6 +270,7 @@ describe('resolveTurn', () => {
           politicalWill: 60,
           budget: 4.2,
           climatePressure: 30,
+          discreteBudget: 0,
         },
       });
       const result = resolveTurn(state, noFireRng);
@@ -284,6 +287,7 @@ describe('resolveTurn', () => {
           politicalWill: 60,
           budget: 4.2,
           climatePressure: 30,
+          discreteBudget: 0,
         },
       });
       const result = resolveTurn(state, noFireRng);
@@ -312,7 +316,7 @@ describe('resolveTurn', () => {
         turn: 2,
         season: 'summer',
         year: 1,
-        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
       });
       const result = resolveTurn(state, noFireRng);
       // At trust=40 and eco>=30: no emergency penalty, no trust bonus
@@ -327,7 +331,7 @@ describe('resolveTurn', () => {
         month: 8,
         season: 'summer',
         year: 1,
-        meters: { communityTrust: 40, ecologicalHealth: 10, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+        meters: { communityTrust: 40, ecologicalHealth: 10, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
       });
       const result = resolveTurn(state, noFireRng);
       // Eco 10 < 30, so emergency cost = (30-eco)*0.3 ≈ $6M/mo deficit
@@ -340,7 +344,7 @@ describe('resolveTurn', () => {
         month: 8,
         season: 'summer',
         year: 1,
-        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
         tiles: {
           brightmoor: makeTile('brightmoor', { completedProjects: ['solar_grid'] }),
           corktown: makeTile('corktown'),
@@ -358,7 +362,7 @@ describe('resolveTurn', () => {
         month: 8,
         season: 'summer',
         year: 1,
-        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
         tiles: {
           brightmoor: makeTile('brightmoor', { completedProjects: ['maker_space'] }),
           corktown: makeTile('corktown'),
@@ -370,7 +374,7 @@ describe('resolveTurn', () => {
         month: 8,
         season: 'summer',
         year: 1,
-        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+        meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
       });
       const withProjects = resolveTurn(state, noFireRng);
       const without = resolveTurn(noProjects, noFireRng);
@@ -415,6 +419,7 @@ describe('resolveTurn', () => {
           politicalWill: 60,
           budget: 4.2,
           climatePressure: 30,
+          discreteBudget: 0,
         },
       });
       const result = resolveTurn(state, noFireRng);
@@ -437,6 +442,7 @@ describe('resolveTurn', () => {
           politicalWill: -10,
           budget: -1,
           climatePressure: 150,
+          discreteBudget: 0,
         },
       });
       const result = resolveTurn(state, noFireRng);
@@ -774,6 +780,7 @@ describe('Phase 2 resolve pipeline', () => {
         politicalWill: 60,
         budget: 4.2,
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = resolveTurn(state, noFireRng);
@@ -928,7 +935,7 @@ describe('Phase 2 resolve pipeline', () => {
       month: 8,
       season: 'summer',
       year: 1,
-      meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+      meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
       activePolicies: [
         { definitionId: 'cooperative_tax_incentives', enactedTurn: 3 },
       ],
@@ -938,7 +945,7 @@ describe('Phase 2 resolve pipeline', () => {
       month: 8,
       season: 'summer',
       year: 1,
-      meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, climatePressure: 30 },
+      meters: { communityTrust: 40, ecologicalHealth: 30, foodSovereignty: 10, politicalWill: 60, budget: 1576, discreteBudget: 0, climatePressure: 30 },
     });
     const resultWith = resolveTurn(withPolicy, noFireRng);
     const resultWithout = resolveTurn(withoutPolicy, noFireRng);
@@ -1006,6 +1013,7 @@ describe('Phase 2 prepareTurn', () => {
         politicalWill: 60,
         budget: 0.5, // low budget enables water_shutoff crisis
         climatePressure: 30,
+        discreteBudget: 0,
       },
     });
     const result = prepareTurn(state, alwaysFireRng);

@@ -20,6 +20,7 @@ function makeMeters(overrides: Partial<Meters> = {}): Meters {
     foodSovereignty: 20,
     politicalWill: 60,
     budget: 4.0,
+    discreteBudget: 4.0,
     climatePressure: 30,
     ...overrides,
   };
@@ -96,7 +97,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 describe('checkTippingPoints', () => {
   it('triggers tipping point 1 at exactly 60% pressure', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 60 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 60 }),
     });
     const { triggered, updatedState } = checkTippingPoints(state);
 
@@ -110,7 +111,7 @@ describe('checkTippingPoints', () => {
 
   it('does NOT re-trigger tipping point 1 once already triggered', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 65 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 65 }),
       eventCooldowns: { tipping_point_1: 9999 },
     });
     const { triggered } = checkTippingPoints(state);
@@ -120,7 +121,7 @@ describe('checkTippingPoints', () => {
 
   it('tipping point 1 applies -5% eco to all tiles', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 60 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 60 }),
       tiles: {
         tile_1: makeTile({ id: 'tile_1', ecologicalHealth: 40 }),
         tile_2: makeTile({ id: 'tile_2', ecologicalHealth: 30 }),
@@ -142,7 +143,7 @@ describe('checkTippingPoints', () => {
 
   it('triggers tipping point 2 at 85% pressure', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 85 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 85 }),
     });
     const { triggered, updatedState } = checkTippingPoints(state);
 
@@ -157,7 +158,7 @@ describe('checkTippingPoints', () => {
 
   it('tipping point 2 floods 3 lowest-eco tiles with -15% eco', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 85 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 85 }),
       eventCooldowns: { tipping_point_1: 9999 }, // TP1 already triggered
       tiles: {
         tile_a: makeTile({ id: 'tile_a', ecologicalHealth: 50 }),
@@ -195,7 +196,7 @@ describe('checkTippingPoints', () => {
       amount: -0.5,
       source: 'tipping_point_2_flooding',
     });
-    expect(updatedState.meters.budget).toBe(3.5);
+    expect(updatedState.meters.discreteBudget).toBe(3.5);
   });
 });
 
@@ -408,7 +409,7 @@ describe('generateClimateEvent', () => {
   it('climate event probability increases with pressure', () => {
     // At low pressure, probability is low so high rng roll returns null
     const lowPressureState = makeState({
-      meters: makeMeters({ climatePressure: 10 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 10 }),
     });
     // baseProb = 0.05 + 10 * 0.005 = 0.10; max seasonal mult = 3 (summer heat_wave) => 0.30
     // roll of 0.95 > 0.30 => null
@@ -417,7 +418,7 @@ describe('generateClimateEvent', () => {
 
     // At high pressure, probability is high so same roll might succeed
     const highPressureState = makeState({
-      meters: makeMeters({ climatePressure: 80 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 80 }),
     });
     // baseProb = 0.05 + 80 * 0.005 = 0.45; max seasonal mult = 3 (summer heat_wave) => 1.35 (capped conceptually)
     // roll of 0.5 < 1.35 => event generated
@@ -430,7 +431,7 @@ describe('generateClimateEvent', () => {
     // heat_wave in summer: 0.20 * 3 = 0.60
     // With rng roll of 0.5 < 0.60, event should fire
     const state = makeState({
-      meters: makeMeters({ climatePressure: 30 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 30 }),
     });
     // Use rng that returns 0.5 for first call (event roll) and 0 for second (type selection)
     let callCount = 0;
@@ -451,7 +452,7 @@ describe('generateClimateEvent', () => {
     // ice_storm weight = 0.20 * 2 = 0.40
     // Max weight is ice_storm at 0.40
     const state = makeState({
-      meters: makeMeters({ climatePressure: 30 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 30 }),
     });
     // rng: first call returns something < 0.40 to trigger event
     // second call should select ice_storm (highest weight in winter)
@@ -471,7 +472,7 @@ describe('generateClimateEvent', () => {
 
   it('returns null when probability roll exceeds threshold', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 10 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 10 }),
     });
     // baseProb = 0.10; in spring: max is flooding at 2x = 0.20
     // roll of 0.99 > 0.20 => null
@@ -484,7 +485,7 @@ describe('generateClimateEvent', () => {
     // With TP1: base=0.28, summer heat_wave max = 0.28*3 = 0.84
     // Roll of 0.7 > 0.54 (no TP1) but < 0.84 (with TP1)
     const stateWithTP1 = makeState({
-      meters: makeMeters({ climatePressure: 10 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 10 }),
       eventCooldowns: { tipping_point_1: 9999 },
     });
     let callCount = 0;
@@ -498,7 +499,7 @@ describe('generateClimateEvent', () => {
 
     // Without TP1, same roll fails
     const stateWithoutTP1 = makeState({
-      meters: makeMeters({ climatePressure: 10 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 10 }),
       eventCooldowns: {},
     });
     const result2 = generateClimateEvent(stateWithoutTP1, 'summer', () => 0.7);
@@ -507,7 +508,7 @@ describe('generateClimateEvent', () => {
 
   it('generates event with correct structure', () => {
     const state = makeState({
-      meters: makeMeters({ climatePressure: 80 }),
+      meters: makeMeters({ discreteBudget: 0, climatePressure: 80 }),
     });
     let callCount = 0;
     const rng = () => {

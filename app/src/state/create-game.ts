@@ -80,6 +80,7 @@ export function createNewGame(citySlug: string = 'detroit'): GameState {
       politicalWill: 25,
       budget: 1576,
       climatePressure: 30,
+      discreteBudget: 75, // Mayor's discretionary funds - starts limited
     },
     tiles: {
       brightmoor: makeTile({

@@ -31,6 +31,7 @@ function makeTestState(overrides: Partial<GameState> = {}): GameState {
       politicalWill: 60,
       budget: 2.8,
       climatePressure: 30,
+      discreteBudget: 0,
     },
     tiles: {},
     leaders: {},
@@ -113,7 +114,7 @@ describe('isCampaignTurn', () => {
 describe('calculateElectionScore', () => {
   it('calculates baseTrust as communityTrust * 0.6', () => {
     const state = makeTestState({
-      meters: { communityTrust: 80, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 0, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 80, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 0, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = calculateElectionScore(state);
     expect(result.breakdown.baseTrust).toBe(48);
@@ -179,7 +180,7 @@ describe('calculateElectionScore', () => {
 
   it('caps politicalWill contribution at 8', () => {
     const state = makeTestState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 200, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 200, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = calculateElectionScore(state);
     expect(result.breakdown.politicalWill).toBe(8);
@@ -199,7 +200,7 @@ describe('calculateElectionScore', () => {
 
   it('reports win when score >= 50', () => {
     const state = makeTestState({
-      meters: { communityTrust: 100, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 100, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = calculateElectionScore(state);
     expect(result.won).toBe(true);
@@ -208,7 +209,7 @@ describe('calculateElectionScore', () => {
 
   it('reports loss when score < 50', () => {
     const state = makeTestState({
-      meters: { communityTrust: 20, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 0, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 20, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 0, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = calculateElectionScore(state);
     expect(result.won).toBe(false);
@@ -217,7 +218,7 @@ describe('calculateElectionScore', () => {
 
   it('calculates total score as sum of all factors', () => {
     const state = makeTestState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 40, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 40, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
       leaders: {
         l1: { id: 'l1', name: 'L1', neighborhood: 'n', tileIds: [], backstory: '', priorities: [], trust: 50, advocacyPower: 5, proposalCooldown: 0, consecutiveDeferrals: 0 },
       },
@@ -264,7 +265,7 @@ describe('applyElectionResult', () => {
 
   it('boosts politicalWill by 10% and communityTrust by 5% on win', () => {
     const state = makeTestState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = { score: 55, won: true, breakdown: {} as any, margin: 5 };
     const newState = applyElectionResult(state, result);
@@ -274,7 +275,7 @@ describe('applyElectionResult', () => {
 
   it('adds $500K budget bonus on large margin win (margin > 20)', () => {
     const state = makeTestState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = { score: 75, won: true, breakdown: {} as any, margin: 25 };
     const newState = applyElectionResult(state, result);
@@ -283,7 +284,7 @@ describe('applyElectionResult', () => {
 
   it('does not add budget bonus on moderate win (margin <= 20)', () => {
     const state = makeTestState({
-      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 60, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 80, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const result = { score: 60, won: true, breakdown: {} as any, margin: 10 };
     const newState = applyElectionResult(state, result);
@@ -345,7 +346,7 @@ describe('predictElectionOutcome', () => {
 
   it('flags low community trust when trust < 40', () => {
     const state = makeTestState({
-      meters: { communityTrust: 30, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 30, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
     });
     const prediction = predictElectionOutcome(state);
     expect(prediction.risks).toContain('Low community trust');
@@ -401,7 +402,7 @@ describe('predictElectionOutcome', () => {
 
   it('returns no risks when everything is favorable', () => {
     const state = makeTestState({
-      meters: { communityTrust: 80, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, climatePressure: 30 },
+      meters: { communityTrust: 80, ecologicalHealth: 15, foodSovereignty: 10, politicalWill: 60, budget: 2.8, discreteBudget: 0, climatePressure: 30 },
       leaders: {
         l1: { id: 'l1', name: 'L1', neighborhood: 'n', tileIds: [], backstory: '', priorities: [], trust: 50, advocacyPower: 5, proposalCooldown: 0, consecutiveDeferrals: 0 },
         l2: { id: 'l2', name: 'L2', neighborhood: 'n', tileIds: [], backstory: '', priorities: [], trust: 60, advocacyPower: 5, proposalCooldown: 0, consecutiveDeferrals: 0 },
@@ -423,7 +424,7 @@ describe('predictElectionOutcome', () => {
 describe('edge cases', () => {
   it('perfect score: max trust, all allies, coalitions, no antagonists', () => {
     const state = makeTestState({
-      meters: { communityTrust: 100, ecologicalHealth: 50, foodSovereignty: 50, politicalWill: 100, budget: 10, climatePressure: 0 },
+      meters: { communityTrust: 100, ecologicalHealth: 50, foodSovereignty: 50, politicalWill: 100, budget: 10, discreteBudget: 0, climatePressure: 0 },
       leaders: {
         l1: { id: 'l1', name: 'L1', neighborhood: 'n', tileIds: [], backstory: '', priorities: [], trust: 80, advocacyPower: 5, proposalCooldown: 0, consecutiveDeferrals: 0 },
         l2: { id: 'l2', name: 'L2', neighborhood: 'n', tileIds: [], backstory: '', priorities: [], trust: 80, advocacyPower: 5, proposalCooldown: 0, consecutiveDeferrals: 0 },
@@ -446,7 +447,7 @@ describe('edge cases', () => {
 
   it('zero trust: no allies, worst case', () => {
     const state = makeTestState({
-      meters: { communityTrust: 0, ecologicalHealth: 0, foodSovereignty: 0, politicalWill: 0, budget: 0, climatePressure: 100 },
+      meters: { communityTrust: 0, ecologicalHealth: 0, foodSovereignty: 0, politicalWill: 0, budget: 0, discreteBudget: 0, climatePressure: 100 },
       councilMembers: {
         cm1: { id: 'cm1', name: 'A', district: 'd1', districtNumber: 1, leaning: 'conservative', priorities: [], disposition: -50, backstory: '', tileIds: [] },
       },
